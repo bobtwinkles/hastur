@@ -1,0 +1,15 @@
+[package]
+name = "hastur"
+version = "0.1.0"
+authors = ["bobtwinkles <srkoser+github@gmail.com>"]
+
+[dependencies]
+fxhash = "0.2.1"
+failure = "0.1"
+
+[build-dependencies]
+cc = "1.0"
+bindgen = "0.37.4"
+
+[dev-dependencies]
+lazy_static = "1.0"
