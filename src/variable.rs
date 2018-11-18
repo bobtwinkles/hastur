@@ -116,4 +116,15 @@ mod tests {
         let var_contents = var.get_contents().unwrap().to_str().unwrap();
         assert_eq!(var_contents, "some value");
     }
+
+    #[test]
+    fn test_recursive_expand() {
+        let mut make = get_test_make();
+        make.eval_str("A_VARIABLE = $(ANTOHER_VARIABLE)").unwrap();
+        let var = make
+            .lookup_variable_for_file("A_VARIABLE", None as Option<String>)
+            .unwrap();
+        let var_contents = var.get_contents().unwrap().to_str().unwrap();
+        assert_eq!(var_contents, "$(ANTOHER_VARIABLE)");
+    }
 }

@@ -29,7 +29,7 @@ fn build_code() {
         "posixos.c",
         "read.c",
         "remake.c",
-        "remote-stub.c",
+        // "remote-stub.c",
         "rule.c",
         "signame.c",
         "strcache.c",
