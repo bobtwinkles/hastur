@@ -91,7 +91,17 @@ fn parse_line_internal<'a, 'line: 'a>(
             let (input, sub_cond) = parse_else(input)?;
             Ok((input, Conditional::Else(sub_cond)))
         }
-        "endif" => unimplemented!(),
+        "endif" => {
+            let (input, _) = makefile_whitespace(input)?;
+            if input.length > 0 {
+                Err(Err::Failure(Context::Code(
+                    input,
+                    ErrorKind::Custom(ParseErrorKind::ExtraTokensAfter("endif")),
+                )))
+            } else {
+                Ok((input, Conditional::EndIf))
+            }
+        }
         _ => unreachable!(),
     }
 }
