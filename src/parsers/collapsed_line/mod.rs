@@ -116,7 +116,7 @@ impl<'a, 'line: 'a, 'b> Compare<&'b str> for CollapsedLineSpan<'a, 'line> {
         match pos {
             Some(_) => CompareResult::Error,
             None => {
-                if self.length > t.len() {
+                if self.length >= t.len() {
                     CompareResult::Ok
                 } else {
                     CompareResult::Incomplete
@@ -133,9 +133,9 @@ impl<'a, 'line: 'a, 'b> Compare<&'b str> for CollapsedLineSpan<'a, 'line> {
             .position(|(a, b)| a != b);
 
         match pos {
-            Some(x) => CompareResult::Error,
+            Some(_) => CompareResult::Error,
             None => {
-                if self.length > t.len() {
+                if self.length >= t.len() {
                     CompareResult::Ok
                 } else {
                     CompareResult::Incomplete

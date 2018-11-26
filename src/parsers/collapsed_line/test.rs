@@ -158,6 +158,14 @@ mod compare {
     }
 
     #[test]
+    fn simple_same() {
+        let under_test = simple_line("asdf");
+        let under_test = under_test.as_span();
+
+        assert_eq!(under_test.compare("asdf"), CompareResult::Ok)
+    }
+
+    #[test]
     fn simple_incomplete() {
         let under_test = simple_line("asdf");
         let under_test = under_test.as_span();
@@ -179,6 +187,14 @@ mod compare {
         let under_test = under_test.as_span();
 
         assert_eq!(under_test.compare_no_case("aS"), CompareResult::Ok)
+    }
+
+    #[test]
+    fn no_caes_same() {
+        let under_test = simple_line("asdf");
+        let under_test = under_test.as_span();
+
+        assert_eq!(under_test.compare_no_case("aSdf"), CompareResult::Ok)
     }
 
     #[test]
