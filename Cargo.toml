@@ -1,15 +1,21 @@
 [package]
 name = "hastur"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["bobtwinkles <srkoser+github@gmail.com>"]
+edition = "2018"
 
 [dependencies]
 fxhash = "0.2.1"
 failure = "0.1"
+log = "0.4"
 
-[build-dependencies]
-cc = "1.0"
-bindgen = "0.37.4"
+[dependencies.nom]
+version = "4.1"
+features = ["verbose-errors"]
+
+[dependencies.nom_locate]
+version = "0.3"
+features = ["verbose-errors"]
 
 [dev-dependencies]
 lazy_static = "1.0"
