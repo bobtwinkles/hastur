@@ -32,6 +32,8 @@ extern crate nom_locate;
 mod parsers;
 pub mod pattern;
 
+pub use crate::parsers::ParserCompliance;
+
 use fxhash::FxHashMap;
 use std::io;
 use std::io::prelude::*;

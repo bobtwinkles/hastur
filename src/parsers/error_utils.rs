@@ -55,7 +55,7 @@ impl<I, E> NomErrExt<I, E> for Err<I, E> {
             }};
         }
         match self {
-            Err::Incomplete(x) => Err::Failure(Context::Code(i, e)),
+            Err::Incomplete(_) => Err::Failure(Context::Code(i, e)),
             Err::Failure(c) => Err::Failure(add_error!(c)),
             Err::Error(c) => Err::Error(add_error!(c)),
         }
@@ -63,7 +63,7 @@ impl<I, E> NomErrExt<I, E> for Err<I, E> {
 
     fn as_failure(self) -> Self {
         match self {
-            Err::Incomplete(x) => panic!("Error cannot be an incomplete"),
+            Err::Incomplete(_) => panic!("Error cannot be an incomplete"),
             Err::Failure(e) | Err::Error(e) => Err::Failure(e),
         }
     }

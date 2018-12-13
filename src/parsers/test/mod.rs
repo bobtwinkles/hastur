@@ -1,6 +1,7 @@
 //! Test utilities and integration tests
 
 use super::*;
+use crate::OwnedFragment;
 use nom::Context as NContext;
 use nom::{Err, ErrorKind};
 
@@ -18,8 +19,10 @@ pub(super) fn leftover_span<'a>(fragment: &'a str, offset: usize, line: u32) -> 
     tr
 }
 
-pub(super) fn simple_line(s: & str) -> CollapsedLine {
-    super::makefile_line(create_span(s), super::ParserCompliance::GNU, false).unwrap().1
+pub(super) fn simple_line(s: &str) -> CollapsedLine {
+    super::makefile_line(create_span(s), super::ParserCompliance::GNU, false)
+        .unwrap()
+        .1
 }
 
 pub(super) fn result_owned_fragment<T>(
@@ -78,8 +81,8 @@ fn test_ends_with_backslash() {
 }
 
 mod makefile_line {
-    use crate::parsers::{makefile_line, CollapsedLine};
     use crate::parsers::test::*;
+    use crate::parsers::{makefile_line, CollapsedLine};
 
     #[test]
     fn simple() {

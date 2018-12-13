@@ -1,7 +1,6 @@
 //! Logic for parsing conditional statements
 use super::{makefile_line, makefile_whitespace};
 use super::{CollapsedLine, CollapsedLineSpan, ParserCompliance};
-use crate::parsers::error_utils::NomErrExt;
 use crate::{ParseErrorKind, Span};
 use nom::{Context, Err, ErrorKind, IResult};
 

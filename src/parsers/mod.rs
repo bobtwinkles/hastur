@@ -1,4 +1,4 @@
-use crate::{Engine, OwnedFragment, ParseErrorKind, Span};
+use crate::{Engine, ParseErrorKind, Span};
 use nom::Err as NErr;
 use nom::IResult;
 
@@ -194,7 +194,7 @@ fn makefile_whitespace<T: nom::InputTakeAtPosition<Item = char>>(
 /// Controls various aspects of the parser, making it conform to either the GNU
 /// conventions or have strict POSIX compliance
 #[derive(Copy, Clone, Debug, PartialEq)]
-enum ParserCompliance {
+pub enum ParserCompliance {
     /// GNU compliance mode
     GNU,
     /// POSIX compliance mode
