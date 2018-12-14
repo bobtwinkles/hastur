@@ -29,9 +29,11 @@ extern crate nom_locate;
 // #[macro_use]
 // extern crate lazy_static;
 
+mod eval;
 mod parsers;
 pub mod pattern;
 
+pub use crate::eval::Variable;
 pub use crate::parsers::ParserCompliance;
 
 use fxhash::FxHashMap;
@@ -89,7 +91,7 @@ pub type Span<'a> = nom_locate::LocatedSpan<nom::types::CompleteStr<'a>>;
 /// piece of information is owned. For most of the public API though, this will
 /// simply be a string reference that the user themselves handed us.
 #[derive(Clone, Debug, PartialEq)]
-struct OwnedFragment<T> {
+pub struct OwnedFragment<T> {
     /// The line on which this fragment starts
     pub line: u32,
     /// The offset of this fragment from the beginning of the input
@@ -104,6 +106,7 @@ struct OwnedFragment<T> {
 }
 
 impl<T> OwnedFragment<T> {
+    /// Create an owned fragment from a specific span and a file name
     pub fn from_span(s: Span, file_name: T) -> OwnedFragment<T> {
         Self {
             line: s.line,
@@ -189,15 +192,15 @@ impl Rule {
     }
 }
 
-/// Represents a make variable.
-/// Currently completely unimplemented
-pub struct Variable {}
-
 /// Database of rules and variables.
 /// This represents the full context required to evaluate something in Makefile syntax
 #[derive(Default)]
 pub struct Database {
-    variables: FxHashMap<String, Variable>,
+    /// Global variables
+    variables: FxHashMap<String, OwnedFragment<&'static str>>,
+    /// Target variables, mapped from target name to variable name to value
+    target_variables: FxHashMap<String, FxHashMap<String, OwnedFragment<&'static str>>>,
+    /// All known rules
     rules: Vec<Rule>,
 }
 
@@ -207,9 +210,38 @@ impl Database {
         self.rules.push(rule);
     }
 
+    /// Set the value of a variable
+    pub fn set_variable(&mut self, name: impl Into<String>, value: OwnedFragment<&'static str>) {
+        let name = name.into();
+        self.variables.insert(name, value);
+    }
+
+    /// Override the value of a variable for a specific target
+    pub fn set_variable_for_target(
+        &mut self,
+        target: impl Into<String>,
+        name: impl Into<String>,
+        value: OwnedFragment<&'static str>,
+    ) {
+        let target = target.into();
+        let name = name.into();
+        self.target_variables
+            .entry(target)
+            .or_default()
+            .insert(name, value);
+    }
+
     /// Get a variable based on a name
-    pub fn get_variable(&self, name: &str) -> Option<&Variable> {
-        self.variables.get(name)
+    pub fn get_variable(&self, name: &str) -> Option<Variable> {
+        self.variables.get(name).map(|val| Variable::new(self, val))
+    }
+
+    /// Get the value of a variable in the context of a target
+    pub fn get_variable_for_target<'t>(&'t self, target: &'t str, name: &str) -> Option<Variable<'t>> {
+        self.target_variables
+            .get(target)
+            .and_then(|m| m.get(name))
+            .map(|v| Variable::new_for_target(self, v, target))
     }
 }
 
