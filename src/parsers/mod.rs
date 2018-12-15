@@ -215,6 +215,7 @@ impl<'a> CollapsedLine<'a> {
         CollapsedLine { data, total_bytes }
     }
 
+    /// Creates a single span representing this entire line
     pub(crate) fn as_span<'b>(&'b self) -> CollapsedLineSpan<'b, 'a> {
         CollapsedLineSpan {
             parent: &self.data,
@@ -255,7 +256,7 @@ impl<'a, 'line: 'a> CollapsedLineSpan<'a, 'line> {
 
     /// Should not be used in normal code. Prefer `CollapsedLine::as_span` instead
     #[cfg(test)]
-    fn new_test(parent: &'a [Span<'line>]) -> Self {
+    pub(crate) fn new_test(parent: &'a [Span<'line>]) -> Self {
         let length = parent.iter().map(|x| x.fragment.len()).sum();
         Self {
             parent,
@@ -265,7 +266,7 @@ impl<'a, 'line: 'a> CollapsedLineSpan<'a, 'line> {
     }
 
     /// Flatten this segment into a single string
-    fn flatten(&self) -> String {
+    pub(crate) fn flatten(&self) -> String {
         use nom::InputIter;
         use std::iter::FromIterator;
 
@@ -273,13 +274,18 @@ impl<'a, 'line: 'a> CollapsedLineSpan<'a, 'line> {
     }
 
     /// Get a reference to a span in the ballpark this collapsed span
-    fn error_span(self) -> Span<'line> {
+    pub(crate) fn error_span(self) -> Span<'line> {
         use nom::Slice;
         if self.parent.len() > 0 {
             self.parent[0].slice(self.offset..)
         } else {
             Span::new(nom::types::CompleteStr("LOST"))
         }
+    }
+
+    /// Get the total length of this span in bytes
+    pub(crate) fn len(&self) -> usize {
+        self.length
     }
 }
 
