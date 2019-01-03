@@ -1,5 +1,6 @@
 # SPC-variable-eval
 partof:
+- REQ-Expansion-Tracking
 - REQ-interface
 - REQ-Variable
 - SPC-P-Conditional
