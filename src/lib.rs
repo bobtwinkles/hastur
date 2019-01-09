@@ -32,14 +32,19 @@ extern crate nom_locate;
 mod eval;
 mod parsers;
 pub mod pattern;
+pub mod source_location;
+pub mod trees;
+pub mod traits;
 
-pub use crate::eval::Variable;
+pub use crate::eval::{Variable, VariableParameters};
 pub use crate::parsers::ParserCompliance;
 
 use fxhash::FxHashMap;
 use std::io;
 use std::io::prelude::*;
 use std::path::PathBuf;
+use string_interner::DefaultStringInterner as StringInterner;
+use string_interner::Sym;
 
 /// What sort of thing went wrong while parsing.
 #[derive(Clone, Debug, PartialEq)]
@@ -82,7 +87,8 @@ pub enum ParseErrorKind {
 
 /// Represents a span of the input
 /// TODO: we should really wrap this in our own structure so that nom_locate isn't part of
-/// our public API
+/// our public API.
+/// This is to be replaced with crate::source_location::Span
 pub type Span<'a> = nom_locate::LocatedSpan<nom::types::CompleteStr<'a>>;
 
 /// Represents an owned span that originated from the input
@@ -182,6 +188,7 @@ pub struct Rule {
     recipe: Vec<Command>,
 }
 
+// TODO: move this impl into rule.rs
 impl Rule {
     fn new(targets: Vec<String>, deps: Vec<String>) -> Self {
         Self {
@@ -190,6 +197,12 @@ impl Rule {
             recipe: Vec::new(),
         }
     }
+
+    /// Iterate over the dependencies of this rule
+    /// TODO: change the return type of this to an actual iterator type
+    pub fn dependencies(&self) -> &[trees::evaluated::EvaluatedTree] {
+        unimplemented!()
+    }
 }
 
 /// Database of rules and variables.
@@ -197,21 +210,42 @@ impl Rule {
 #[derive(Default)]
 pub struct Database {
     /// Global variables
-    variables: FxHashMap<String, OwnedFragment<&'static str>>,
+    variables: FxHashMap<String, VariableParameters>,
     /// Target variables, mapped from target name to variable name to value
-    target_variables: FxHashMap<String, FxHashMap<String, OwnedFragment<&'static str>>>,
+    target_variables: FxHashMap<String, FxHashMap<String, VariableParameters>>,
     /// All known rules
     rules: Vec<Rule>,
+    /// All the file names
+    file_names: StringInterner,
 }
 
 impl Database {
+    /// Initialize a database by reading in from a file
+    pub fn from_file(filename: impl AsRef<str>) -> Database {
+        let filename = filename.as_ref();
+        let _ = filename;
+        unimplemented!()
+    }
+
+    /// Get the rule that will build a given target
+    pub fn get_rule_for_target(&self, target: impl AsRef<str>) -> Rule {
+        let target = target.as_ref();
+        let _ = target;
+        unimplemented!();
+    }
+
     /// Add a rule into the database
     pub fn add_rule(&mut self, rule: Rule) {
         self.rules.push(rule);
     }
 
+    /// Intern a the file name for a makefile
+    pub fn intern_file_name(&mut self, file_name: String) -> Sym {
+        self.file_names.get_or_intern(file_name)
+    }
+
     /// Set the value of a variable
-    pub fn set_variable(&mut self, name: impl Into<String>, value: OwnedFragment<&'static str>) {
+    pub fn set_variable(&mut self, name: impl Into<String>, value: VariableParameters) {
         let name = name.into();
         self.variables.insert(name, value);
     }
@@ -221,7 +255,7 @@ impl Database {
         &mut self,
         target: impl Into<String>,
         name: impl Into<String>,
-        value: OwnedFragment<&'static str>,
+        value: VariableParameters,
     ) {
         let target = target.into();
         let name = name.into();
@@ -237,7 +271,11 @@ impl Database {
     }
 
     /// Get the value of a variable in the context of a target
-    pub fn get_variable_for_target<'t>(&'t self, target: &'t str, name: &str) -> Option<Variable<'t>> {
+    pub fn get_variable_for_target<'t>(
+        &'t self,
+        target: &'t str,
+        name: &str,
+    ) -> Option<Variable<'t>> {
         self.target_variables
             .get(target)
             .and_then(|m| m.get(name))

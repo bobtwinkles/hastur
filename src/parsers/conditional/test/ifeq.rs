@@ -1,7 +1,9 @@
 //! Tests for the ifeq parser
+
 use super::*;
 use crate::parsers::conditional::*;
 
+// #TST-P-Conditional.ifeq_parens
 #[test]
 fn parens_simple() {
     let test_str = simple_line("(a, b)");
@@ -16,6 +18,7 @@ fn parens_simple() {
     assert_eq!((result.1).1.flatten(), String::from("b"));
 }
 
+// #TST-P-Conditional.ifeq_nested_parens
 #[test]
 fn parens_nested() {
     let test_str = simple_line("($(foo_$(bar)), $(baz)_$(qux_$(big)))");
@@ -29,6 +32,7 @@ fn parens_nested() {
     assert_eq!((result.1).1.flatten(), String::from("$(baz)_$(qux_$(big))"));
 }
 
+// #TST-P-Conditional.ifeq_dquote
 #[test]
 fn dquotes_simple() {
     let test_str = simple_line("\"a\" \"b\"");
@@ -42,6 +46,7 @@ fn dquotes_simple() {
     assert_eq!((result.1).1.flatten(), String::from("b"));
 }
 
+// #TST-P-Conditional.ifeq_squote
 #[test]
 fn quotes_simple() {
     let test_str = simple_line("'a' 'b'");
@@ -55,6 +60,7 @@ fn quotes_simple() {
     assert_eq!((result.1).1.flatten(), String::from("b"));
 }
 
+// #TST-P-Conditional.ifeq_mixed_quote_sd
 #[test]
 fn quotes_dquotes_mixed() {
     let test_str = simple_line("'a' \"b\"");
@@ -68,6 +74,7 @@ fn quotes_dquotes_mixed() {
     assert_eq!((result.1).1.flatten(), String::from("b"));
 }
 
+// #TST-P-Conditional.ifeq_mixed_quote_ds
 #[test]
 fn dquotes_quotes_mixed() {
     let test_str = simple_line("\"a\" 'b'");
@@ -81,6 +88,7 @@ fn dquotes_quotes_mixed() {
     assert_eq!((result.1).1.flatten(), String::from("b"));
 }
 
+// #TST-P-Conditional.ifeq_err_bad_token
 #[test]
 fn bad_separator() {
     let test_str = simple_line("asdf");

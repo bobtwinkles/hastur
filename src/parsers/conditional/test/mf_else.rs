@@ -14,6 +14,7 @@ fn simple() {
     assert_eq!(res.1, Conditional::Else(None));
 }
 
+/// #TST-P-Conditional.else_next_conditional
 #[test]
 fn simple_ifdef() {
     let line = create_span("else ifdef a");
@@ -31,6 +32,7 @@ fn simple_ifdef() {
     }
 }
 
+/// #TST-P-Conditional.else_err_extra_tokens
 #[test]
 fn rejects_non_if() {
     let line = create_span("else asdf");

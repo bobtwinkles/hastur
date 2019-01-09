@@ -1,6 +1,7 @@
 use super::*;
 use crate::parsers::CollapsedLine;
 
+/// #TST-P-Conditional.ifdef_simple
 #[test]
 fn simple() {
     let test_span = create_span("ifdef a");
@@ -15,6 +16,7 @@ fn simple() {
     );
 }
 
+/// #TST-P-Conditional.ifndef_simple
 #[test]
 fn simple_ndef() {
     let test_span = create_span("ifndef a");

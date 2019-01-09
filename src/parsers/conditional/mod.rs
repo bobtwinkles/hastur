@@ -1,4 +1,7 @@
 //! Logic for parsing conditional statements
+
+// #SPC-P-Conditional
+
 use super::{makefile_line, makefile_whitespace};
 use super::{CollapsedLine, CollapsedLineSpan, ParserCompliance};
 use crate::{ParseErrorKind, Span};
@@ -64,6 +67,7 @@ fn parse_line_internal<'a, 'line: 'a>(
 
     match tag {
         "ifdef" | "ifndef" => {
+            // #SPC-P-Conditional.ifdef
             let (input, rest) = return_error!(
                 input,
                 ErrorKind::Custom(ParseErrorKind::MalformedIfDef),
@@ -73,6 +77,7 @@ fn parse_line_internal<'a, 'line: 'a>(
             if tag == "ifdef" {
                 Ok((input, Conditional::IfDef(rest.into())))
             } else {
+                // #SPC-P-Conditional.ifndef
                 Ok((input, Conditional::IfNDef(rest.into())))
             }
         }
@@ -83,6 +88,7 @@ fn parse_line_internal<'a, 'line: 'a>(
             if tag == "ifeq" {
                 Ok((input, Conditional::IfEq(arg1.into(), arg2.into())))
             } else {
+                // #SPC-P-Conditional.ifneq
                 Ok((input, Conditional::IfNEq(arg1.into(), arg2.into())))
             }
         }
@@ -105,6 +111,7 @@ fn parse_line_internal<'a, 'line: 'a>(
     }
 }
 
+/// #SPC-P-Conditional.ifeq
 fn parse_ifeq<'a, 'line: 'a>(
     line: CollapsedLineSpan<'a, 'line>,
 ) -> IResult<
@@ -112,16 +119,6 @@ fn parse_ifeq<'a, 'line: 'a>(
     (CollapsedLineSpan<'a, 'line>, CollapsedLineSpan<'a, 'line>),
     ParseErrorKind,
 > {
-    let (line, terminator) = fix_error!(
-        line,
-        ParseErrorKind,
-        complete!(alt_complete!(
-                char!('"')  => {|_| ('"')} |
-                char!('(')  => {|_| (',')} |
-                char!('\'') => {|_| ('\'')}
-            ))
-    )?;
-
     fn take_till_terminator<'a, 'b>(
         line: CollapsedLineSpan<'a, 'b>,
         terminator: char,
@@ -167,6 +164,18 @@ fn parse_ifeq<'a, 'line: 'a>(
         }
     }
 
+    let (line, terminator) = fix_error!(
+        line,
+        ParseErrorKind,
+        complete!(alt_complete!(
+            // #SPC-P-Conditional.ifeq_parens
+            char!('(')  => {|_| (',')} |
+            // #SPC-P-Conditional.ifeq_quotes
+            char!('"')  => {|_| ('"')} |
+            char!('\'') => {|_| ('\'')}
+        ))
+    )?;
+
     let (line, arg1) = take_till_terminator(line, terminator)?;
     let (line, _) = makefile_whitespace(line)?;
     let (line, terminator) = if terminator == ',' {
@@ -186,6 +195,7 @@ fn parse_ifeq<'a, 'line: 'a>(
     Ok((line, (arg1, arg2)))
 }
 
+// #SPC-P-Conditional.else
 #[inline]
 fn parse_else<'a, 'line: 'a>(
     input: CollapsedLineSpan<'a, 'line>,

@@ -1,7 +1,7 @@
 //! All the types required to interact with source locations
 // #SPC-Location
 
-use crate::trees::evaluated::Evaluated;
+use crate::trees::evaluated::EvaluatedTree;
 use crate::Sym;
 use std::rc::Rc;
 
@@ -9,13 +9,14 @@ use std::rc::Rc;
 /// This is intentionally kept separate from the source location
 /// exposed publicly in order to facilitate switching to an interning scheme
 /// later.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Marker {
     pub(crate) inner: Location,
 }
 
 /// The public location type.
 // #REQ-Location
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq)]
 pub enum Location {
     /// Represents a location in a given source file
     // #REQ-Location.raw_location
@@ -29,7 +30,7 @@ pub enum Location {
     // #REQ-Location.eval_location
     // #SPC-Location.eval_location
     EvalLocation {
-        tree_root: Rc<Evaluated>,
+        tree_root: Rc<EvaluatedTree>,
         line: u32,
         character: u32,
     },
@@ -169,3 +170,33 @@ impl Location {
         }
     }
 }
+
+impl Location {}
+
+/// Wraps an arbitrary thing (probably a string slice or some wrapper around a
+/// string slice) that has a location.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Located<T> {
+    location: Marker,
+    contents: T,
+}
+
+impl<T> std::ops::Deref for Located<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.contents
+    }
+}
+
+impl<T> Located<T> {
+    /// Get the location of this thing
+    pub fn location(&self) -> &Location {
+        &self.location.inner
+    }
+}
+
+/// A string span
+pub type StringSpan<'a> = Located<&'a str>;
+/// A string span that is owned
+pub type OwnedStringSpan = Located<String>;
