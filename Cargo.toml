@@ -8,6 +8,8 @@ edition = "2018"
 fxhash = "0.2.1"
 failure = "0.1"
 log = "0.4"
+string-interner = "0.7.0"
+lazy_static = "1.0"
 
 [dependencies.nom]
 version = "4.1"

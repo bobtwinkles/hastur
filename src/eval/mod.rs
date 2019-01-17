@@ -1,8 +1,8 @@
 //! Utilities for evaluating makefile expressions
 
+use crate::ast::AstNode;
 use crate::parsers::CollapsedLineSpan;
-use crate::{Database, MakefileError, OwnedFragment};
-use string_interner::Sym;
+use crate::{Database, MakefileError};
 
 #[cfg(test)]
 mod test;
@@ -46,13 +46,13 @@ pub enum Origin {
 
 /// Everything we need to know to expand a variable
 pub struct VariableParameters {
-    unexpanded_value: OwnedFragment<Sym>,
+    unexpanded_value: AstNode,
     flavor: Flavor,
     origin: Origin,
 }
 
 impl VariableParameters {
-    fn new(unexpanded_value: OwnedFragment<Sym>, flavor: Flavor, origin: Origin) -> Self {
+    fn new(unexpanded_value: AstNode, flavor: Flavor, origin: Origin) -> Self {
         Self {
             unexpanded_value,
             flavor,
@@ -89,9 +89,15 @@ impl<'d> Variable<'d> {
         }
     }
 
-    /// Expand this variable in the environment provided by a database
+    /// Expand this variable in the environment provided by a database.
+    /// Shorthand for [`self.ast().eval(environment).into_string()`](struct.Variable.html#method.ast)
     pub fn expand(&self, environment: &Database) -> String {
         unimplemented!("variable expansion")
+    }
+
+    /// Get the AST of this node
+    pub fn ast(&self) -> &AstNode {
+        &self.value.unexpanded_value
     }
 }
 

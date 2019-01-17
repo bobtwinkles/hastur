@@ -29,11 +29,12 @@ extern crate nom_locate;
 // #[macro_use]
 // extern crate lazy_static;
 
+pub mod ast;
 mod eval;
+pub mod evaluated;
 mod parsers;
 pub mod pattern;
 pub mod source_location;
-pub mod trees;
 pub mod traits;
 
 pub use crate::eval::{Variable, VariableParameters};
@@ -200,23 +201,36 @@ impl Rule {
 
     /// Iterate over the dependencies of this rule
     /// TODO: change the return type of this to an actual iterator type
-    pub fn dependencies(&self) -> &[trees::evaluated::EvaluatedTree] {
+    pub fn dependencies(&self) -> &[evaluated::Block] {
         unimplemented!()
     }
 }
+
+/// Type representing an opaque variable name reference.
+/// It is a logical bug to share these between database instances.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct VariableName(Sym);
+
+/// Type representing an opaque file name reference.
+/// It is a logical bug to share these between database instances.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct FileName(Sym);
+
 
 /// Database of rules and variables.
 /// This represents the full context required to evaluate something in Makefile syntax
 #[derive(Default)]
 pub struct Database {
     /// Global variables
-    variables: FxHashMap<String, VariableParameters>,
+    variables: FxHashMap<VariableName, VariableParameters>,
     /// Target variables, mapped from target name to variable name to value
-    target_variables: FxHashMap<String, FxHashMap<String, VariableParameters>>,
+    target_variables: FxHashMap<String, FxHashMap<VariableName, VariableParameters>>,
     /// All known rules
     rules: Vec<Rule>,
     /// All the file names
     file_names: StringInterner,
+    /// All known variable names
+    variable_names: StringInterner,
 }
 
 impl Database {
@@ -240,17 +254,25 @@ impl Database {
     }
 
     /// Intern a the file name for a makefile
-    pub fn intern_file_name(&mut self, file_name: String) -> Sym {
-        self.file_names.get_or_intern(file_name)
+    pub fn intern_file_name(&mut self, file_name: String) -> FileName {
+        FileName(self.file_names.get_or_intern(file_name))
+    }
+
+    /// Intern a variable name
+    pub fn intern_variable_name(&mut self, variable_name: String) -> VariableName {
+        VariableName(self.variable_names.get_or_intern(variable_name))
     }
 
     /// Set the value of a variable
+    /// TODO: audit this function's parameters. We don't always need to allocate here
     pub fn set_variable(&mut self, name: impl Into<String>, value: VariableParameters) {
         let name = name.into();
+        let name = self.intern_variable_name(name);
         self.variables.insert(name, value);
     }
 
     /// Override the value of a variable for a specific target
+    /// TODO: audit this function's parameters. We don't always need to allocate here
     pub fn set_variable_for_target(
         &mut self,
         target: impl Into<String>,
@@ -258,7 +280,7 @@ impl Database {
         value: VariableParameters,
     ) {
         let target = target.into();
-        let name = name.into();
+        let name = self.intern_variable_name(name.into());
         self.target_variables
             .entry(target)
             .or_default()
@@ -266,8 +288,8 @@ impl Database {
     }
 
     /// Get a variable based on a name
-    pub fn get_variable(&self, name: &str) -> Option<Variable> {
-        self.variables.get(name).map(|val| Variable::new(self, val))
+    pub fn get_variable(&self, name: impl AsRef<str>) -> Option<Variable> {
+        self.variables.get(&VariableName(self.variable_names.get(name)?)).map(|val| Variable::new(self, val))
     }
 
     /// Get the value of a variable in the context of a target
@@ -276,9 +298,10 @@ impl Database {
         target: &'t str,
         name: &str,
     ) -> Option<Variable<'t>> {
+        let variable_name = VariableName(self.variable_names.get(target)?);
         self.target_variables
             .get(target)
-            .and_then(|m| m.get(name))
+            .and_then(|m| m.get(&variable_name))
             .map(|v| Variable::new_for_target(self, v, target))
     }
 }
@@ -456,7 +479,7 @@ impl Engine {
                 if conditional.seen_else {
                     return Err(ParseError::new(parser_state, ParseErrorKind::TooManyElses));
                 }
-    
+
                 conditional.seen_else = true;
                 // For some reason, on read.c:1622, the GNU make implementation of this function
                 // sets "ignoring" to 2 (via ignoring[o] = 2). I don't know why they have 3 states
@@ -483,19 +506,19 @@ impl Engine {
                     ParseErrorKind::ExtraTokensAfter("endif"),
                 ));
             }
-    
+
             if parser_state.conditionals.len() == 0 {
                 return Err(ParseError::new(
                     parser_state,
                     ParseErrorKind::MismatchedBranchCommand,
                 ));
             }
-    
+
             parser_state.conditionals.pop();
         } else {
             return Ok(false);
         }
-    
+
         for conditional in &parser_state.conditionals {
             if conditional.interpretation == ConditionalInterpretation::DefinitelyIgnore {
                 parser_state.ignoring = true;
@@ -503,7 +526,7 @@ impl Engine {
             }
         }
         parser_state.ignoring = false;
-    
+
         return Ok(true);
     }
      */

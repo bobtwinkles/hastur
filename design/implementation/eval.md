@@ -11,8 +11,12 @@ partof:
 
 The library shall be able to evaluate the AST
 specified by [[SPC-V-AST]].
-Evaluation shall return 
-Details on evaluation are outlined below:
+Evaluation shall return a tree of evaluated nodes.
+This tree must support the following operations:
+  - [[.nom]] `nom` parser consumption of the tree.
+  - [[.parent]] Ability to retrieve the parent node in the evaluation tree.
+
+The different node types are explained below:
 
 ## [[.constant]]
 A constant string.
