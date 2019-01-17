@@ -47,8 +47,8 @@ fn slice_compound_offset() {
     let block = Block::new(
         Default::default(),
         vec![
-            ContentReference::new_from_node(test_constant_node("asdf")),
-            ContentReference::new_from_node(test_constant_node("fdsa")),
+            ContentReference::new_from_node(test_constant_node("abcd")),
+            ContentReference::new_from_node(test_constant_node("efgh")),
         ],
     );
 
@@ -57,5 +57,5 @@ fn slice_compound_offset() {
     span.length -= 4;
 
     let result: String = span.chars().collect();
-    assert!(result == "dffd");
+    assert!(result == "cdef");
 }
