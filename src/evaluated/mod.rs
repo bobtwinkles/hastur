@@ -34,13 +34,13 @@ pub struct ContentReference {
 }
 
 lazy_static::lazy_static!(
-    static ref EMPTY_TREE: Arc<Block> = Default::default();
+    static ref EMPTY_BLOCK: Arc<Block> = Default::default();
 );
 
 impl Block {
     /// An empty block
     pub(crate) fn empty() -> Arc<Block> {
-        EMPTY_TREE.clone()
+        EMPTY_BLOCK.clone()
     }
 
     /// Create a new evaluated block
@@ -206,7 +206,7 @@ pub struct BlockSpan<'a> {
 impl<'a> BlockSpan<'a> {
     fn empty() -> BlockSpan<'static> {
         BlockSpan {
-            parent: &EMPTY_TREE,
+            parent: &EMPTY_BLOCK,
             contents: &[],
             offset: 0,
             length: 0,
@@ -246,7 +246,7 @@ impl<'a> BlockSpan<'a> {
 
     pub fn to_new_block(&self) -> Arc<Block> {
         if self.length == 0 {
-            return EMPTY_TREE.clone();
+            return EMPTY_BLOCK.clone();
         }
 
         assert!(self.contents.len() > 0);
