@@ -20,4 +20,3 @@ version = "0.3"
 features = ["verbose-errors"]
 
 [dev-dependencies]
-lazy_static = "1.0"
