@@ -75,6 +75,7 @@ impl Block {
     pub fn span(&self) -> BlockSpan {
         let length = self.content.iter().map(|x| x.length).sum();
         BlockSpan {
+            parent: self,
             contents: &self.content,
             offset: 0,
             length: length,
@@ -89,6 +90,13 @@ impl Block {
     /// Consume this tree, leaving behind an iterator over its sensitivities
     pub fn into_sensitivity(self) -> impl Iterator<Item = VariableName> {
         self.sensitivity.into_iter()
+    }
+
+    /// Simplify the contents of the block by reducing the size of concats and constants
+    fn simplify(&mut self) {
+        for reference in &mut self.content {
+            reference.simplify()
+        }
     }
 }
 
@@ -126,6 +134,48 @@ impl ContentReference {
     pub fn chars(&self) -> ContentReferenceIter {
         ContentReferenceIter(self.node.chars().skip(self.offset).take(self.length))
     }
+
+    /// Simplify the node we're pointing to by dropping unnecessary components
+    /// This means we rewrite constant nodes completely, realize offsets into concatenations,
+    /// and recurse into concatenations
+    fn simplify(&mut self) {
+        use std::borrow::Borrow;
+        let new_node = match self.node.borrow() {
+            EvaluatedNode::Constant(s) => {
+                let tr = Arc::new(EvaluatedNode::Constant(s.slice(self.offset, self.length)));
+                self.offset = 0;
+                tr
+            }
+            EvaluatedNode::Concat(ref block) => {
+                let mut tr_block = Arc::clone(block);
+                let block: &mut Block = Arc::make_mut(&mut tr_block);
+
+                let mut remove_count = 0;
+                while block.content[remove_count].length <= self.offset {
+                    self.offset -= block.content[remove_count].length;
+                    remove_count += 1;
+                }
+                block.content[remove_count].offset += self.offset;
+                block.content[remove_count].length -= self.offset;
+                self.offset = 0;
+                let mut last_index = remove_count;
+                let mut running_length = 0;
+                while running_length < self.length {
+                    running_length += block.content[last_index].length;
+                    last_index += 1;
+                }
+                block.content[last_index - 1].length -= running_length - self.length;
+                block.content = block.content[remove_count..last_index].to_vec();
+                eprintln!("{:?}", block.content);
+                block.simplify();
+
+                Arc::new(EvaluatedNode::Concat(tr_block))
+            }
+            // All other node types are passed through unchanged
+            _ => return,
+        };
+        self.node = new_node;
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -142,7 +192,9 @@ impl<'a> Iterator for ContentReferenceIter<'a> {
 /// Represents a span of elements in an evaluated AST
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct BlockSpan<'a> {
-    /// All the content nodes
+    /// The parent bock
+    parent: &'a Block,
+    /// The slice of the parent's content we care about,
     contents: &'a [ContentReference],
     /// The offset into the first element, in bytes.
     /// NOTE: this is *in addition to* the offset in the reference itself
@@ -154,6 +206,7 @@ pub struct BlockSpan<'a> {
 impl<'a> BlockSpan<'a> {
     fn empty() -> BlockSpan<'static> {
         BlockSpan {
+            parent: &EMPTY_TREE,
             contents: &[],
             offset: 0,
             length: 0,
@@ -189,6 +242,42 @@ impl<'a> BlockSpan<'a> {
 
     pub fn chars(&self) -> BlockSpanIter<'a> {
         BlockSpanIter::new(self)
+    }
+
+    pub fn to_new_block(&self) -> Arc<Block> {
+        if self.length == 0 {
+            return EMPTY_TREE.clone();
+        }
+
+        assert!(self.contents.len() > 0);
+        assert!(self.offset < self.contents[0].length);
+
+        let mut nodes = Vec::new();
+        let mut contents_iter = self.contents.iter().map(|x| x.clone());
+        // Unwrap is safe since we asserted above that contents length was > 0
+        let mut to_push = contents_iter.next().unwrap();
+        to_push.offset += self.offset;
+        to_push.length -= self.offset;
+
+        let mut remaining_length = self.length;
+
+        while to_push.length < remaining_length {
+            remaining_length -= to_push.length;
+            nodes.push(to_push);
+            to_push = contents_iter
+                .next()
+                .expect("ran out of contents before reaching the expected length");
+        }
+        assert!(to_push.length >= remaining_length);
+        to_push.length = remaining_length;
+        nodes.push(to_push);
+
+        let mut tr = Block::new(self.parent.sensitivity().map(|x| *x).collect(), nodes);
+        // If this assert triggers, we need to add an API to Block that
+        // simplifies during allocation before wrapping it all in an Arc
+        Arc::get_mut(&mut tr).expect("something stashed away a block reference").simplify();
+
+        tr
     }
 }
 

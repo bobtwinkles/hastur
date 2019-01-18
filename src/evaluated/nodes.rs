@@ -9,8 +9,8 @@ pub enum EvaluatedNode {
     /// Represents a constant block of text
     // #SPC-Variable-Eval.constant
     Constant(LocatedString),
-    /// The concatenation of some other nodes,
-    Concat(Vec<Arc<Block>>),
+    /// The concatenation of some other nodes, collapsed into a single block
+    Concat(Arc<Block>),
     /// A reference to a variable
     VariableReference(Box<VariableReference>),
     /// A reference to a variable that applies some substitution
@@ -22,7 +22,7 @@ impl EvaluatedNode {
     pub fn len(&self) -> usize {
         match self {
             EvaluatedNode::Constant(s) => s.len(),
-            EvaluatedNode::Concat(v) => v.iter().map(|x| x.len()).sum(),
+            EvaluatedNode::Concat(v) => v.len(),
             EvaluatedNode::VariableReference(v) => v.value.len(),
             EvaluatedNode::SubstitutionReference(v) => v.value.len(),
         }
@@ -30,26 +30,15 @@ impl EvaluatedNode {
 
     /// Iterate over the characters in this nodes
     pub fn chars(&self) -> Chars {
-        use nom::InputIter;
         match self {
-            EvaluatedNode::Constant(v) => Chars(CharsInternal::Constant(v.chars())),
-            EvaluatedNode::Concat(values) => {
-                let mut block_iter = values.iter();
-                let span_iter = match block_iter.next() {
-                    Some(x) => x,
-                    None => return Chars(CharsInternal::Constant("".chars())),
-                }.span().chars();
-                Chars(CharsInternal::Concat {
-                    block_iter,
-                    span_iter,
-                })
+            EvaluatedNode::Constant(v) => Chars(CharsInternal::Direct(v.chars())),
+            EvaluatedNode::Concat(v) => Chars(CharsInternal::BlockSpan(v.span().chars())),
+            EvaluatedNode::VariableReference(val) => {
+                Chars(CharsInternal::BlockSpan(val.value.span().chars()))
             }
-            EvaluatedNode::VariableReference(val) => Chars(CharsInternal::VariableReference(
-                val.value.span().iter_elements(),
-            )),
-            EvaluatedNode::SubstitutionReference(val) => Chars(
-                CharsInternal::SubstitutionReference(val.value.span().iter_elements()),
-            ),
+            EvaluatedNode::SubstitutionReference(val) => {
+                Chars(CharsInternal::BlockSpan(val.value.span().chars()))
+            }
         }
     }
 }
@@ -69,13 +58,8 @@ impl<'a> Iterator for Chars<'a> {
 /// Implementation of the character iterator
 #[derive(Clone, Debug)]
 enum CharsInternal<'a> {
-    Constant(std::str::Chars<'a>),
-    Concat {
-        block_iter: std::slice::Iter<'a, Arc<Block>>,
-        span_iter: BlockSpanIter<'a>,
-    },
-    VariableReference(BlockSpanIter<'a>),
-    SubstitutionReference(BlockSpanIter<'a>),
+    Direct(std::str::Chars<'a>),
+    BlockSpan(BlockSpanIter<'a>),
 }
 
 impl<'a> Iterator for CharsInternal<'a> {
@@ -83,20 +67,8 @@ impl<'a> Iterator for CharsInternal<'a> {
 
     fn next(&mut self) -> Option<char> {
         match self {
-            CharsInternal::Constant(it) => it.next(),
-            CharsInternal::Concat {
-                ref mut block_iter,
-                ref mut span_iter,
-            } => {
-                let mut tr = span_iter.next();
-                while tr == None {
-                    *span_iter = block_iter.next()?.span().chars();
-                    tr = span_iter.next();
-                }
-                tr
-            }
-            CharsInternal::VariableReference(it) => it.next(),
-            CharsInternal::SubstitutionReference(it) => it.next(),
+            CharsInternal::Direct(it) => it.next(),
+            CharsInternal::BlockSpan(it) => it.next(),
         }
     }
 }

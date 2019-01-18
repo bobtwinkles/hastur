@@ -102,6 +102,7 @@ impl std::cmp::PartialOrd for Location {
 
 impl Location {
     /// Move to the next line, resetting the character counter
+    #[inline]
     pub(crate) fn advance_line(&self) -> Location {
         match self {
             Location::EvalLocation {
@@ -125,7 +126,8 @@ impl Location {
     }
 
     /// Move to the next character within a line
-    pub(crate) fn advance_character(&self, amount: u32) -> Location {
+    #[inline]
+    pub(crate) fn advance_character(&self) -> Location {
         match self {
             Location::EvalLocation {
                 tree_node,
@@ -134,7 +136,7 @@ impl Location {
             } => Location::EvalLocation {
                 tree_node: tree_node.clone(),
                 line: *line,
-                character: character + amount,
+                character: character + 1,
             },
             Location::SourceLocation {
                 filename,
@@ -143,7 +145,7 @@ impl Location {
             } => Location::SourceLocation {
                 filename: *filename,
                 line: *line,
-                character: character + amount,
+                character: character + 1,
             },
             #[cfg(test)]
             Location::TestLocation { line, character } => Location::TestLocation {
@@ -164,6 +166,12 @@ pub struct Located<T> {
     contents: T,
 }
 
+impl<T: PartialEq> PartialOrd for Located<T> {
+    fn partial_cmp(&self, o: &Located<T>) -> Option<std::cmp::Ordering> {
+        self.location.inner.partial_cmp(&o.location.inner)
+    }
+}
+
 impl<T> std::ops::Deref for Located<T> {
     type Target = T;
 
@@ -181,6 +189,26 @@ impl<T> Located<T> {
     /// Get the location of this thing
     pub fn location(&self) -> &Location {
         &self.location.inner
+    }
+}
+
+impl Located<String> {
+    pub fn slice(&self, bytes: usize, length: usize) -> LocatedString {
+        assert!(bytes < self.contents.len());
+        assert!(bytes + length <= self.contents.len());
+        let mut new_location = self.location.inner.clone();
+        for c in self.contents[0..bytes].chars() {
+            if c == '\n' {
+                new_location = new_location.advance_line();
+            } else {
+                new_location = new_location.advance_character();
+            }
+        }
+
+        Self {
+            location: Marker { inner: new_location} ,
+            contents: self.contents[bytes..(bytes + length)].to_owned()
+        }
     }
 }
 
