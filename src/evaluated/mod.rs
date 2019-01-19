@@ -129,6 +129,15 @@ impl ContentReference {
         }
     }
 
+    /// Create a content reference for a synthetically generated new line
+    pub fn create_newline() -> Self {
+        ContentReference {
+            offset: 0,
+            length: 1,
+            node: EvaluatedNode::newline(),
+        }
+    }
+
     /// Append the contents of this reference to a string
     pub fn append_to_string(&self, buffer: &mut String) {
         buffer.reserve(self.length);
