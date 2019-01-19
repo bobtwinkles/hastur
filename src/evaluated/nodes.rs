@@ -1,7 +1,7 @@
 //! All the nodes
 
 use super::{Block, BlockSpanIter};
-use crate::source_location::LocatedString;
+use crate::source_location::{LocatedString, Location};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -17,7 +17,26 @@ pub enum EvaluatedNode {
     SubstitutionReference(Box<SubstitutionReference>),
 }
 
+lazy_static::lazy_static!(
+    static ref WHITESPACE: Arc<EvaluatedNode> = Arc::new(
+        EvaluatedNode::Constant(LocatedString::new(Location::Synthetic.into(), " ".into()))
+    );
+    static ref NEWLINE: Arc<EvaluatedNode> = Arc::new(
+        EvaluatedNode::Constant(LocatedString::new(Location::Synthetic.into(), "\n".into()))
+    );
+);
+
 impl EvaluatedNode {
+    /// Get a new reference to the space token
+    pub(crate) fn single_space() -> Arc<EvaluatedNode> {
+        Arc::clone(&WHITESPACE)
+    }
+
+    /// Get a reference to the newline token
+    pub(crate) fn newline() -> Arc<EvaluatedNode> {
+        Arc::clone(&NEWLINE)
+    }
+
     /// Get the total length of content
     pub fn len(&self) -> usize {
         match self {
