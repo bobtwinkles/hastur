@@ -94,6 +94,11 @@ impl Block {
         self.sensitivity.into_iter()
     }
 
+    /// Push more content into this block
+    pub fn push(&mut self, content: ContentReference) {
+        self.content.push(content);
+    }
+
     /// Simplify the contents of the block by reducing the size of concats and constants
     fn simplify(&mut self) {
         for reference in &mut self.content {
