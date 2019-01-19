@@ -4,6 +4,31 @@ use crate::evaluated::Block;
 use crate::Sym;
 use std::sync::Arc;
 
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    /// Test utility to create a located span
+    pub(crate) fn span(content: &str) -> LocatedString {
+        Located::new(
+            Location::TestLocation {
+                line: 1,
+                character: 1,
+            }
+            .into(),
+            content.into(),
+        )
+    }
+
+    /// Test utility to create a located span
+    pub(crate) fn span_with_location(content: &str, line: u32, character: u32) -> LocatedString {
+        Located::new(
+            Location::TestLocation { line, character }.into(),
+            content.into(),
+        )
+    }
+}
+
 /// An internal structure representing a source location.
 /// This is intentionally kept separate from the source location
 /// exposed publicly in order to facilitate switching to an interning scheme

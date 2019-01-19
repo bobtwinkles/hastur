@@ -1,26 +1,9 @@
 use super::*;
 use crate::source_location::{Located, LocatedString, Location};
-
-fn test_span(content: &str) -> LocatedString {
-    Located::new(
-        Location::TestLocation {
-            line: 1,
-            character: 1,
-        }
-        .into(),
-        content.into(),
-    )
-}
-
-fn test_span_with_location(content: &str, line: u32, character: u32) -> LocatedString {
-    Located::new(
-        Location::TestLocation { line, character }.into(),
-        content.into(),
-    )
-}
+use crate::source_location::test::{span, span_with_location};
 
 fn test_constant_node(content: &str) -> Arc<EvaluatedNode> {
-    Arc::new(EvaluatedNode::Constant(test_span(content)))
+    Arc::new(EvaluatedNode::Constant(span(content)))
 }
 
 fn test_concat_node<'a>(content: impl AsRef<[&'a str]>) -> Arc<EvaluatedNode> {
@@ -134,7 +117,7 @@ fn simplify_shorten_start() {
             EvaluatedNode::Concat(Block::new(
                 Default::default(),
                 vec![ContentReference::new_from_node(Arc::new(
-                    EvaluatedNode::Constant(test_span_with_location("cd", 1, 3))
+                    EvaluatedNode::Constant(span_with_location("cd", 1, 3))
                 ))]
             ))
         ))]
