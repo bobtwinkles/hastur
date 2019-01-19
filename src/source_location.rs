@@ -5,7 +5,7 @@ use crate::Sym;
 use std::sync::Arc;
 
 #[cfg(test)]
-mod test {
+pub(crate) mod test {
     use super::*;
 
     /// Test utility to create a located span
