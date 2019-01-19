@@ -48,10 +48,12 @@ impl Block {
         sensitivity: fxhash::FxHashSet<VariableName>,
         content: Vec<ContentReference>,
     ) -> Arc<Block> {
-        Arc::new(Block {
+        let &mut tr_block = Block {
             sensitivity,
             content,
-        })
+        };
+        tr_block.simplify();
+        Arc::new(tr_block)
     }
 
     /// Flatten all the leaves into a single string.
@@ -272,12 +274,7 @@ impl<'a> BlockSpan<'a> {
         to_push.length = remaining_length;
         nodes.push(to_push);
 
-        let mut tr = Block::new(self.parent.sensitivity().map(|x| *x).collect(), nodes);
-        // If this assert triggers, we need to add an API to Block that
-        // simplifies during allocation before wrapping it all in an Arc
-        Arc::get_mut(&mut tr).expect("something stashed away a block reference").simplify();
-
-        tr
+        Block::new(self.parent.sensitivity().map(|x| *x).collect(), nodes)
     }
 }
 
