@@ -112,6 +112,17 @@ impl std::cmp::PartialOrd for Location {
                     None
                 }
             }
+            #[cfg(test)]
+            (
+                Location::TestLocation {
+                    line: a_line,
+                    character: a_character,
+                },
+                Location::TestLocation {
+                    line: b_line,
+                    character: b_character,
+                },
+            ) => Some((a_line, b_line, a_character, b_character)),
             _ => {
                 // There is no reasonable way to order comparisons across different source location types
                 None
