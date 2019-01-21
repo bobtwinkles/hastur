@@ -23,7 +23,6 @@ extern crate fxhash;
 extern crate log;
 #[macro_use]
 extern crate nom;
-extern crate nom_locate;
 
 // #[cfg(test)]
 // #[macro_use]
@@ -44,8 +43,10 @@ use fxhash::FxHashMap;
 use std::io;
 use std::io::prelude::*;
 use std::path::PathBuf;
+use std::sync::Arc;
 use string_interner::DefaultStringInterner as StringInterner;
 use string_interner::Sym;
+use crate::evaluated::BlockSpan;
 
 /// What sort of thing went wrong while parsing.
 #[derive(Clone, Debug, PartialEq)]
@@ -86,6 +87,7 @@ pub enum ParseErrorKind {
     NomError(u32),
 }
 
+/*
 /// Represents a span of the input
 /// TODO: we should really wrap this in our own structure so that nom_locate isn't part of
 /// our public API.
@@ -112,6 +114,7 @@ pub struct OwnedFragment<T> {
     pub file_name: T,
 }
 
+
 impl<T> OwnedFragment<T> {
     /// Create an owned fragment from a specific span and a file name
     pub fn from_span(s: Span, file_name: T) -> OwnedFragment<T> {
@@ -124,19 +127,21 @@ impl<T> OwnedFragment<T> {
         }
     }
 }
+*/
 
 /// A parse error
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParseError<'a> {
-    span: &'a Span<'a>,
+    span: BlockSpan<'a>,
     kind: ParseErrorKind,
 }
 
 impl<'a> ParseError<'a> {
-    fn new(span: &'a Span<'a>, kind: ParseErrorKind) -> ParseError {
+    fn new(span: BlockSpan<'a>, kind: ParseErrorKind) -> ParseError {
         ParseError { span, kind }
     }
 
+    /*
     fn to_static(self) -> OwnedParseError {
         OwnedParseError {
             line: self.span.line,
@@ -145,6 +150,7 @@ impl<'a> ParseError<'a> {
             kind: self.kind,
         }
     }
+    */
 }
 
 impl<'a> From<u32> for ParseErrorKind {
@@ -215,7 +221,6 @@ pub struct VariableName(Sym);
 /// It is a logical bug to share these between database instances.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct FileName(Sym);
-
 
 /// Database of rules and variables.
 /// This represents the full context required to evaluate something in Makefile syntax
@@ -289,7 +294,9 @@ impl Database {
 
     /// Get a variable based on a name
     pub fn get_variable(&self, name: impl AsRef<str>) -> Option<Variable> {
-        self.variables.get(&VariableName(self.variable_names.get(name)?)).map(|val| Variable::new(self, val))
+        self.variables
+            .get(&VariableName(self.variable_names.get(name)?))
+            .map(|val| Variable::new(self, val))
     }
 
     /// Get the value of a variable in the context of a target
@@ -321,11 +328,13 @@ impl From<io::Error> for MakefileError {
     }
 }
 
+/*
 impl<'a> From<ParseError<'a>> for MakefileError {
     fn from(other: ParseError<'a>) -> Self {
         MakefileError::ParseError(other.to_static())
     }
 }
+*/
 
 /// Represents the state of the parsing engine
 pub struct Engine {
@@ -385,8 +394,21 @@ impl Engine {
 
         let mut i = String::new();
         input.read_to_string(&mut i)?;
-        let i = &i;
-        let mut i = Span::new(nom::types::CompleteStr(i));
+        let input_block = evaluated::Block::new(
+            Default::default(),
+            vec![evaluated::ContentReference::new_from_node(Arc::new(
+                evaluated::nodes::EvaluatedNode::Constant(source_location::LocatedString::new(
+                    source_location::Location::SourceLocation {
+                        character: 1,
+                        line: 1,
+                        filename: self.database.intern_file_name(input_filename.into()),
+                    }
+                    .into(),
+                    i,
+                )),
+            ))],
+        );
+        let mut i = input_block.span();
 
         i = match opt!(i, char!('\u{feff}')) {
             Ok((i, _)) => i,

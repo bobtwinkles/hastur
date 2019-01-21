@@ -1,20 +1,20 @@
-use crate::parsers::CollapsedLineSpan;
-use crate::Span;
+use crate::evaluated::BlockSpan;
 use nom::{Context, Err};
 
 /// Lifts an error that occurred while processing a collapsed line to an error
 /// on a span that line contains
 #[inline]
-pub(crate) fn lift_collapsed_span_error<'a, 'line: 'a, E>(
-    e: Err<CollapsedLineSpan<'a, 'line>, E>,
-) -> Err<Span<'line>, E> {
+pub(crate) fn lift_collapsed_span_error<'a, 'b, E>(
+    e: Err<BlockSpan<'a>, E>,
+    location_injection: BlockSpan<'b>,
+) -> Err<BlockSpan<'b>, E> {
     macro_rules! map_context {
         ($e:expr) => {
             match $e {
-                Context::Code(loc, e) => Context::Code(loc.error_span(), e),
+                Context::Code(loc, e) => Context::Code(location_injection, e),
                 Context::List(errs) => Context::List(
                     errs.into_iter()
-                        .map(|(loc, e)| (loc.error_span(), e))
+                        .map(|(loc, e)| (location_injection, e))
                         .collect(),
                 ),
             }

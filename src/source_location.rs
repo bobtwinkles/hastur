@@ -1,7 +1,7 @@
 //! All the types required to interact with source locations
 // #SPC-Location
 use crate::evaluated::Block;
-use crate::Sym;
+use crate::FileName;
 use std::sync::Arc;
 
 #[cfg(test)]
@@ -55,7 +55,7 @@ pub enum Location {
     SourceLocation {
         line: u32,
         character: u32,
-        filename: Sym,
+        filename: FileName,
     },
     /// Represents a location in source resulting from an `$(eval ...)` block
     // #REQ-Location.eval_location
@@ -65,7 +65,8 @@ pub enum Location {
         line: u32,
         character: u32,
     },
-
+    /// Synthetically generated text from a Make invocation
+    Synthetic,
     /// A location from inside a test string
     #[cfg(test)]
     TestLocation { line: u32, character: u32 },
@@ -112,6 +113,7 @@ impl std::cmp::PartialOrd for Location {
                     None
                 }
             }
+            (Location::Synthetic, Location::Synthetic) => return Some(std::cmp::Ordering::Equal),
             #[cfg(test)]
             (
                 Location::TestLocation {
@@ -137,6 +139,14 @@ impl std::cmp::PartialOrd for Location {
 }
 
 impl Location {
+    /// Shorthand for creating a location for use in tests
+    #[cfg(test)]
+    pub fn test_location(line: u32, character: u32) -> Location {
+        Location::TestLocation {
+            line, character
+        }
+    }
+
     /// Move to the next line, resetting the character counter
     #[inline]
     pub(crate) fn advance_line(&self) -> Location {
@@ -153,6 +163,7 @@ impl Location {
                 line: line + 1,
                 character: 1,
             },
+            Location::Synthetic => Location::Synthetic,
             #[cfg(test)]
             Location::TestLocation { line, .. } => Location::TestLocation {
                 line: line + 1,
@@ -183,6 +194,7 @@ impl Location {
                 line: *line,
                 character: character + 1,
             },
+            Location::Synthetic => Location::Synthetic,
             #[cfg(test)]
             Location::TestLocation { line, character } => Location::TestLocation {
                 line: *line,
@@ -242,8 +254,10 @@ impl Located<String> {
         }
 
         Self {
-            location: Marker { inner: new_location} ,
-            contents: self.contents[bytes..(bytes + length)].to_owned()
+            location: Marker {
+                inner: new_location,
+            },
+            contents: self.contents[bytes..(bytes + length)].to_owned(),
         }
     }
 }

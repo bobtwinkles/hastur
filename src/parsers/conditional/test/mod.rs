@@ -13,6 +13,7 @@ mod endif;
 #[test]
 fn rejects_non_keywords() {
     let test_span = create_span("this is not a conditional");
+    let test_span = test_span.span();
     let parse = parse_line(test_span);
 
     assert!(parse.is_err());

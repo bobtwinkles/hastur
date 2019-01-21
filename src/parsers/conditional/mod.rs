@@ -2,45 +2,50 @@
 
 // #SPC-P-Conditional
 
+use super::ParserCompliance;
 use super::{makefile_line, makefile_whitespace};
-use super::{CollapsedLine, CollapsedLineSpan, ParserCompliance};
-use crate::{ParseErrorKind, Span};
+use crate::evaluated::{Block, BlockSpan};
+use crate::ParseErrorKind;
 use nom::{Context, Err, ErrorKind, IResult};
+use std::sync::Arc;
 
 #[cfg(test)]
 mod test;
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Conditional<'a> {
-    IfDef(CollapsedLine<'a>),
-    IfNDef(CollapsedLine<'a>),
-    IfEq(CollapsedLine<'a>, CollapsedLine<'a>),
-    IfNEq(CollapsedLine<'a>, CollapsedLine<'a>),
-    Else(Option<Box<Conditional<'a>>>),
+pub(crate) enum Conditional {
+    IfDef(Arc<Block>),
+    IfNDef(Arc<Block>),
+    IfEq(Arc<Block>, Arc<Block>),
+    IfNEq(Arc<Block>, Arc<Block>),
+    Else(Option<Box<Conditional>>),
     EndIf,
 }
 
 /// Parse a conditional line
 /// TODO: allow configuring parse compliance mode
-pub(super) fn parse_line<'a>(i: Span<'a>) -> IResult<Span<'a>, Conditional<'a>, ParseErrorKind> {
+pub(super) fn parse_line<'a>(
+    i: BlockSpan<'a>,
+) -> IResult<BlockSpan<'a>, Conditional, ParseErrorKind> {
+    let start_i = i;
     let (i, line) = makefile_line(i, ParserCompliance::GNU, false)?;
 
-    match parse_line_internal(line.as_span()) {
+    match parse_line_internal(line.span()) {
         Ok((_, c)) => Ok((i, c)),
         Err(Err::Incomplete(_)) => Err(Err::Failure(Context::Code(
             i,
             ErrorKind::Custom(ParseErrorKind::ConditionalExpected),
         ))),
-        Err(Err::Error(e)) => Err(super::lift_collapsed_span_error(Err::Error(e))),
-        Err(Err::Failure(e)) => Err(super::lift_collapsed_span_error(Err::Failure(e))),
+        Err(Err::Error(e)) => Err(super::lift_collapsed_span_error(Err::Error(e), start_i)),
+        Err(Err::Failure(e)) => Err(super::lift_collapsed_span_error(Err::Failure(e), start_i)),
     }
 }
 
 /// Internal parser of the makefile line. Maybe this should be exposed at a high
 /// level to avoid duplicate work computing the collapsed line?
-fn parse_line_internal<'a, 'line: 'a>(
-    input: CollapsedLineSpan<'a, 'line>,
-) -> IResult<CollapsedLineSpan<'a, 'line>, Conditional<'line>, ParseErrorKind> {
+fn parse_line_internal<'a>(
+    input: BlockSpan<'a>,
+) -> IResult<BlockSpan<'a>, Conditional, ParseErrorKind> {
     let (input, tag) = preceded!(
         input,
         makefile_whitespace,
@@ -60,10 +65,10 @@ fn parse_line_internal<'a, 'line: 'a>(
         )
     )?;
 
-    let tag = tag.flatten();
+    let tag = tag.into_string();
     let tag = tag.as_str();
     eprintln!("Tag is {:?}", tag);
-    eprintln!("Rest is {:?}", input.flatten());
+    eprintln!("Rest is {:?}", input.into_string());
 
     match tag {
         "ifdef" | "ifndef" => {
@@ -75,10 +80,10 @@ fn parse_line_internal<'a, 'line: 'a>(
             )?;
 
             if tag == "ifdef" {
-                Ok((input, Conditional::IfDef(rest.into())))
+                Ok((input, Conditional::IfDef(rest.to_new_block())))
             } else {
                 // #SPC-P-Conditional.ifndef
-                Ok((input, Conditional::IfNDef(rest.into())))
+                Ok((input, Conditional::IfNDef(rest.to_new_block())))
             }
         }
         "ifeq" | "ifneq" => {
@@ -86,10 +91,13 @@ fn parse_line_internal<'a, 'line: 'a>(
             let (input, (arg1, arg2)) = parse_ifeq(input)?;
 
             if tag == "ifeq" {
-                Ok((input, Conditional::IfEq(arg1.into(), arg2.into())))
+                Ok((input, Conditional::IfEq(arg1.to_new_block(), arg2.to_new_block())))
             } else {
                 // #SPC-P-Conditional.ifneq
-                Ok((input, Conditional::IfNEq(arg1.into(), arg2.into())))
+                Ok((
+                    input,
+                    Conditional::IfNEq(arg1.to_new_block(), arg2.to_new_block()),
+                ))
             }
         }
         "else" => {
@@ -98,7 +106,7 @@ fn parse_line_internal<'a, 'line: 'a>(
         }
         "endif" => {
             let (input, _) = makefile_whitespace(input)?;
-            if input.length > 0 {
+            if input.len() > 0 {
                 Err(Err::Failure(Context::Code(
                     input,
                     ErrorKind::Custom(ParseErrorKind::ExtraTokensAfter("endif")),
@@ -112,17 +120,13 @@ fn parse_line_internal<'a, 'line: 'a>(
 }
 
 /// #SPC-P-Conditional.ifeq
-fn parse_ifeq<'a, 'line: 'a>(
-    line: CollapsedLineSpan<'a, 'line>,
-) -> IResult<
-    CollapsedLineSpan<'a, 'line>,
-    (CollapsedLineSpan<'a, 'line>, CollapsedLineSpan<'a, 'line>),
-    ParseErrorKind,
-> {
+fn parse_ifeq<'a>(
+    line: BlockSpan<'a>,
+) -> IResult<BlockSpan<'a>, (BlockSpan<'a>, BlockSpan<'a>), ParseErrorKind> {
     fn take_till_terminator<'a, 'b>(
-        line: CollapsedLineSpan<'a, 'b>,
+        line: BlockSpan<'a>,
         terminator: char,
-    ) -> IResult<CollapsedLineSpan<'a, 'b>, CollapsedLineSpan<'a, 'b>, ParseErrorKind> {
+    ) -> IResult<BlockSpan<'a>, BlockSpan<'a>, ParseErrorKind> {
         if terminator == ',' || terminator == ')' {
             use nom::{InputIter, Slice};
             let mut count = 0i32;
@@ -144,7 +148,7 @@ fn parse_ifeq<'a, 'line: 'a>(
                     return Err(Err::Error(error_position!(
                         line,
                         ErrorKind::Custom(ParseErrorKind::BadIfEqSeparator)
-                    )))
+                    )));
                 }
             };
             let res = line.slice(..i);
@@ -197,12 +201,12 @@ fn parse_ifeq<'a, 'line: 'a>(
 
 // #SPC-P-Conditional.else
 #[inline]
-fn parse_else<'a, 'line: 'a>(
-    input: CollapsedLineSpan<'a, 'line>,
-) -> IResult<CollapsedLineSpan<'a, 'line>, Option<Box<Conditional<'line>>>, ParseErrorKind> {
+fn parse_else<'a>(
+    input: BlockSpan<'a>,
+) -> IResult<BlockSpan<'a>, Option<Box<Conditional>>, ParseErrorKind> {
     eprintln!("doin the do");
     let (input, _) = makefile_whitespace(input)?;
-    if input.length > 0 {
+    if input.len() > 0 {
         // There is something non-whitespace, so we *must* find another conditional
         let (input, cond) = return_error!(
             input,

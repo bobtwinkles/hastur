@@ -1,7 +1,7 @@
 // #SPC-Variable-Eval.nom
-use super::{BlockSpan, BlockSpanIter};
+use super::{BlockSpan, BlockSpanIter, BlockSpanIndexIter};
 
-use nom::{AtEof, Compare, InputIter, InputLength, InputTake, InputTakeAtPosition, Slice};
+use nom::{AtEof, Compare, FindSubstring, InputIter, InputLength, InputTake, InputTakeAtPosition, Slice};
 use nom::{CompareResult, Context, Err, ErrorKind, IResult};
 use std::ops::{Range, RangeFrom, RangeTo};
 
@@ -11,12 +11,12 @@ mod test;
 impl<'a> InputIter for BlockSpan<'a> {
     type Item = char;
     type RawItem = char;
-    type Iter = std::iter::Enumerate<Self::IterElem>;
+    type Iter = BlockSpanIndexIter<'a>;
     type IterElem = BlockSpanIter<'a>;
 
     #[inline]
     fn iter_indices(&self) -> Self::Iter {
-        self.iter_elements().enumerate()
+        self.char_indices()
     }
 
     #[inline]
@@ -168,5 +168,15 @@ impl<'a, 'b> Compare<&'b str> for BlockSpan<'a> {
                 }
             }
         }
+    }
+}
+
+impl<'a, 'b> FindSubstring<&'b str> for BlockSpan<'a> {
+    fn find_substring(&self, substr: &'b str) -> Option<usize> {
+        // TODO: Maybe use some sort of circular buffer of previous characters
+        // which is checked when we see the last character from substr
+        for (i, c) in self.iter_indices() {
+        }
+        unimplemented!()
     }
 }

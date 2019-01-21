@@ -1,6 +1,24 @@
 use super::*;
-use crate::source_location::{Located, LocatedString, Location};
 use crate::source_location::test::{span, span_with_location};
+use crate::source_location::{LocatedString, Location};
+
+pub(crate) fn concat_node_with_locations(content: &[(&str, Location)]) -> Arc<Block> {
+    let nodes = content
+        .iter()
+        .map(|(content, location)| {
+            ContentReference::new_from_node(Arc::new(EvaluatedNode::Constant(LocatedString::new(
+                location.clone().into(),
+                (*content).into(),
+            ))))
+        })
+        .collect();
+    Block::new(
+        Default::default(),
+        vec![ContentReference::new_from_node(Arc::new(
+            EvaluatedNode::Concat(Block::new(Default::default(), nodes)),
+        ))],
+    )
+}
 
 fn test_constant_node(content: &str) -> Arc<EvaluatedNode> {
     Arc::new(EvaluatedNode::Constant(span(content)))
@@ -138,8 +156,6 @@ fn simplify_drop_start() {
 
     assert_eq!(
         &block.content,
-        &[ContentReference::new_from_node(test_concat_node([
-            "efgh"
-        ]))]
+        &[ContentReference::new_from_node(test_concat_node(["efgh"]))]
     );
 }

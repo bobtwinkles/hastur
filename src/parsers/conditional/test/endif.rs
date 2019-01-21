@@ -4,14 +4,19 @@ use super::*;
 #[test]
 fn simple() {
     let line = create_span("endif");
+    let line = line.span();
     let res = parse_line(line);
 
-    assert_eq!(res, Ok((leftover_span("", 5, 1), Conditional::EndIf)))
+    assert_eq!(
+        res,
+        Ok((leftover_span("", 5, 1).span(), Conditional::EndIf))
+    )
 }
 
 #[test]
 fn extra_tokens() {
     let line = create_span("endif fdsa");
+    let line = line.span();
     let res = parse_line(line);
     assert!(res.is_err());
     let errors = res.err().unwrap();

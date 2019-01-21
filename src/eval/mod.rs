@@ -1,8 +1,9 @@
 //! Utilities for evaluating makefile expressions
 
 use crate::ast::AstNode;
-use crate::parsers::CollapsedLineSpan;
+use crate::evaluated::{Block, BlockSpan};
 use crate::{Database, MakefileError};
+use std::sync::Arc;
 
 #[cfg(test)]
 mod test;
@@ -101,14 +102,14 @@ impl<'d> Variable<'d> {
     }
 }
 
-pub(crate) fn expand_line<'a, 'line: 'a>(
+pub(crate) fn expand_line<'a>(
     database: &Database,
-    mut line: CollapsedLineSpan<'a, 'line>,
-) -> Result<String, MakefileError> {
-    let mut output = String::with_capacity(line.len());
+    mut line: BlockSpan<'a>,
+) -> Result<Arc<Block>, MakefileError> {
+    let output = unimplemented!();
 
     // while line.len() > {
-    //     let (new_line, expanded_content) = match 
+    //     let (new_line, expanded_content) = match
     // }
 
     Ok(output)

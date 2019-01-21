@@ -28,7 +28,7 @@ lazy_static::lazy_static!(
 
 impl EvaluatedNode {
     /// Get a new reference to the space token
-    pub(crate) fn single_space() -> Arc<EvaluatedNode> {
+    pub(crate) fn space() -> Arc<EvaluatedNode> {
         Arc::clone(&WHITESPACE)
     }
 

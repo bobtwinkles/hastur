@@ -3,7 +3,7 @@ use crate::VariableName;
 use std::sync::Arc;
 
 #[cfg(test)]
-mod test;
+pub(crate) mod test;
 
 pub mod nodes;
 mod nom;
@@ -48,7 +48,7 @@ impl Block {
         sensitivity: fxhash::FxHashSet<VariableName>,
         content: Vec<ContentReference>,
     ) -> Arc<Block> {
-        let &mut tr_block = Block {
+        let mut tr_block = Block {
             sensitivity,
             content,
         };
@@ -129,8 +129,17 @@ impl ContentReference {
         }
     }
 
+    /// Create a content reference for a synthetically generated space
+    pub fn space() -> Self {
+        ContentReference {
+            offset: 0,
+            length: 1,
+            node: EvaluatedNode::space(),
+        }
+    }
+
     /// Create a content reference for a synthetically generated new line
-    pub fn create_newline() -> Self {
+    pub fn newline() -> Self {
         ContentReference {
             offset: 0,
             length: 1,
@@ -149,6 +158,15 @@ impl ContentReference {
     /// Iterate over the characters in this content reference
     pub fn chars(&self) -> ContentReferenceIter {
         ContentReferenceIter(self.node.chars().skip(self.offset).take(self.length))
+    }
+
+    /// Iterate over the character indices in this content reference
+    pub fn char_indices(&self) -> ContentReferenceIndexIter {
+        let iter = self.chars();
+        ContentReferenceIndexIter {
+            front_offset: 0,
+            indices: iter,
+        }
     }
 
     /// Simplify the node we're pointing to by dropping unnecessary components
@@ -205,6 +223,23 @@ impl<'a> Iterator for ContentReferenceIter<'a> {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct ContentReferenceIndexIter<'a> {
+    front_offset: usize,
+    indices: ContentReferenceIter<'a>,
+}
+
+impl<'a> Iterator for ContentReferenceIndexIter<'a> {
+    type Item = (usize, char);
+
+    fn next(&mut self) -> Option<(usize, char)> {
+        let tr_char = self.indices.next()?;
+        let tr_offset = self.front_offset;
+        self.front_offset += tr_char.len_utf8();
+        Some((tr_offset, tr_char))
+    }
+}
+
 /// Represents a span of elements in an evaluated AST
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct BlockSpan<'a> {
@@ -242,6 +277,11 @@ impl<'a> BlockSpan<'a> {
         }
     }
 
+    /// Get the length of this span
+    pub fn len(&self) -> usize {
+        self.length
+    }
+
     /// Flatten this span into a string.
     pub fn into_string(&self) -> String {
         if self.length == 0 {
@@ -256,10 +296,17 @@ impl<'a> BlockSpan<'a> {
         buffer
     }
 
+    /// Get an iterator over the characters
     pub fn chars(&self) -> BlockSpanIter<'a> {
         BlockSpanIter::new(self)
     }
 
+    /// Iterate over the character indices
+    pub fn char_indices(&self) -> BlockSpanIndexIter<'a> {
+        BlockSpanIndexIter::new(self)
+    }
+
+    /// Create a new owned block from this slice
     pub fn to_new_block(&self) -> Arc<Block> {
         if self.length == 0 {
             return EMPTY_BLOCK.clone();
@@ -289,6 +336,11 @@ impl<'a> BlockSpan<'a> {
         nodes.push(to_push);
 
         Block::new(self.parent.sensitivity().map(|x| *x).collect(), nodes)
+    }
+
+    /// Create a new owned block from this slice, and package it up into a nice `ContentReference`
+    pub fn to_content_reference(&self) -> ContentReference {
+        ContentReference::new_from_node(Arc::new(EvaluatedNode::Concat(self.to_new_block())))
     }
 }
 
@@ -324,6 +376,8 @@ impl<'a> BlockSpanIter<'a> {
     }
 }
 
+impl<'a> std::iter::FusedIterator for BlockSpanIter<'a> {}
+
 impl<'a> std::iter::Iterator for BlockSpanIter<'a> {
     type Item = char;
 
@@ -352,6 +406,71 @@ impl<'a> std::iter::Iterator for BlockSpanIter<'a> {
         // this unwrap is safe because we only reach here if tr.is_none() ==
         // false (i.e. tr is some)
         self.remaining_bytes -= tr.unwrap().len_utf8();
+        tr
+    }
+}
+
+/// Iterator over the span of a block
+#[derive(Clone, Debug)]
+pub struct BlockSpanIndexIter<'a> {
+    cons_iter: std::slice::Iter<'a, ContentReference>,
+    char_iter: Box<BlockSpanIndexIteratorInternal<'a>>,
+    remaining_bytes: usize,
+}
+
+#[derive(Clone, Debug)]
+enum BlockSpanIndexIteratorInternal<'a> {
+    SkippedContentReference(std::iter::Skip<ContentReferenceIndexIter<'a>>),
+    ContentReference(ContentReferenceIndexIter<'a>),
+    NullIter(std::str::CharIndices<'a>),
+}
+
+impl<'a> BlockSpanIndexIter<'a> {
+    fn new(parent: &BlockSpan<'a>) -> Self {
+        let mut cons_iter = parent.contents.iter();
+        let char_iter: Box<BlockSpanIndexIteratorInternal<'a>> = match cons_iter.next() {
+            Some(x) => Box::new(BlockSpanIndexIteratorInternal::SkippedContentReference(
+                x.char_indices().skip(parent.offset),
+            )),
+            None => Box::new(BlockSpanIndexIteratorInternal::NullIter("".char_indices())),
+        };
+        Self {
+            cons_iter,
+            char_iter,
+            remaining_bytes: parent.length,
+        }
+    }
+}
+impl<'a> std::iter::FusedIterator for BlockSpanIndexIter<'a> {}
+
+impl<'a> std::iter::Iterator for BlockSpanIndexIter<'a> {
+    type Item = (usize, char);
+
+    fn next(&mut self) -> Option<(usize, char)> {
+        use std::borrow::BorrowMut;
+
+        if self.remaining_bytes == 0 {
+            return None;
+        }
+
+        let mut tr = match self.char_iter.borrow_mut() {
+            BlockSpanIndexIteratorInternal::SkippedContentReference(it) => it.next(),
+            BlockSpanIndexIteratorInternal::ContentReference(it) => it.next(),
+            BlockSpanIndexIteratorInternal::NullIter(it) => it.next(),
+        };
+        while tr.is_none() {
+            self.char_iter = Box::new(BlockSpanIndexIteratorInternal::ContentReference(
+                (*self.cons_iter.next()?).char_indices(),
+            ));
+            tr = match self.char_iter.borrow_mut() {
+                BlockSpanIndexIteratorInternal::SkippedContentReference(it) => it.next(),
+                BlockSpanIndexIteratorInternal::ContentReference(it) => it.next(),
+                BlockSpanIndexIteratorInternal::NullIter(it) => it.next(),
+            };
+        }
+        // this unwrap is safe because we only reach here if tr.is_none() ==
+        // false (i.e. tr is some)
+        self.remaining_bytes -= tr.unwrap().1.len_utf8();
         tr
     }
 }

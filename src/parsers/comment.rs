@@ -1,11 +1,12 @@
 //! Parses comments
 use super::{ends_with_backslash, makefile_grab_line, makefile_whitespace};
-use crate::{ParseErrorKind, Span};
+use crate::evaluated::BlockSpan;
+use crate::ParseErrorKind;
 use nom::IResult;
 
 /// Snag all the comment content
 /// Expects to start on a '#'
-pub(super) fn parse_comment<'a>(i: Span<'a>) -> IResult<Span<'a>, (), ParseErrorKind> {
+pub(super) fn parse_comment<'a>(i: BlockSpan<'a>) -> IResult<BlockSpan<'a>, (), ParseErrorKind> {
     let (mut i, mut line_parse) = preceded!(
         i,
         add_return_error!(
@@ -18,7 +19,7 @@ pub(super) fn parse_comment<'a>(i: Span<'a>) -> IResult<Span<'a>, (), ParseError
     // While the line grab was terminated by another comment start or the line ends with a backslash,
     // keep grabbing lines
     while line_parse.1 == super::LineEndReason::Comment
-        || ends_with_backslash(line_parse.0.fragment.0) & 1 == 1
+        || ends_with_backslash(line_parse.0) & 1 == 1
     {
         let output = preceded!(
             i,
@@ -34,8 +35,8 @@ pub(super) fn parse_comment<'a>(i: Span<'a>) -> IResult<Span<'a>, (), ParseError
 
 /// Parse a comment
 pub(super) fn parse_comment_following_whitespace<'a>(
-    i: Span<'a>,
-) -> IResult<Span<'a>, (), ParseErrorKind> {
+    i: BlockSpan<'a>,
+) -> IResult<BlockSpan<'a>, (), ParseErrorKind> {
     // Snag all the whitespace, and then delegate to the non-whitespace-aware comment parser
     preceded!(i, makefile_whitespace, parse_comment)
 }
@@ -50,6 +51,7 @@ mod test {
     #[test]
     fn does_not_match_not_comment() {
         let test_span = create_span("this is not a comment");
+        let test_span = test_span.span();
         let parse = parse_comment(test_span);
 
         assert!(parse.is_err());
@@ -72,32 +74,36 @@ mod test {
     #[test]
     fn single_line() {
         let test_span = create_span("# this is a single line comment\na");
+        let test_span = test_span.span();
         let parse = parse_comment(test_span);
 
-        assert_eq!(parse, Ok((leftover_span("a", 32, 2), ())));
+        assert_eq!(parse, Ok((leftover_span("a", 32, 2).span(), ())));
     }
 
     #[test]
     fn comment_with_hashes() {
         let test_span = create_span("# this comment has hashes # oh no\na");
+        let test_span = test_span.span();
         let parse = parse_comment(test_span);
 
-        assert_eq!(parse, Ok((leftover_span("a", 34, 2), ())));
+        assert_eq!(parse, Ok((leftover_span("a", 34, 2).span(), ())));
     }
 
     #[test]
     fn multi_line_comment() {
         let test_span = create_span("# this comment \\\nhas line breaks\\\noh no\na");
+        let test_span = test_span.span();
         let parse = parse_comment(test_span);
 
-        assert_eq!(parse, Ok((leftover_span("a", 40, 4), ())));
+        assert_eq!(parse, Ok((leftover_span("a", 40, 4).span(), ())));
     }
 
     #[test]
     fn preceding_spaces() {
         let test_span = create_span(" \t# this comment \\nhas line breaks\\\noh no\na");
+        let test_span = test_span.span();
         let parse = parse_comment_following_whitespace(test_span);
 
-        assert_eq!(parse, Ok((leftover_span("a", 42, 3), ())));
+        assert_eq!(parse, Ok((leftover_span("a", 42, 3).span(), ())));
     }
 }
