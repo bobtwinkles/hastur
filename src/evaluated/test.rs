@@ -181,7 +181,9 @@ fn iterate_indices() {
 fn iterate_indices_simplified() {
     let block = Block::new(
         Default::default(),
-        vec![ContentReference::new_from_node(test_constant_node("\"a\" \"b\""))],
+        vec![ContentReference::new_from_node(test_constant_node(
+            "\"a\" \"b\"",
+        ))],
     );
     let span = block.span();
 

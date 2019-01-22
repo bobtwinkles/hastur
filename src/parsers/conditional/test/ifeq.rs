@@ -29,7 +29,10 @@ fn parens_nested() {
 
     assert_eq!(result.0.len(), 0);
     assert_eq!((result.1).0.into_string(), String::from("$(foo_$(bar))"));
-    assert_eq!((result.1).1.into_string(), String::from("$(baz)_$(qux_$(big))"));
+    assert_eq!(
+        (result.1).1.into_string(),
+        String::from("$(baz)_$(qux_$(big))")
+    );
 }
 
 // #TST-P-Conditional.ifeq_dquote

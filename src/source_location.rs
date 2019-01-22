@@ -142,9 +142,7 @@ impl Location {
     /// Shorthand for creating a location for use in tests
     #[cfg(test)]
     pub fn test_location(line: u32, character: u32) -> Location {
-        Location::TestLocation {
-            line, character
-        }
+        Location::TestLocation { line, character }
     }
 
     /// Move to the next line, resetting the character counter

@@ -1,4 +1,3 @@
-use crate::evaluated::nodes::EvaluatedNode;
 use crate::evaluated::{Block, BlockSpan, ContentReference};
 use crate::{Engine, ParseErrorKind};
 use nom::Err as NErr;

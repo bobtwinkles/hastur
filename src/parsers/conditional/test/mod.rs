@@ -5,10 +5,10 @@ use crate::parsers::test::*;
 use crate::ParseErrorKind;
 use nom::{error_to_list, ErrorKind};
 
+mod endif;
 mod ifdef;
 mod ifeq;
 mod mf_else;
-mod endif;
 
 #[test]
 fn rejects_non_keywords() {

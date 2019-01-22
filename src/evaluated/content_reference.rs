@@ -221,10 +221,7 @@ mod test {
         );
         assert_eq!(
             segments_iter.next(),
-            Some(LocatedStr::new(
-                Location::test_location(1, 1).into(),
-                "efg"
-            ))
+            Some(LocatedStr::new(Location::test_location(1, 1).into(), "efg"))
         );
         assert_eq!(segments_iter.next(), None);
     }

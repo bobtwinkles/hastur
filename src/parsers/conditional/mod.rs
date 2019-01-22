@@ -91,7 +91,10 @@ fn parse_line_internal<'a>(
             let (input, (arg1, arg2)) = parse_ifeq(input)?;
 
             if tag == "ifeq" {
-                Ok((input, Conditional::IfEq(arg1.to_new_block(), arg2.to_new_block())))
+                Ok((
+                    input,
+                    Conditional::IfEq(arg1.to_new_block(), arg2.to_new_block()),
+                ))
             } else {
                 // #SPC-P-Conditional.ifneq
                 Ok((

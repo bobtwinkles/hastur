@@ -1,7 +1,5 @@
 use super::*;
-use crate::evaluated::nodes::EvaluatedNode;
-use crate::evaluated::test::{single_block, test_constant_node};
-use crate::evaluated::{Block, ContentReference};
+use crate::evaluated::test::single_block;
 use crate::parsers::{makefile_line, ParserCompliance};
 
 mod slice {

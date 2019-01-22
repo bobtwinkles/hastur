@@ -1,6 +1,5 @@
 //! Tests for endif
 use super::*;
-#[macro_use]
 use crate::parsers::test;
 
 #[test]

@@ -1,7 +1,7 @@
 //! Test utilities and integration tests
 
 use super::*;
-use crate::evaluated::test::concat_node_with_locations;
+use crate::evaluated::EvaluatedNode;
 use crate::source_location::Location;
 use nom::Context as NContext;
 use nom::{Err, ErrorKind};
@@ -38,7 +38,7 @@ macro_rules! assert_ok {
             Ok(v) => v,
             Err(e) => panic!("Unexpected error {:?}", e),
         }
-    }}
+    }};
 }
 
 #[macro_export]
@@ -46,7 +46,7 @@ macro_rules! assert_complete {
     ($b:expr) => {{
         let b = $b;
         assert_eq!(b.segments().next(), None);
-    }}
+    }};
 }
 
 #[macro_export]
@@ -61,7 +61,7 @@ macro_rules! assert_segments_eq {
         }
 
         assert_eq!(s.segments().count(), contents.len());
-    }}
+    }};
 }
 
 pub(super) fn simple_line(s: &str) -> Arc<Block> {

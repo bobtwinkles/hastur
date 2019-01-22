@@ -12,10 +12,13 @@ fn simple() {
     let parse = assert_ok!(parse_line(test_span));
 
     assert_eq!(parse.0.segments().next(), None);
-    assert_eq!(parse.1, Conditional::IfDef(concat_node_with_locations(&[(
-        "a",
-        Location::test_location(1, 7)
-    )])));
+    assert_eq!(
+        parse.1,
+        Conditional::IfDef(concat_node_with_locations(&[(
+            "a",
+            Location::test_location(1, 7)
+        )]))
+    );
 }
 
 /// #TST-P-Conditional.ifndef_simple
@@ -26,10 +29,13 @@ fn simple_ndef() {
     let parse = assert_ok!(parse_line(test_span));
 
     assert_eq!(parse.0.segments().next(), None);
-    assert_eq!(parse.1, Conditional::IfNDef(concat_node_with_locations(&[(
-        "a",
-        Location::test_location(1, 8)
-    )])));
+    assert_eq!(
+        parse.1,
+        Conditional::IfNDef(concat_node_with_locations(&[(
+            "a",
+            Location::test_location(1, 8)
+        )]))
+    );
 }
 
 #[test]
@@ -39,8 +45,11 @@ fn multiple_whitespace() {
     let parse = assert_ok!(parse_line(test_span));
 
     assert_eq!(parse.0.segments().next(), None);
-    assert_eq!(parse.1, Conditional::IfNDef(concat_node_with_locations(&[(
-        "a",
-        Location::test_location(2, 3)
-    )])));
+    assert_eq!(
+        parse.1,
+        Conditional::IfNDef(concat_node_with_locations(&[(
+            "a",
+            Location::test_location(2, 3)
+        )]))
+    );
 }

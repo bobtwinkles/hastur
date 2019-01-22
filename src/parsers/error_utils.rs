@@ -8,13 +8,15 @@ pub(crate) fn lift_collapsed_span_error<'a, 'b, E>(
     e: Err<BlockSpan<'a>, E>,
     location_injection: BlockSpan<'b>,
 ) -> Err<BlockSpan<'b>, E> {
+    // TODO: this probably isn't a terribly great implementation.
+    // Ideally, we should lift the error location into like a LocatedString directly
     macro_rules! map_context {
         ($e:expr) => {
             match $e {
                 Context::Code(loc, e) => Context::Code(location_injection, e),
                 Context::List(errs) => Context::List(
                     errs.into_iter()
-                        .map(|(loc, e)| (location_injection, e))
+                        .map(|(_, e)| (location_injection, e))
                         .collect(),
                 ),
             }

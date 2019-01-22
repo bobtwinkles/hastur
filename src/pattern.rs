@@ -1,7 +1,7 @@
 //! The "pattern engine" handles matching file names against lists of patterns
 
 /// A matcher for file names, compatible with Makefiles
-#[derive(Clone,Default,Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct PatternEngine<T> {
     patterns: Vec<String>,
     mappings: Vec<T>,

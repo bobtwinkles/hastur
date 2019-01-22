@@ -44,9 +44,8 @@ pub(super) fn parse_comment_following_whitespace<'a>(
 #[cfg(test)]
 mod test {
     use super::{parse_comment, parse_comment_following_whitespace};
-    use crate::parsers::test::create_span;
-    #[macro_use]
     use crate::parsers::test;
+    use crate::parsers::test::create_span;
     use crate::source_location::Location;
     use crate::ParseErrorKind;
     use nom::{error_to_list, ErrorKind};

@@ -1,8 +1,7 @@
 //! Tests for the else parser
 use super::*;
-use std::borrow::Borrow;
-#[macro_use]
 use crate::parsers::test;
+use std::borrow::Borrow;
 
 #[test]
 fn simple() {

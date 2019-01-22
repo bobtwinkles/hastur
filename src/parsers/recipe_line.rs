@@ -61,9 +61,8 @@ pub(super) fn recipe_line<'a>(
 #[cfg(test)]
 mod test {
     use super::recipe_line;
-    use crate::parsers::test::create_span;
-    #[macro_use]
     use crate::parsers::test;
+    use crate::parsers::test::create_span;
     use crate::source_location::Location;
     use crate::ParseErrorKind;
     use nom::{error_to_list, ErrorKind};

@@ -124,9 +124,7 @@ impl<'a> Iterator for SegmentsIter<'a> {
 
     fn next(&mut self) -> Option<crate::source_location::LocatedStr<'a>> {
         let tr = match self.0 {
-            SegmentsInternal::OneShot(ref c) => {
-                Some(c.clone())
-            }
+            SegmentsInternal::OneShot(ref c) => Some(c.clone()),
             SegmentsInternal::BlockSpan(ref mut it) => it.next(),
             SegmentsInternal::Exhausted => None,
         };

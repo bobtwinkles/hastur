@@ -5,15 +5,15 @@ use std::sync::Arc;
 #[cfg(test)]
 pub(crate) mod test;
 
-pub mod nodes;
-pub mod content_reference;
 pub mod block_span;
+pub mod content_reference;
+pub mod nodes;
 mod nom;
 
 // Reexport of the node interface
-pub use self::nodes::*;
-pub use self::content_reference::ContentReference;
 pub use self::block_span::BlockSpan;
+pub use self::content_reference::ContentReference;
+pub use self::nodes::*;
 
 /// A fully evaluated block of text
 #[derive(Clone, Default, Debug, PartialEq)]

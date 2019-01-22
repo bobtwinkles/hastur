@@ -39,6 +39,7 @@ pub mod traits;
 pub use crate::eval::{Variable, VariableParameters};
 pub use crate::parsers::ParserCompliance;
 
+use crate::evaluated::BlockSpan;
 use fxhash::FxHashMap;
 use std::io;
 use std::io::prelude::*;
@@ -46,7 +47,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use string_interner::DefaultStringInterner as StringInterner;
 use string_interner::Sym;
-use crate::evaluated::BlockSpan;
 
 /// What sort of thing went wrong while parsing.
 #[derive(Clone, Debug, PartialEq)]
