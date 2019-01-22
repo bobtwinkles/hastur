@@ -199,7 +199,7 @@ where
             terminated!(take_until!("\r\n"), tag!("\r\n")) =>
                 { |l| (l, LineEndReason::LineBreak) } | // Windows line endings
             nom::rest =>
-                { |l| {eprintln!("outputting rest"); (l, LineEndReason::EOF)} }         // EOF
+                { |l| (l, LineEndReason::EOF) }         // EOF
         )
     )
 }
