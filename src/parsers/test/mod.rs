@@ -30,11 +30,38 @@ pub(super) fn leftover_span(fragment: &str, character: u32, line: u32) -> Arc<Bl
     tr
 }
 
-pub(super) fn assert_ok<T, E: std::fmt::Debug>(r: Result<T, E>) -> T {
-    match r {
-        Ok(v) => v,
-        Err(e) => panic!("Unexpected error {:?}", e),
-    }
+#[macro_export]
+macro_rules! assert_ok {
+    ($r:expr) => {{
+        let r = $r;
+        match r {
+            Ok(v) => v,
+            Err(e) => panic!("Unexpected error {:?}", e),
+        }
+    }}
+}
+
+#[macro_export]
+macro_rules! assert_complete {
+    ($b:expr) => {{
+        let b = $b;
+        assert_eq!(b.segments().next(), None);
+    }}
+}
+
+#[macro_export]
+macro_rules! assert_segments_eq {
+    ($s:expr, $contents:expr) => {{
+        use crate::source_location::LocatedStr;
+        let s = $s;
+        let contents = $contents;
+
+        for (ref segment, (content, loc)) in s.segments().zip(contents.iter()) {
+            assert_eq!(segment, &LocatedStr::new(loc.clone().into(), content));
+        }
+
+        assert_eq!(s.segments().count(), contents.len());
+    }}
 }
 
 pub(super) fn simple_line(s: &str) -> Arc<Block> {
@@ -99,70 +126,82 @@ mod makefile_line {
         for mode in &[ParserCompliance::GNU, ParserCompliance::POSIX] {
             for strip_whitespace in &[false, true] {
                 eprintln!("Testing mode {:?} {:?}", mode, strip_whitespace);
-                let parse = makefile_line(test_span, *mode, *strip_whitespace);
+                let parse = assert_ok!(makefile_line(test_span, *mode, *strip_whitespace));
 
-                assert_eq!(
-                    parse,
-                    Ok((leftover_span("", 11, 1).span(), test_span.to_new_block()))
-                );
+                assert_complete!(parse.0);
+
+                assert_eq!(parse.1.into_string(), test_span.into_string());
             }
         }
+    }
+
+    #[test]
+    fn simple_comment() {
+        let test_span = create_span("line 1#");
+        let test_span = test_span.span();
+        let parse = assert_ok!(makefile_line(test_span, ParserCompliance::GNU, false));
+        assert_segments_eq!(parse.0, [("#", Location::test_location(1, 7))]);
+        assert_segments_eq!(parse.1.span(), [("line 1", Location::test_location(1, 1))]);
+    }
+
+    #[test]
+    fn simple_line_break() {
+        let test_span = create_span("line 1\n");
+        let test_span = test_span.span();
+        let parse = assert_ok!(makefile_line(test_span, ParserCompliance::GNU, false));
+        assert_complete!(parse.0);
+        assert_segments_eq!(parse.1.span(), [("line 1", Location::test_location(1, 1))]);
     }
 
     #[test]
     fn simple_collapse() {
         let test_span = create_span("line 1\\\nline 2");
         let test_span = test_span.span();
-        let parse = makefile_line(test_span, ParserCompliance::POSIX, false);
+        let parse = assert_ok!(makefile_line(test_span, ParserCompliance::POSIX, false));
 
-        assert_eq!(
-            parse,
-            Ok((
-                leftover_span("", 14, 2).span(),
-                concat_node_with_locations(&[
-                    ("line 1", Location::test_location(1, 1)),
-                    (" ", Location::Synthetic),
-                    ("line 2", Location::test_location(2, 1)),
-                ])
-            ))
-        );
+        assert_complete!(parse.0);
+
+        assert_segments_eq!(
+            parse.1.span(),
+            &[
+                ("line 1", Location::test_location(1, 1)),
+                (" ", Location::Synthetic),
+                ("line 2", Location::test_location(2, 1)),
+            ]
+        )
     }
 
     #[test]
     fn collapse_preserves() {
         let test_span = create_span("line 1\t\\\nline 2");
         let test_span = test_span.span();
-        let parse = makefile_line(test_span, ParserCompliance::GNU, false);
+        let parse = assert_ok!(makefile_line(test_span, ParserCompliance::GNU, false));
 
-        assert_eq!(
-            parse,
-            Ok((
-                leftover_span("", 15, 2).span(),
-                concat_node_with_locations(&[
-                    ("line 1", Location::test_location(1, 1)),
-                    (" ", Location::Synthetic),
-                    ("line 2", Location::test_location(2, 1)),
-                ])
-            ))
-        );
+        assert_complete!(parse.0);
+        assert_segments_eq!(
+            parse.1.span(),
+            &[
+                ("line 1", Location::test_location(1, 1)),
+                (" ", Location::Synthetic),
+                ("line 2", Location::test_location(2, 1)),
+            ]
+        )
     }
 
     #[test]
     fn strip_initial_works() {
         let test_span = create_span(" line 1\\\n\tline 2");
         let test_span = test_span.span();
-        let parse = makefile_line(test_span, ParserCompliance::GNU, true);
+        let parse = assert_ok!(makefile_line(test_span, ParserCompliance::GNU, true));
 
-        assert_eq!(
-            parse,
-            Ok((
-                leftover_span("", 16, 2).span(),
-                concat_node_with_locations(&[
-                    ("line 1", Location::test_location(1, 1)),
-                    (" ", Location::Synthetic),
-                    ("line 2", Location::test_location(2, 1)),
-                ])
-            ))
+        assert_complete!(parse.0);
+        assert_segments_eq!(
+            parse.1.span(),
+            &[
+                ("line 1", Location::test_location(1, 2)),
+                (" ", Location::Synthetic),
+                ("line 2", Location::test_location(2, 2)),
+            ]
         );
     }
 
@@ -170,49 +209,37 @@ mod makefile_line {
     fn strip_initial_works_multiple() {
         let test_span = create_span("line 1\\\n\t\\\nline 2");
         let test_span = test_span.span();
-        let parse = makefile_line(test_span, ParserCompliance::GNU, true);
+        let parse = assert_ok!(makefile_line(test_span, ParserCompliance::GNU, true));
 
-        assert_eq!(
-            parse,
-            Ok((
-                leftover_span("", 17, 3).span(),
-                concat_node_with_locations(&[
-                    ("line 1", Location::test_location(1, 1)),
-                    (" ", Location::Synthetic),
-                    ("line 2", Location::test_location(2, 1)),
-                ])
-            ))
-        );
+        assert_complete!(parse.0);
+        assert_segments_eq!(
+            parse.1.span(),
+            &[
+                ("line 1", Location::test_location(1, 1)),
+                (" ", Location::Synthetic),
+                ("line 2", Location::test_location(3, 1)),
+            ]
+        )
     }
 
     #[test]
     fn test_simple_end() {
         let test_span = create_span(r"\\");
         let test_span = test_span.span();
-        let parse = makefile_line(test_span, ParserCompliance::POSIX, true);
+        let parse = assert_ok!(makefile_line(test_span, ParserCompliance::POSIX, true));
 
-        assert_eq!(
-            parse,
-            Ok((
-                leftover_span("", 2, 1).span(),
-                concat_node_with_locations(&[("\\", Location::test_location(1, 1))])
-            ))
-        );
+        assert_complete!(parse.0);
+        assert_segments_eq!(parse.1.span(), &[(r"\\", Location::test_location(1, 1))]);
     }
 
     #[test]
     fn strip_initial_line_break() {
         let test_span = create_span(" \t\\\n\t a");
         let test_span = test_span.span();
-        let parse = makefile_line(test_span, ParserCompliance::POSIX, true);
+        let parse = assert_ok!(makefile_line(test_span, ParserCompliance::POSIX, true));
 
-        assert_eq!(
-            parse,
-            Ok((
-                leftover_span("", 7, 2).span(),
-                concat_node_with_locations(&[("a", Location::test_location(2, 1))])
-            ))
-        );
+        assert_complete!(parse.0);
+        assert_segments_eq!(parse.1.span(), &[("a", Location::test_location(2, 3))])
     }
 
     // TODO: test some more sophisticated collapse logic. POSIX/GNU compliance?
@@ -226,65 +253,47 @@ mod makefile_whitespace {
     fn single_space() {
         let test_span = create_span(" ");
         let test_span = test_span.span();
-        let parse = makefile_whitespace(test_span);
-
-        assert!(parse.is_ok());
-        let (leftover, _) = parse.ok().unwrap();
-        assert_eq!(leftover, leftover_span("", 1, 1).span());
+        let parse = assert_ok!(makefile_whitespace(test_span));
+        assert_complete!(parse.0);
     }
 
     #[test]
     fn single_tab() {
         let test_span = create_span("\t");
         let test_span = test_span.span();
-        let parse = makefile_whitespace(test_span);
-
-        assert!(parse.is_ok());
-        let (leftover, _) = parse.ok().unwrap();
-        assert_eq!(leftover, leftover_span("", 1, 1).span());
+        let parse = assert_ok!(makefile_whitespace(test_span));
+        assert_complete!(parse.0);
     }
 
     #[test]
     fn multiple_space() {
         let test_span = create_span("  ");
         let test_span = test_span.span();
-        let parse = makefile_whitespace(test_span);
-
-        assert!(parse.is_ok());
-        let (leftover, _) = parse.ok().unwrap();
-        assert_eq!(leftover, leftover_span("", 2, 1).span());
+        let parse = assert_ok!(makefile_whitespace(test_span));
+        assert_complete!(parse.0);
     }
 
     #[test]
     fn mixed_mode() {
         let test_span = create_span(" \t");
         let test_span = test_span.span();
-        let parse = makefile_whitespace(test_span);
-
-        assert!(parse.is_ok());
-        let (leftover, _) = parse.ok().unwrap();
-        assert_eq!(leftover, leftover_span("", 2, 1).span());
+        let parse = assert_ok!(makefile_whitespace(test_span));
+        assert_complete!(parse.0);
     }
 
     #[test]
     fn conservative() {
         let test_span = create_span(" a");
         let test_span = test_span.span();
-        let parse = makefile_whitespace(test_span);
-
-        assert!(parse.is_ok());
-        let (leftover, _) = parse.ok().unwrap();
-        assert_eq!(leftover, leftover_span("a", 1, 1).span());
+        let parse = assert_ok!(makefile_whitespace(test_span));
+        assert_segments_eq!(parse.0, &[("a", Location::test_location(1, 2))]);
     }
 
     #[test]
     fn conservative_mixed() {
         let test_span = create_span(" \t a");
         let test_span = test_span.span();
-        let parse = makefile_whitespace(test_span);
-
-        assert!(parse.is_ok());
-        let (leftover, _) = parse.ok().unwrap();
-        assert_eq!(leftover, leftover_span("a", 3, 1).span());
+        let parse = assert_ok!(makefile_whitespace(test_span));
+        assert_segments_eq!(parse.0, &[("a", Location::test_location(1, 4))]);
     }
 }

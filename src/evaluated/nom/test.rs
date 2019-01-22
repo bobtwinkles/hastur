@@ -45,7 +45,9 @@ mod slice {
         let span = block.span();
         let under_test = makefile_line(span, ParserCompliance::GNU, false).unwrap().1;
         let under_test = under_test.span();
+        eprintln!("{:?}", under_test.contents);
         let res = under_test.slice(3..);
+        eprintln!("{:?}", res.contents);
 
         assert_eq!(res.into_string(), String::from("c d"));
     }
@@ -61,7 +63,7 @@ mod slice {
         under_test.revalidate_offset();
         let res = under_test.slice(3..);
 
-        assert_eq!(res.into_string(), String::from("bc d"));
+        assert_eq!(res.into_string(), String::from("c d"));
     }
 
     #[test]
@@ -135,6 +137,14 @@ mod compare {
         let under_test = under_test.span();
 
         assert_eq!(under_test.compare("asdf"), CompareResult::Ok)
+    }
+
+    #[test]
+    fn offset_eq() {
+        let under_test = single_block("abcd");
+        let under_test = under_test.span().slice(2..);
+
+        assert_eq!(under_test.compare("cd"), CompareResult::Ok);
     }
 
     #[test]

@@ -1,16 +1,18 @@
 //! Tests for endif
 use super::*;
+#[macro_use]
+use crate::parsers::test;
 
 #[test]
 fn simple() {
     let line = create_span("endif");
     let line = line.span();
-    let res = parse_line(line);
+    let res = assert_ok!(parse_line(line));
 
-    assert_eq!(
-        res,
-        Ok((leftover_span("", 5, 1).span(), Conditional::EndIf))
-    )
+    let mut segments_iter = res.0.segments();
+    assert_eq!(segments_iter.next(), None);
+
+    assert_eq!(res.1, Conditional::EndIf);
 }
 
 #[test]

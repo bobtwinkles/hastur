@@ -5,6 +5,10 @@ use nom::Err as NErr;
 use nom::IResult;
 use std::sync::Arc;
 
+#[cfg(test)]
+#[macro_use]
+mod test;
+
 mod comment;
 mod conditional;
 mod error_utils;
@@ -179,6 +183,8 @@ where
         + nom::Slice<std::ops::RangeFrom<usize>>
         + nom::Slice<std::ops::RangeTo<usize>>
         + nom::InputTake
+        + nom::InputIter<Item = char>
+        + nom::Compare<&'static str>
         + nom::InputLength
         + nom::FindSubstring<&'static str>,
 {
@@ -186,10 +192,14 @@ where
         input,
         ParseErrorKind,
         alt_complete!(
-            take_until!("#")               => { |l| (l, LineEndReason::Comment) }  |  // Comments
-            take_until_and_consume!("\n")  => { |l| (l, LineEndReason::LineBreak) } | // UNIX line endings
-            take_until_and_consume!("\r\n")=> { |l| (l, LineEndReason::LineBreak) } | // Windows line endings
-            nom::rest                      => { |l| (l, LineEndReason::EOF) }         // EOF
+            take_until!("#") =>
+                { |l| (l, LineEndReason::Comment) }  |  // Comments
+            terminated!(take_until!("\n"), tag!("\n")) =>
+                { |l| (l, LineEndReason::LineBreak) } | // UNIX line endings
+            terminated!(take_until!("\r\n"), tag!("\r\n")) =>
+                { |l| (l, LineEndReason::LineBreak) } | // Windows line endings
+            nom::rest =>
+                { |l| {eprintln!("outputting rest"); (l, LineEndReason::EOF)} }         // EOF
         )
     )
 }
@@ -358,6 +368,3 @@ pub(crate) fn ends_with_backslash(s: BlockSpan) -> usize {
     }
     backslash_count
 }
-
-#[cfg(test)]
-mod test;

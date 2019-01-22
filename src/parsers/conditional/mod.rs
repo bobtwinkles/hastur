@@ -211,7 +211,6 @@ fn parse_ifeq<'a>(
 fn parse_else<'a>(
     input: BlockSpan<'a>,
 ) -> IResult<BlockSpan<'a>, Option<Box<Conditional>>, ParseErrorKind> {
-    eprintln!("doin the do");
     let (input, _) = makefile_whitespace(input)?;
     if input.len() > 0 {
         // There is something non-whitespace, so we *must* find another conditional

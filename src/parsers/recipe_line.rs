@@ -18,7 +18,7 @@ pub(super) fn recipe_line<'a>(
                 $i,
                 fix_error!(ParseErrorKind, char!(command_char)),
                 makefile_grab_line
-            )};
+        )};
     );
 
     // Grab the first command line
@@ -28,6 +28,7 @@ pub(super) fn recipe_line<'a>(
         grab_command_line!()
     )?;
     let mut line = line.to_new_block();
+    eprintln!("{:?}", line.into_string());
 
     // If the line has a comment, stop the line (and processing)
     if end_reason == super::LineEndReason::Comment {
@@ -60,8 +61,9 @@ pub(super) fn recipe_line<'a>(
 #[cfg(test)]
 mod test {
     use super::recipe_line;
-    use crate::evaluated::test::concat_node_with_locations;
-    use crate::parsers::test::*;
+    use crate::parsers::test::create_span;
+    #[macro_use]
+    use crate::parsers::test;
     use crate::source_location::Location;
     use crate::ParseErrorKind;
     use nom::{error_to_list, ErrorKind};
@@ -70,48 +72,33 @@ mod test {
     fn single_line() {
         let test_span = create_span("\ta\n");
         let test_span = test_span.span();
-        let parse = recipe_line(test_span, '\t');
-
-        assert_eq!(
-            parse,
-            Ok((
-                leftover_span("", 3, 2).span(),
-                concat_node_with_locations(&[("a", Location::test_location(1, 2))])
-            ))
-        );
+        let parse = assert_ok!(recipe_line(test_span, '\t'));
+        assert_complete!(parse.0);
+        assert_segments_eq!(parse.1.span(), [("a", Location::test_location(1, 2))])
     }
 
     #[test]
     fn at_eof() {
         let test_span = create_span("\ta");
         let test_span = test_span.span();
-        let parse = recipe_line(test_span, '\t');
-
-        assert_eq!(
-            parse,
-            Ok((
-                leftover_span("", 1, 3).span(),
-                concat_node_with_locations(&[("a", Location::test_location(1, 2))])
-            ))
-        );
+        let parse = assert_ok!(recipe_line(test_span, '\t'));
+        assert_complete!(parse.0);
+        assert_segments_eq!(parse.1.span(), [("a", Location::test_location(1, 2))]);
     }
 
     #[test]
     fn multi_line_cont() {
         let test_span = create_span("\ta\\\n\tb");
         let test_span = test_span.span();
-        let parse = recipe_line(test_span, '\t');
-
-        assert_eq!(
-            parse,
-            Ok((
-                leftover_span("", 6, 2).span(),
-                concat_node_with_locations(&[
-                    ("a", Location::test_location(1, 2)),
-                    ("\n", Location::Synthetic),
-                    ("b", Location::test_location(2, 1))
-                ])
-            ))
+        let parse = assert_ok!(recipe_line(test_span, '\t'));
+        assert_complete!(parse.0);
+        assert_segments_eq!(
+            parse.1.span(),
+            [
+                ("a\\", Location::test_location(1, 2)),
+                ("\n", Location::Synthetic),
+                ("b", Location::test_location(2, 2))
+            ]
         );
     }
 
@@ -119,49 +106,27 @@ mod test {
     fn multi_line_not_cont() {
         let test_span = create_span("\ta\n\tb");
         let test_span = test_span.span();
-        let parse = recipe_line(test_span, '\t');
-
-        assert_eq!(
-            parse,
-            Ok((
-                leftover_span("\tb", 3, 2).span(),
-                concat_node_with_locations(&[
-                    ("a", Location::test_location(1, 2)),
-                    ("\n", Location::Synthetic),
-                    ("b", Location::test_location(2, 2))
-                ])
-            ))
-        );
+        let parse = assert_ok!(recipe_line(test_span, '\t'));
+        assert_segments_eq!(parse.0, [("\tb", Location::test_location(2, 1))]);
+        assert_segments_eq!(parse.1.span(), [("a", Location::test_location(1, 2))]);
     }
 
     #[test]
     fn multi_line_not_command() {
         let test_span = create_span("\ta\n\n");
         let test_span = test_span.span();
-        let parse = recipe_line(test_span, '\t');
-
-        assert_eq!(
-            parse,
-            Ok((
-                leftover_span("\n", 3, 2).span(),
-                concat_node_with_locations(&[("a", Location::test_location(1, 2))])
-            ))
-        );
+        let parse = assert_ok!(recipe_line(test_span, '\t'));
+        assert_segments_eq!(parse.0, [("\n", Location::test_location(2, 1))]);
+        assert_segments_eq!(parse.1.span(), [("a", Location::test_location(1, 2))]);
     }
 
     #[test]
     fn multi_line_but_comment() {
         let test_span = create_span("\ta # \n\n");
         let test_span = test_span.span();
-        let parse = recipe_line(test_span, '\t');
-
-        assert_eq!(
-            parse,
-            Ok((
-                leftover_span("# \n\n", 3, 1).span(),
-                concat_node_with_locations(&[("a ", Location::test_location(1, 2))])
-            ))
-        );
+        let parse = assert_ok!(recipe_line(test_span, '\t'));
+        assert_segments_eq!(parse.0, [("# \n\n", Location::test_location(1, 4))]);
+        assert_segments_eq!(parse.1.span(), [("a ", Location::test_location(1, 2))]);
     }
 
     #[test]
@@ -176,11 +141,11 @@ mod test {
             nom::Err::Error(_) => true,
             _ => false,
         });
-        let context = error_context(parse);
+        let context = test::error_context(parse);
         assert!(context.is_some());
         let context = context.unwrap();
         let errors = error_to_list(&context);
-        assert!(error_list_contains(
+        assert!(test::error_list_contains(
             &errors,
             ErrorKind::Custom(ParseErrorKind::RecipeExpected)
         ));

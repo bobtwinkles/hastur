@@ -32,10 +32,11 @@ impl<'a> BlockSpan<'a> {
             return;
         }
 
-        let start_span_length = self.contents[0].length;
-        while self.offset > start_span_length {
+        let mut start_span_length = self.contents[0].length;
+        while self.offset >= start_span_length {
             self.offset -= start_span_length;
             self.contents = &self.contents[1..];
+            start_span_length = self.contents[0].length;
         }
     }
 

@@ -197,13 +197,24 @@ impl<'a, 'b> FindSubstring<&'b str> for BlockSpan<'a> {
             let content = self_iter.next().unwrap();
             let char_size = content.1.encode_utf8(&mut char_buffer).len();
             for i in 0..char_size {
-                buffer[self_idx + i] = buffer[i];
+                buffer[self_idx + i] = char_buffer[i];
             }
             self_idx = content.0 + char_size;
         }
 
+        if buffer == substr.as_bytes() {
+            return Some(0);
+        }
+
         for (i, c) in self_iter {
-            // Phase one: attempt to match the current buffer against the substring
+            eprintln!("Inspecting {:?} for match with {:?} {:?}", c, substr.as_bytes(), buffer);
+            // Update the buffer
+            let char_size = c.encode_utf8(&mut char_buffer).len();
+            for j in 0..char_size {
+                buffer[(buffer_start + j) % substr.len()] = char_buffer[j];
+            }
+            buffer_start = (buffer_start + char_size) % substr.len();
+            // attempt to match the current buffer against the substring
             let mut all_match = true;
             for j in 0..substr.len() {
                 if buffer[(buffer_start + j) % substr.len()] != substr_bytes[j] {
@@ -212,14 +223,9 @@ impl<'a, 'b> FindSubstring<&'b str> for BlockSpan<'a> {
                 }
             }
             if all_match {
-                return Some(i - substr.len());
+                eprintln!("Match found at {:?}", i - substr.len());
+                return Some(i - substr.len() + 1);
             }
-            // Update the buffer
-            let char_size = c.encode_utf8(&mut char_buffer).len();
-            for j in 0..char_size {
-                buffer[(buffer_start + j) % substr.len()] = char_buffer[j];
-            }
-            buffer_start = (buffer_start + char_size) % substr.len();
         }
 
         None
