@@ -305,7 +305,7 @@ impl Database {
         target: &'t str,
         name: &str,
     ) -> Option<Variable<'t>> {
-        let variable_name = VariableName(self.variable_names.get(target)?);
+        let variable_name = VariableName(self.variable_names.get(name)?);
         self.target_variables
             .get(target)
             .and_then(|m| m.get(&variable_name))
