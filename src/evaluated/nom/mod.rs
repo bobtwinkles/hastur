@@ -1,7 +1,9 @@
 // #SPC-Variable-Eval.nom
-use super::{BlockSpan, BlockSpanIter, BlockSpanIndexIter};
+use super::BlockSpan;
 
-use nom::{AtEof, Compare, FindSubstring, InputIter, InputLength, InputTake, InputTakeAtPosition, Slice};
+use nom::{
+    AtEof, Compare, FindSubstring, InputIter, InputLength, InputTake, InputTakeAtPosition, Slice,
+};
 use nom::{CompareResult, Context, Err, ErrorKind, IResult};
 use std::ops::{Range, RangeFrom, RangeTo};
 
@@ -11,8 +13,8 @@ mod test;
 impl<'a> InputIter for BlockSpan<'a> {
     type Item = char;
     type RawItem = char;
-    type Iter = BlockSpanIndexIter<'a>;
-    type IterElem = BlockSpanIter<'a>;
+    type Iter = super::block_span::IndexIter<'a>;
+    type IterElem = super::block_span::Iter<'a>;
 
     #[inline]
     fn iter_indices(&self) -> Self::Iter {
@@ -87,7 +89,11 @@ impl<'a> InputTakeAtPosition for BlockSpan<'a> {
         P: Fn(Self::Item) -> bool,
     {
         match self.iter_indices().find(|&(_, c)| predicate(c)) {
-            Some((i, _)) => Ok((self.slice(i..), self.slice(..i))),
+            Some((i, _)) => {
+                let fst = self.slice(i..);
+                let snd = self.slice(..i);
+                Ok((fst, snd))
+            }
             None => Ok((BlockSpan::empty(), *self)),
         }
     }
@@ -173,10 +179,49 @@ impl<'a, 'b> Compare<&'b str> for BlockSpan<'a> {
 
 impl<'a, 'b> FindSubstring<&'b str> for BlockSpan<'a> {
     fn find_substring(&self, substr: &'b str) -> Option<usize> {
-        // TODO: Maybe use some sort of circular buffer of previous characters
-        // which is checked when we see the last character from substr
-        for (i, c) in self.iter_indices() {
+        // If the substring is longer than we are, there's no hope
+        if substr.len() > self.len() {
+            return None;
         }
-        unimplemented!()
+
+        let substr_bytes = substr.as_bytes();
+        let mut buffer = Vec::with_capacity(substr.len());
+        let mut char_buffer = [0, 0, 0, 0];
+        buffer.resize_with(substr.len(), || 0);
+
+        let mut self_iter = self.iter_indices();
+        let mut self_idx = 0;
+        let mut buffer_start = 0;
+
+        while self_idx < substr.len() {
+            let content = self_iter.next().unwrap();
+            let char_size = content.1.encode_utf8(&mut char_buffer).len();
+            for i in 0..char_size {
+                buffer[self_idx + i] = buffer[i];
+            }
+            self_idx = content.0 + char_size;
+        }
+
+        for (i, c) in self_iter {
+            // Phase one: attempt to match the current buffer against the substring
+            let mut all_match = true;
+            for j in 0..substr.len() {
+                if buffer[(buffer_start + j) % substr.len()] != substr_bytes[j] {
+                    all_match = false;
+                    break;
+                }
+            }
+            if all_match {
+                return Some(i - substr.len());
+            }
+            // Update the buffer
+            let char_size = c.encode_utf8(&mut char_buffer).len();
+            for j in 0..char_size {
+                buffer[(buffer_start + j) % substr.len()] = char_buffer[j];
+            }
+            buffer_start = (buffer_start + char_size) % substr.len();
+        }
+
+        None
     }
 }

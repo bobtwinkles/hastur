@@ -45,6 +45,7 @@ pub(super) fn parse_comment_following_whitespace<'a>(
 mod test {
     use super::{parse_comment, parse_comment_following_whitespace};
     use crate::parsers::test::*;
+    use crate::source_location::{LocatedStr, Location};
     use crate::ParseErrorKind;
     use nom::{error_to_list, ErrorKind};
 
@@ -75,35 +76,50 @@ mod test {
     fn single_line() {
         let test_span = create_span("# this is a single line comment\na");
         let test_span = test_span.span();
-        let parse = parse_comment(test_span);
+        let parse = assert_ok(parse_comment(test_span));
+        let mut leftover_segments = parse.0.segments();
 
-        assert_eq!(parse, Ok((leftover_span("a", 32, 2).span(), ())));
+        assert_eq!(
+            leftover_segments.next(),
+            Some(LocatedStr::new(Location::test_location(2, 1).into(), "a"))
+        );
+        assert_eq!(leftover_segments.next(), None);
     }
 
     #[test]
     fn comment_with_hashes() {
         let test_span = create_span("# this comment has hashes # oh no\na");
         let test_span = test_span.span();
-        let parse = parse_comment(test_span);
+        let parse = assert_ok(parse_comment(test_span));
 
-        assert_eq!(parse, Ok((leftover_span("a", 34, 2).span(), ())));
+        assert_eq!(parse.0.into_string(), "a");
     }
 
     #[test]
     fn multi_line_comment() {
         let test_span = create_span("# this comment \\\nhas line breaks\\\noh no\na");
         let test_span = test_span.span();
-        let parse = parse_comment(test_span);
+        let parse = assert_ok(parse_comment(test_span));
+        let mut leftover_segments = parse.0.segments();
 
-        assert_eq!(parse, Ok((leftover_span("a", 40, 4).span(), ())));
+        assert_eq!(
+            leftover_segments.next(),
+            Some(LocatedStr::new(Location::test_location(4, 1).into(), "a"))
+        );
+        assert_eq!(leftover_segments.next(), None);
     }
 
     #[test]
     fn preceding_spaces() {
         let test_span = create_span(" \t# this comment \\nhas line breaks\\\noh no\na");
         let test_span = test_span.span();
-        let parse = parse_comment_following_whitespace(test_span);
+        let parse = assert_ok(parse_comment_following_whitespace(test_span));
+        let mut leftover_segments = parse.0.segments();
 
-        assert_eq!(parse, Ok((leftover_span("a", 42, 3).span(), ())));
+        assert_eq!(
+            leftover_segments.next(),
+            Some(LocatedStr::new(Location::test_location(3, 1).into(), "a"))
+        );
+        assert_eq!(leftover_segments.next(), None);
     }
 }

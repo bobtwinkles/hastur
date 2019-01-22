@@ -225,7 +225,7 @@ pub enum ParserCompliance {
 /// pair with a single space character. We have no special handling for the
 /// command character in either compliance mode.
 /// TODO: rip out strip_initial_whitespace, we can do that smarter just using makefile_whitespace
-fn makefile_line(
+pub(crate) fn makefile_line(
     mut i: BlockSpan,
     whitespace_handling: ParserCompliance,
     mut strip_initial_whitespace: bool,
@@ -264,7 +264,7 @@ fn makefile_line(
                             last_non_whitespace = i;
                         }
 
-                        s.slice(..last_non_whitespace)
+                        s.slice(..last_non_whitespace + 1)
                     }
                 }
             }

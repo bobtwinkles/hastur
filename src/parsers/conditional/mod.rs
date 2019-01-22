@@ -123,6 +123,7 @@ fn parse_line_internal<'a>(
 fn parse_ifeq<'a>(
     line: BlockSpan<'a>,
 ) -> IResult<BlockSpan<'a>, (BlockSpan<'a>, BlockSpan<'a>), ParseErrorKind> {
+    eprintln!("Parsing ifeq line: {:?}", line);
     fn take_till_terminator<'a, 'b>(
         line: BlockSpan<'a>,
         terminator: char,
@@ -133,6 +134,7 @@ fn parse_ifeq<'a>(
             let mut iter = line.iter_indices();
             let (i, _) = match iter.find(|(_, c)| {
                 let c = *c;
+                eprintln!("Inspecting character {:?}", c);
                 if c == '(' {
                     count = count + 1;
                     false
@@ -157,14 +159,17 @@ fn parse_ifeq<'a>(
 
             Ok((line, res))
         } else {
-            fix_error!(
+            eprintln!("Taking until terminator {:?}", terminator);
+            let res = fix_error!(
                 line,
                 ParseErrorKind,
                 complete!(terminated!(
                     take_till!(|c| c == terminator),
                     char!(terminator)
                 ))
-            )
+            );
+            eprintln!("we got {:?}", res);
+            res
         }
     }
 
@@ -179,8 +184,10 @@ fn parse_ifeq<'a>(
             char!('\'') => {|_| ('\'')}
         ))
     )?;
+    eprintln!("Using arg1 separator {:?}", terminator);
 
     let (line, arg1) = take_till_terminator(line, terminator)?;
+    eprintln!("Got arg1 {:?}", arg1);
     let (line, _) = makefile_whitespace(line)?;
     let (line, terminator) = if terminator == ',' {
         (line, ')')

@@ -30,6 +30,13 @@ pub(super) fn leftover_span(fragment: &str, character: u32, line: u32) -> Arc<Bl
     tr
 }
 
+pub(super) fn assert_ok<T, E: std::fmt::Debug>(r: Result<T, E>) -> T {
+    match r {
+        Ok(v) => v,
+        Err(e) => panic!("Unexpected error {:?}", e),
+    }
+}
+
 pub(super) fn simple_line(s: &str) -> Arc<Block> {
     super::makefile_line(create_span(s).span(), super::ParserCompliance::GNU, false)
         .unwrap()

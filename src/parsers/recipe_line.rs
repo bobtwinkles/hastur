@@ -90,7 +90,7 @@ mod test {
         assert_eq!(
             parse,
             Ok((
-                leftover_span("", 2, 1).span(),
+                leftover_span("", 1, 3).span(),
                 concat_node_with_locations(&[("a", Location::test_location(1, 2))])
             ))
         );

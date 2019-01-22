@@ -240,8 +240,9 @@ impl<T> Located<T> {
     }
 }
 
-impl Located<String> {
-    pub fn slice(&self, bytes: usize, length: usize) -> LocatedString {
+impl<'a> Located<&'a str> {
+    /// Get a subslice of this slice
+    pub fn slice(&self, bytes: usize, length: usize) -> LocatedStr<'a> {
         assert!(bytes < self.contents.len());
         assert!(bytes + length <= self.contents.len());
         let mut new_location = self.location.inner.clone();
@@ -257,8 +258,19 @@ impl Located<String> {
             location: Marker {
                 inner: new_location,
             },
-            contents: self.contents[bytes..(bytes + length)].to_owned(),
+            contents: &self.contents[bytes..(bytes + length)],
         }
+    }
+}
+
+impl Located<String> {
+    pub fn slice(&self, bytes: usize, length: usize) -> LocatedString {
+        self.as_str().slice(bytes, length).into()
+    }
+
+    /// Get this string as a located string
+    pub fn as_str(&self) -> LocatedStr {
+        LocatedStr::new(self.location.clone(), &self.contents)
     }
 }
 

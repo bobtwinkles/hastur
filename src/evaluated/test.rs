@@ -20,11 +20,15 @@ pub(crate) fn concat_node_with_locations(content: &[(&str, Location)]) -> Arc<Bl
     )
 }
 
-fn test_constant_node(content: &str) -> Arc<EvaluatedNode> {
+pub(crate) fn single_block(content: &str) -> Arc<Block> {
+    concat_node_with_locations(&[(content, Location::test_location(1, 1))])
+}
+
+pub(crate) fn test_constant_node(content: &str) -> Arc<EvaluatedNode> {
     Arc::new(EvaluatedNode::Constant(span(content)))
 }
 
-fn test_concat_node<'a>(content: impl AsRef<[&'a str]>) -> Arc<EvaluatedNode> {
+pub(crate) fn test_concat_node<'a>(content: impl AsRef<[&'a str]>) -> Arc<EvaluatedNode> {
     let content = content.as_ref();
     Arc::new(EvaluatedNode::Concat(Block::new(
         Default::default(),
@@ -158,4 +162,37 @@ fn simplify_drop_start() {
         &block.content,
         &[ContentReference::new_from_node(test_concat_node(["efgh"]))]
     );
+}
+
+#[test]
+fn iterate_indices() {
+    let block = concat_node_with_locations(&[("a你好", Location::test_location(1, 1))]);
+    let span = block.span();
+
+    let mut iter = span.char_indices();
+
+    assert_eq!(iter.next(), Some((0, 'a')));
+    assert_eq!(iter.next(), Some((1, '你')));
+    assert_eq!(iter.next(), Some((4, '好')));
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn iterate_indices_simplified() {
+    let block = Block::new(
+        Default::default(),
+        vec![ContentReference::new_from_node(test_constant_node("\"a\" \"b\""))],
+    );
+    let span = block.span();
+
+    let mut iter = span.char_indices();
+
+    assert_eq!(iter.next(), Some((0, '"')));
+    assert_eq!(iter.next(), Some((1, 'a')));
+    assert_eq!(iter.next(), Some((2, '"')));
+    assert_eq!(iter.next(), Some((3, ' ')));
+    assert_eq!(iter.next(), Some((4, '"')));
+    assert_eq!(iter.next(), Some((5, 'b')));
+    assert_eq!(iter.next(), Some((6, '"')));
+    assert_eq!(iter.next(), None);
 }

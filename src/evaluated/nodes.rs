@@ -1,6 +1,7 @@
 //! All the nodes
 
-use super::{Block, BlockSpanIter};
+use super::block_span::Iter;
+use super::Block;
 use crate::source_location::{LocatedString, Location};
 use std::sync::Arc;
 
@@ -60,6 +61,20 @@ impl EvaluatedNode {
             }
         }
     }
+
+    /// Iterate over the segments in this node
+    pub fn segments(&self) -> SegmentsIter {
+        SegmentsIter(match self {
+            EvaluatedNode::Constant(v) => SegmentsInternal::OneShot(v.as_str()),
+            EvaluatedNode::Concat(v) => SegmentsInternal::BlockSpan(v.span().segments()),
+            EvaluatedNode::VariableReference(v) => {
+                SegmentsInternal::BlockSpan(v.value.span().segments())
+            }
+            EvaluatedNode::SubstitutionReference(v) => {
+                SegmentsInternal::BlockSpan(v.value.span().segments())
+            }
+        })
+    }
 }
 
 /// Iterator over the characters in an evaluated node
@@ -78,7 +93,7 @@ impl<'a> Iterator for Chars<'a> {
 #[derive(Clone, Debug)]
 enum CharsInternal<'a> {
     Direct(std::str::Chars<'a>),
-    BlockSpan(BlockSpanIter<'a>),
+    BlockSpan(Iter<'a>),
 }
 
 impl<'a> Iterator for CharsInternal<'a> {
@@ -89,6 +104,36 @@ impl<'a> Iterator for CharsInternal<'a> {
             CharsInternal::Direct(it) => it.next(),
             CharsInternal::BlockSpan(it) => it.next(),
         }
+    }
+}
+
+/// An iterator over the segments in this block
+#[derive(Clone, Debug)]
+pub struct SegmentsIter<'a>(SegmentsInternal<'a>);
+
+/// Implementation of the segments iterator
+#[derive(Clone, Debug)]
+enum SegmentsInternal<'a> {
+    OneShot(crate::source_location::LocatedStr<'a>),
+    BlockSpan(super::block_span::SegmentsIter<'a>),
+    Exhausted,
+}
+
+impl<'a> Iterator for SegmentsIter<'a> {
+    type Item = crate::source_location::LocatedStr<'a>;
+
+    fn next(&mut self) -> Option<crate::source_location::LocatedStr<'a>> {
+        let tr = match self.0 {
+            SegmentsInternal::OneShot(ref c) => {
+                Some(c.clone())
+            }
+            SegmentsInternal::BlockSpan(ref mut it) => it.next(),
+            SegmentsInternal::Exhausted => None,
+        };
+        if let SegmentsInternal::OneShot(_) = self.0 {
+            self.0 = SegmentsInternal::Exhausted;
+        }
+        tr
     }
 }
 
