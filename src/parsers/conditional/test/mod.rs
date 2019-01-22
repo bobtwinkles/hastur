@@ -31,5 +31,4 @@ fn rejects_non_keywords() {
         &errors,
         ErrorKind::Custom(ParseErrorKind::ConditionalExpected)
     ));
-    // assert_eq!(parse, (leftover_span("a", 32, 2), ()));
 }

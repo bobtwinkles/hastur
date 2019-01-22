@@ -148,6 +148,5 @@ mod test {
             &errors,
             ErrorKind::Custom(ParseErrorKind::RecipeExpected)
         ));
-        // assert_eq!(parse, (leftover_span("a", 32, 2), ()));
     }
 }
