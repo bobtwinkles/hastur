@@ -8,10 +8,12 @@ use std::sync::Arc;
 #[macro_use]
 mod test;
 
+mod ast;
 mod comment;
 mod conditional;
 mod error_utils;
 mod recipe_line;
+mod variable;
 
 use self::error_utils::lift_collapsed_span_error;
 use self::recipe_line::recipe_line;

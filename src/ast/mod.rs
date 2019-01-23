@@ -147,6 +147,8 @@ pub enum AstChildren {
     /// TODO: This should be a interned reference
     // #SPC-V-AST.constant
     Constant(LocatedString),
+    /// Some content that has already been evaluated
+    PreEvaluated(Arc<Block>),
     /// Concatenation of several child types
     // #SPC-V-AST.concat
     Concat(Vec<AstNode>),
@@ -169,4 +171,32 @@ pub enum AstChildren {
     /// The `words` make function
     // #SPC-V-AST.words
     Words(AstNode),
+}
+
+/// Create a new constant node
+#[inline]
+pub fn constant(source_location: Location, v: LocatedString) -> AstNode {
+    AstNode {
+        children: Box::new(AstChildren::Constant(v)),
+        source_location: source_location.into(),
+    }
+}
+
+/// Create a new node containing pre-evaluated content
+#[inline]
+pub fn preevaluated(source_location: Location, v: Arc<Block>) -> AstNode {
+    AstNode {
+        children: Box::new(AstChildren::PreEvaluated(v)),
+        source_location: source_location.into(),
+    }
+}
+
+
+/// Create a new concatentation node
+#[inline]
+pub fn concat(source_location: Location, v: Vec<AstNode>) -> AstNode {
+    AstNode {
+        children: Box::new(AstChildren::Concat(v)),
+        source_location: source_location.into(),
+    }
 }

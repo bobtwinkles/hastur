@@ -9,7 +9,8 @@ use std::sync::Arc;
 mod test;
 
 /// What flavor is this variable
-enum Flavor {
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Flavor {
     /// For variable that can't be expanded for whatever reason
     Bogus,
     /// Simple (non-recursively expanded, not from shell, etc.) variables
@@ -28,6 +29,7 @@ enum Flavor {
 }
 
 /// Where did the variable come from
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Origin {
     /// This variable was set by Make itself in the default set
     Default,
@@ -47,13 +49,13 @@ pub enum Origin {
 
 /// Everything we need to know to expand a variable
 pub struct VariableParameters {
-    unexpanded_value: AstNode,
-    flavor: Flavor,
-    origin: Origin,
+    pub(crate) unexpanded_value: AstNode,
+    pub(crate) flavor: Flavor,
+    pub(crate) origin: Origin,
 }
 
 impl VariableParameters {
-    fn new(unexpanded_value: AstNode, flavor: Flavor, origin: Origin) -> Self {
+    pub(crate) fn new(unexpanded_value: AstNode, flavor: Flavor, origin: Origin) -> Self {
         Self {
             unexpanded_value,
             flavor,

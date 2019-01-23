@@ -85,6 +85,9 @@ pub enum ParseErrorKind {
     /// This variant should never surface in library consumer code in practice,
     /// but we need it to make nom types work out
     NomError(u32),
+
+    /// Another internal variant. Should never be returned to the library consumer
+    InternalFailure(&'static str),
 }
 
 /*

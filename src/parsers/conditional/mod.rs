@@ -137,7 +137,6 @@ fn parse_ifeq<'a>(
             let mut iter = line.iter_indices();
             let (i, _) = match iter.find(|(_, c)| {
                 let c = *c;
-                eprintln!("Inspecting character {:?}", c);
                 if c == '(' {
                     count = count + 1;
                     false
