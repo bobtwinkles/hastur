@@ -59,6 +59,12 @@ impl<'a> BlockSpan<'a> {
         buffer
     }
 
+    /// Get a location indicating the start of this span
+    /// Will be None if this span has 0 length
+    pub fn location(&self) -> Option<crate::source_location::Location> {
+        self.segments().next().map(|x| x.location().clone())
+    }
+
     /// Get an iterator over the characters
     pub fn chars(&self) -> Iter<'a> {
         Iter::new(self)

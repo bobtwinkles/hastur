@@ -143,6 +143,8 @@ fn do_subref(
 // #SPC-V-AST
 #[derive(Clone, Debug, PartialEq)]
 pub enum AstChildren {
+    /// An empty node. Has no content at all.
+    Empty,
     /// A constant string of text
     /// TODO: This should be a interned reference
     // #SPC-V-AST.constant
@@ -173,6 +175,14 @@ pub enum AstChildren {
     Words(AstNode),
 }
 
+#[inline]
+pub fn empty() -> AstNode {
+    AstNode {
+        children: Box::new(AstChildren::Empty),
+        source_location: Location::Synthetic.into(),
+    }
+}
+
 /// Create a new constant node
 #[inline]
 pub fn constant(source_location: Location, v: LocatedString) -> AstNode {
@@ -191,12 +201,26 @@ pub fn preevaluated(source_location: Location, v: Arc<Block>) -> AstNode {
     }
 }
 
-
-/// Create a new concatentation node
+/// Create a new concatentation node. This method is slightly smart in that
+/// if there is only a single node in the vector, we just return that node.
+/// This helps maintain a much more concise tree
 #[inline]
-pub fn concat(source_location: Location, v: Vec<AstNode>) -> AstNode {
+pub fn collapsing_concat(source_location: Location, mut v: Vec<AstNode>) -> AstNode {
+    if v.len() == 1 {
+        v.swap_remove(0)
+    } else {
+        AstNode {
+            children: Box::new(AstChildren::Concat(v)),
+            source_location: source_location.into(),
+        }
+    }
+}
+
+/// Create a new variable reference node, using the provided node as the name
+#[inline]
+pub fn variable_reference(source_location: Location, name: AstNode) -> AstNode {
     AstNode {
-        children: Box::new(AstChildren::Concat(v)),
+        children: Box::new(AstChildren::VariableReference(name)),
         source_location: source_location.into(),
     }
 }
