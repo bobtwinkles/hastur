@@ -66,3 +66,21 @@ fn dollar_escape() {
         )
     );
 }
+
+#[test]
+fn long_var_name() {
+    let block = create_span("$(foo)");
+    let res = assert_ok!(parse_ast(block.span()));
+
+    assert_complete!(res.0);
+    assert_eq!(
+        res.1,
+        ast::variable_reference(
+            Location::test_location(1, 1),
+            ast::constant(
+                Location::test_location(1, 3),
+                LocatedString::new(Location::test_location(1, 3).into(), "foo".into())
+            )
+        )
+    );
+}
