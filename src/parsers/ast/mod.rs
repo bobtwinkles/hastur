@@ -178,6 +178,56 @@ fn function_call<'a>(
     )
 }
 
+fn function_argument<'a>(
+    i: BlockSpan<'a>,
+) -> IResult<BlockSpan<'a>, BlockSpan<'a>, ParseErrorKind> {
+    use nom::{InputIter, InputTake};
+
+    // Strip off any leading whitespace
+    let (i, _) = many0!(i, makefile_whitespace)?;
+
+    let mut it = i.iter_indices();
+    let mut paren_count = 0;
+    let mut curly_count = 0;
+    while let Some((j, c)) = it.next() {
+        match c {
+            '(' => paren_count += 1,
+            ')' => {
+                if paren_count > 0 {
+                    paren_count -= 1
+                } else {
+                    // Somehow we ended up with unbalanced parens, abort
+                    return Err(Err::Failure(nom::Context::Code(
+                        i,
+                        nom::ErrorKind::Custom(ParseErrorKind::UnternimatedVariable),
+                    )));
+                }
+            }
+            '{' => curly_count += 1,
+            '}' => {
+                if curly_count > 0 {
+                    curly_count -= 1;
+                } else {
+                    // Somehow we ended up with unbalanced braces, abort
+                    return Err(Err::Failure(nom::Context::Code(
+                        i,
+                        nom::ErrorKind::Custom(ParseErrorKind::UnternimatedVariable),
+                    )));
+                }
+            }
+            ',' => {
+                if curly_count == 0 && paren_count == 0 {
+                    // We're outside any variable references, split just before the comma
+                    return Ok(i.take_split(j));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Ok(i.take_split(i.len()))
+}
+
 fn strip<'a>(
     i: BlockSpan<'a>,
     start_char: char,
