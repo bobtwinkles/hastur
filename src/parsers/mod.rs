@@ -8,6 +8,9 @@ use std::sync::Arc;
 #[macro_use]
 mod test;
 
+#[macro_use]
+mod macros;
+
 mod ast;
 mod comment;
 mod conditional;

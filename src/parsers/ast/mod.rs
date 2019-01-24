@@ -2,9 +2,10 @@
 use crate::ast;
 use crate::ast::AstNode;
 use crate::evaluated::BlockSpan;
+use crate::parsers::makefile_whitespace;
 use crate::source_location::Location;
 use crate::ParseErrorKind;
-use nom::IResult;
+use nom::{Err, ErrorKind, IResult};
 
 #[cfg(test)]
 mod test;
@@ -80,8 +81,10 @@ fn parse_var_ref<'a>(
             }
         }} |
         // Try the advanced variable references
-        preceded!(fix_error!(ParseErrorKind, char!('(')), apply!(advanced_var, dollar_location.clone(), '(')) => { |l| l } |
-        preceded!(fix_error!(ParseErrorKind, char!('}')), apply!(advanced_var, dollar_location.clone(), '{')) => { |l| l } |
+        preceded!(fix_error!(ParseErrorKind, char!('(')),
+                  apply!(advanced_var, dollar_location.clone(), '(', ')')) => { |l| l } |
+        preceded!(fix_error!(ParseErrorKind, char!('}')),
+                  apply!(advanced_var, dollar_location.clone(), '{', '}')) => { |l| l } |
         // Finally, just grab a single character and call it good
         fix_error!(ParseErrorKind, take!(1)) => {{
             let location = dollar_location.clone();
@@ -94,7 +97,107 @@ fn parse_var_ref<'a>(
 fn advanced_var<'a>(
     i: BlockSpan<'a>,
     dollar_location: Location,
-    sep_char: char,
+    start_char: char,
+    term_char: char,
+) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
+    use nom::{InputIter, InputTake, Slice};
+    let mut count = 1;
+    let mut it = i.iter_indices();
+    let mut split_idx = 0;
+
+    // Iterate to find the balanced character
+    while count > 0 {
+        let (idx, c) = match it.next() {
+            Some(v) => v,
+            None => {
+                return Err(Err::Failure(nom::Context::Code(
+                    i,
+                    nom::ErrorKind::Custom(ParseErrorKind::UnternimatedVariable),
+                )));
+            }
+        };
+        split_idx = idx;
+        if c == start_char {
+            count += 1;
+        } else if c == term_char {
+            count -= 1;
+        };
+    }
+
+    let (i, name_node) = i.take_split(split_idx + 1);
+    let name_node = name_node.slice(..name_node.len() - 1);
+    let name_node = match function_call(name_node, start_char, term_char) {
+        Ok(v) => v,
+        Err(Err::Failure(context)) => {
+            if context.clone().into_error_kind()
+                == nom::ErrorKind::Custom(ParseErrorKind::InternalFailure("not a function call"))
+            {
+                parse_ast(name_node)?
+            } else {
+                return Err(Err::Failure(context));
+            }
+        }
+        v => return v,
+    };
+
+    // quick sanity check as long as we're testing
+    #[cfg(test)]
+    assert_complete!(name_node.0);
+
+    let name_node = name_node.1;
+
+    Ok((i, ast::variable_reference(dollar_location, name_node)))
+}
+
+fn function_call<'a>(
+    i: BlockSpan<'a>,
+    start_char: char,
+    term_char: char,
+) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
+    fn no_such_function<'a>(i: BlockSpan<'a>) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
+        Err(Err::Failure(nom::Context::Code(
+            i,
+            ErrorKind::Custom(ParseErrorKind::InternalFailure("not a function call")),
+        )))
+    }
+
+    macro_rules! func_entry {
+        ($i: expr, $t:literal, $f:expr) => (
+            pe_complete!($i, preceded!(pair!(pe_fix!(tag!($t)),
+                                             many1!(makefile_whitespace)),
+                                       apply!($f, start_char, term_char)))
+        )
+    }
+
+    alt!(
+        i,
+        func_entry!("strip", strip) |
+        func_entry!("words", words) |
+        func_entry!("word", word) |
+        pe_complete!(no_such_function)
+    )
+}
+
+fn strip<'a>(
+    i: BlockSpan<'a>,
+    start_char: char,
+    term_char: char,
+) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
+    unimplemented!()
+}
+
+fn words<'a>(
+    i: BlockSpan<'a>,
+    start_char: char,
+    term_char: char,
+) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
+    unimplemented!()
+}
+
+fn word<'a>(
+    i: BlockSpan<'a>,
+    start_char: char,
+    term_char: char,
 ) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
     unimplemented!()
 }

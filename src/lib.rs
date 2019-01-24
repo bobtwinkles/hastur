@@ -82,6 +82,10 @@ pub enum ParseErrorKind {
     /// We failed to parse an `ifeq` for some reason. This also includes `ifneq`s.
     MalformedIfEq,
 
+    /// A variable reference of the form `$()` or `${}` was not terminated
+    /// before the end of the line
+    UnternimatedVariable,
+
     /// This variant should never surface in library consumer code in practice,
     /// but we need it to make nom types work out
     NomError(u32),

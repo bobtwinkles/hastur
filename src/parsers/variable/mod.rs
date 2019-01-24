@@ -68,7 +68,15 @@ pub(super) fn parse_line<'a>(
                 // The actual skip loop
                 while curr != close && count > 0 {
                     prev = curr;
-                    let (_, next) = next_safe!(it, "var skip");
+                    let (_, next) = match it.next() {
+                        Some(v) => v,
+                        None => {
+                            return Err(Err::Failure(nom::Context::Code(
+                                i,
+                                nom::ErrorKind::Custom(ParseErrorKind::UnternimatedVariable),
+                            )));
+                        }
+                    };
                     curr = next;
 
                     if curr == open {
