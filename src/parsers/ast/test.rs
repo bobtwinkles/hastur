@@ -107,6 +107,47 @@ fn recursive_variable_expansion() {
 }
 
 #[test]
+fn strip_basic() {
+    let block = create_span("$(strip foo)");
+    let res = assert_ok!(parse_ast(block.span()));
+    assert_complete!(res.0);
+    assert_eq!(
+        res.1,
+        ast::strip(
+            Location::test_location(1, 3),
+            ast::constant(
+                Location::test_location(1, 9),
+                LocatedString::new(Location::test_location(1, 9).into(), "foo".into())
+            )
+        )
+    )
+}
+
+#[test]
+fn strip_too_many_args() {
+    let block = create_span("$(strip foo,extra)");
+    let err = assert_err!(parse_ast(block.span()));
+    assert_err_contains!(err, ParseErrorKind::ExtraArguments("strip"));
+}
+
+#[test]
+fn word_basic() {
+    let block = create_span("$(word 1,foo)");
+    let res = assert_ok!(parse_ast(block.span()));
+    assert_complete!(res.0);
+    assert_eq!(
+        res.1,
+        ast::strip(
+            Location::test_location(1, 3),
+            ast::constant(
+                Location::test_location(1, 9),
+                LocatedString::new(Location::test_location(1, 9).into(), "foo".into())
+            )
+        )
+    )
+}
+
+#[test]
 fn argument_terminated_with_comma() {
     let block = create_span("foo,");
     let res = assert_ok!(function_argument(block.span()));

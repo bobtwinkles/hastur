@@ -86,6 +86,13 @@ pub enum ParseErrorKind {
     /// before the end of the line
     UnternimatedVariable,
 
+    /// A function was invoked with too few arguments. The returned string
+    /// indicates the function name
+    InsufficientArguments(&'static str),
+
+    /// A function was invoked with too many arguments.
+    ExtraArguments(&'static str),
+
     /// This variant should never surface in library consumer code in practice,
     /// but we need it to make nom types work out
     NomError(u32),

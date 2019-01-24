@@ -224,3 +224,11 @@ pub fn variable_reference(source_location: Location, name: AstNode) -> AstNode {
         source_location: source_location.into(),
     }
 }
+
+/// Create a new `strip` node
+pub fn strip(source_location: Location, value: AstNode) -> AstNode {
+    AstNode {
+        children: Box::new(AstChildren::Strip(value)),
+        source_location: source_location.into(),
+    }
+}

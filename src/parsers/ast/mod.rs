@@ -126,27 +126,26 @@ fn advanced_var<'a>(
 
     let (i, name_node) = i.take_split(split_idx + 1);
     let name_node = name_node.slice(..name_node.len() - 1);
-    let name_node = match function_call(name_node, start_char, term_char) {
-        Ok(v) => v,
+
+    match function_call(name_node, start_char, term_char) {
+        Ok(v) => Ok(v),
         Err(Err::Failure(context)) => {
             if context.clone().into_error_kind()
                 == nom::ErrorKind::Custom(ParseErrorKind::InternalFailure("not a function call"))
             {
-                parse_ast(name_node)?
+                let parsed = parse_ast(name_node)?;
+
+                // quick sanity check as long as we're testing
+                #[cfg(test)]
+                assert_complete!(parsed.0);
+
+                Ok((i, ast::variable_reference(dollar_location, parsed.1)))
             } else {
-                return Err(Err::Failure(context));
+                Err(Err::Failure(context))
             }
         }
-        v => return v,
-    };
-
-    // quick sanity check as long as we're testing
-    #[cfg(test)]
-    assert_complete!(name_node.0);
-
-    let name_node = name_node.1;
-
-    Ok((i, ast::variable_reference(dollar_location, name_node)))
+        v => v,
+    }
 }
 
 fn function_call<'a>(
@@ -162,19 +161,25 @@ fn function_call<'a>(
     }
 
     macro_rules! func_entry {
-        ($i: expr, $t:literal, $f:expr) => (
-            pe_complete!($i, preceded!(pair!(pe_fix!(tag!($t)),
-                                             many1!(makefile_whitespace)),
-                                       apply!($f, start_char, term_char)))
-        )
+        ($i: expr, $t:literal, $f:expr) => {
+            pe_complete!(
+                $i,
+                do_parse!(
+                    func_name: pe_fix!(tag!($t))
+                        >> many1!(makefile_whitespace)
+                        >> parsed: apply!($f, func_name.location().unwrap())
+                        >> (parsed)
+                )
+            )
+        };
     }
 
     alt!(
         i,
-        func_entry!("strip", strip) |
-        func_entry!("words", words) |
-        func_entry!("word", word) |
-        pe_complete!(no_such_function)
+        func_entry!("strip", strip)
+            | func_entry!("words", words)
+            | func_entry!("word", word)
+            | pe_complete!(no_such_function)
     )
 }
 
@@ -230,24 +235,31 @@ fn function_argument<'a>(
 
 fn strip<'a>(
     i: BlockSpan<'a>,
-    start_char: char,
-    term_char: char,
+    start_location: Location,
 ) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
-    unimplemented!()
+    let (i, arg) = function_argument(i)?;
+    if i.len() != 0 {
+        return Err(Err::Failure(nom::Context::Code(
+            i,
+            nom::ErrorKind::Custom(ParseErrorKind::ExtraArguments("strip")),
+        )));
+    }
+
+    let (i, arg) = parse_ast(arg)?;
+
+    Ok((i, ast::strip(start_location, arg)))
 }
 
 fn words<'a>(
     i: BlockSpan<'a>,
-    start_char: char,
-    term_char: char,
+    start_location: Location,
 ) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
     unimplemented!()
 }
 
 fn word<'a>(
     i: BlockSpan<'a>,
-    start_char: char,
-    term_char: char,
+    start_location: Location,
 ) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
     unimplemented!()
 }
