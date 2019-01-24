@@ -1,5 +1,6 @@
 //! Macros that operate using the ParseErrorKind
 
+/// A variant of nom's `complete!` macro that doesn't tie itself to `<i32>` in the error kind.
 #[macro_export]
 macro_rules! pe_complete {
     ($i:expr, $submac:ident!( $($args:tt)* )) => (
@@ -21,6 +22,7 @@ macro_rules! pe_complete {
     );
 }
 
+/// Shorthand for `fix_error!(crate::ParseErrorKind, ...)`
 #[macro_export]
 macro_rules! pe_fix {
     ($i:expr, $submac:ident ! ( $($args:tt)* )) => (
