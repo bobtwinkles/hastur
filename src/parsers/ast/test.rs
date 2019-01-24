@@ -183,12 +183,6 @@ fn argument_ignores_internal_commas() {
 #[test]
 fn unbalanced_reference() {
     let block = create_span("$(foo");
-    let res = parse_ast(block.span());
-    let err = std::dbg!(res).err().expect("AST should be an error");
-    let context = error_context(err).expect("There should be an error context");
-    let errors = nom::error_to_list(&context);
-    assert!(error_list_contains(
-        &errors,
-        ErrorKind::Custom(ParseErrorKind::UnternimatedVariable)
-    ));
+    let err = assert_err!(parse_ast(block.span()));
+    assert_err_contains!(err, ParseErrorKind::UnternimatedVariable);
 }

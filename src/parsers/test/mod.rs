@@ -42,6 +42,26 @@ macro_rules! assert_ok {
 }
 
 #[macro_export]
+macro_rules! assert_err {
+    ($r:expr) => {{
+        let r = $r;
+        match r {
+            Ok(v) => panic!("Unexpected success {:?}", v),
+            Err(e) => e,
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! assert_err_contains {
+    ($err:expr, $e:expr) => {{
+        let context = error_context($err).expect("There should be an error context");
+        let errors = std::dbg!(nom::error_to_list(&context));
+        assert!(error_list_contains(&errors, ErrorKind::Custom($e)));
+    }};
+}
+
+#[macro_export]
 macro_rules! assert_complete {
     ($b:expr) => {{
         let b = $b;
