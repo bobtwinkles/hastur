@@ -360,6 +360,17 @@ pub(crate) fn makefile_line(
     Ok((i, Block::new(Default::default(), lines)))
 }
 
+/// Create a new Nom `IResult` with our custom error kind
+pub(crate) fn error_out<'a, T>(
+    i: BlockSpan<'a>,
+    err: ParseErrorKind,
+) -> IResult<BlockSpan<'a>, T, ParseErrorKind> {
+    Err(NErr::Failure(nom::Context::Code(
+        i,
+        nom::ErrorKind::Custom(err),
+    )))
+}
+
 /// Test if a line ends with a backslash, in a Makefile compatible way
 pub(crate) fn ends_with_backslash(s: BlockSpan) -> usize {
     let mut backslash_count = 0;

@@ -2,7 +2,7 @@
 use crate::ast;
 use crate::ast::AstNode;
 use crate::evaluated::BlockSpan;
-use crate::parsers::makefile_whitespace;
+use crate::parsers::{error_out, makefile_whitespace};
 use crate::source_location::Location;
 use crate::ParseErrorKind;
 use nom::{Err, ErrorKind, IResult};
@@ -110,10 +110,7 @@ fn advanced_var<'a>(
         let (idx, c) = match it.next() {
             Some(v) => v,
             None => {
-                return Err(Err::Failure(nom::Context::Code(
-                    i,
-                    nom::ErrorKind::Custom(ParseErrorKind::UnternimatedVariable),
-                )));
+                return error_out(i, ParseErrorKind::UnternimatedVariable);
             }
         };
         split_idx = idx;
@@ -202,10 +199,7 @@ fn function_argument<'a>(
                     paren_count -= 1
                 } else {
                     // Somehow we ended up with unbalanced parens, abort
-                    return Err(Err::Failure(nom::Context::Code(
-                        i,
-                        nom::ErrorKind::Custom(ParseErrorKind::UnternimatedVariable),
-                    )));
+                    return error_out(i, ParseErrorKind::UnternimatedVariable);
                 }
             }
             '{' => curly_count += 1,
@@ -214,10 +208,7 @@ fn function_argument<'a>(
                     curly_count -= 1;
                 } else {
                     // Somehow we ended up with unbalanced braces, abort
-                    return Err(Err::Failure(nom::Context::Code(
-                        i,
-                        nom::ErrorKind::Custom(ParseErrorKind::UnternimatedVariable),
-                    )));
+                    return error_out(i, ParseErrorKind::UnternimatedVariable);
                 }
             }
             ',' => {
@@ -239,10 +230,7 @@ fn strip<'a>(
 ) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
     let (i, arg) = function_argument(i)?;
     if i.len() != 0 {
-        return Err(Err::Failure(nom::Context::Code(
-            i,
-            nom::ErrorKind::Custom(ParseErrorKind::ExtraArguments("strip")),
-        )));
+        return error_out(i, ParseErrorKind::ExtraArguments("strip"));
     }
 
     let (i, arg) = parse_ast(arg)?;
