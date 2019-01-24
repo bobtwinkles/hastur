@@ -249,5 +249,24 @@ fn word<'a>(
     i: BlockSpan<'a>,
     start_location: Location,
 ) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
-    unimplemented!()
+    let (i, index) = function_argument(i)?;
+    let (i, _) = match char!(i, ',') {
+        Ok(v) => v,
+        Err(_) => return error_out(i, ParseErrorKind::InsufficientArguments("word")),
+    };
+    let (index_remaining, index) = parse_ast(index)?;
+
+    let (i, list) = function_argument(i)?;
+    if i.len() != 0 {
+        return error_out(i, ParseErrorKind::ExtraArguments("word"));
+    }
+    let (list_remaining, list) = parse_ast(list)?;
+
+    #[cfg(test)]
+    {
+        assert_complete!(index_remaining);
+        assert_complete!(list_remaining);
+    }
+
+    Ok((i, ast::word(start_location, index, list)))
 }

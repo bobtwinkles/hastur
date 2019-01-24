@@ -137,14 +137,32 @@ fn word_basic() {
     assert_complete!(res.0);
     assert_eq!(
         res.1,
-        ast::strip(
+        ast::word(
             Location::test_location(1, 3),
             ast::constant(
-                Location::test_location(1, 9),
-                LocatedString::new(Location::test_location(1, 9).into(), "foo".into())
+                Location::test_location(1, 8),
+                LocatedString::new(Location::test_location(1, 8).into(), "1".into())
+            ),
+            ast::constant(
+                Location::test_location(1, 10),
+                LocatedString::new(Location::test_location(1, 10).into(), "foo".into())
             )
         )
     )
+}
+
+#[test]
+fn word_too_few_args() {
+    let block = create_span("$(word 1)");
+    let err = assert_err!(parse_ast(block.span()));
+    assert_err_contains!(err, ParseErrorKind::InsufficientArguments("word"));
+}
+
+#[test]
+fn word_too_many_args() {
+    let block = create_span("$(word 1,foo,extra)");
+    let err = assert_err!(parse_ast(block.span()));
+    assert_err_contains!(err, ParseErrorKind::ExtraArguments("word"));
 }
 
 #[test]

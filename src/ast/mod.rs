@@ -169,7 +169,7 @@ pub enum AstChildren {
     Strip(AstNode),
     /// The `word` make function
     // #SPC-V-AST.word
-    Word(AstNode),
+    Word { index: AstNode, words: AstNode },
     /// The `words` make function
     // #SPC-V-AST.words
     Words(AstNode),
@@ -229,6 +229,14 @@ pub fn variable_reference(source_location: Location, name: AstNode) -> AstNode {
 pub fn strip(source_location: Location, value: AstNode) -> AstNode {
     AstNode {
         children: Box::new(AstChildren::Strip(value)),
+        source_location: source_location.into(),
+    }
+}
+
+/// Create a new `word` node
+pub fn word(source_location: Location, index: AstNode, words: AstNode) -> AstNode {
+    AstNode {
+        children: Box::new(AstChildren::Word { index, words }),
         source_location: source_location.into(),
     }
 }
