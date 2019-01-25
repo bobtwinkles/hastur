@@ -233,6 +233,14 @@ pub fn strip(source_location: Location, value: AstNode) -> AstNode {
     }
 }
 
+/// Create a new `words` node
+pub fn words(source_location: Location, arg: AstNode) -> AstNode {
+    AstNode {
+        children: Box::new(AstChildren::Words(arg)),
+        source_location: source_location.into(),
+    }
+}
+
 /// Create a new `word` node
 pub fn word(source_location: Location, index: AstNode, words: AstNode) -> AstNode {
     AstNode {

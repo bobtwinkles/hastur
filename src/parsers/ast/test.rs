@@ -131,6 +131,23 @@ fn strip_too_many_args() {
 }
 
 #[test]
+fn words_basic() {
+    let block = create_span("$(words foo bar)");
+    let res = assert_ok!(parse_ast(block.span()));
+    assert_complete!(res.0);
+    assert_eq!(
+        res.1,
+        ast::words(
+            Location::test_location(1, 3),
+            ast::constant(
+                Location::test_location(1, 9),
+                LocatedString::new(Location::test_location(1, 9).into(), "foo bar".into())
+            )
+        )
+    )
+}
+
+#[test]
 fn word_basic() {
     let block = create_span("$(word 1,foo)");
     let res = assert_ok!(parse_ast(block.span()));

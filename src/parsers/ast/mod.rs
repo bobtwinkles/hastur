@@ -233,7 +233,12 @@ fn strip<'a>(
         return error_out(i, ParseErrorKind::ExtraArguments("strip"));
     }
 
-    let (i, arg) = parse_ast(arg)?;
+    let (arg_remaining, arg) = parse_ast(arg)?;
+
+    #[cfg(test)]
+    {
+        assert_complete!(arg_remaining);
+    }
 
     Ok((i, ast::strip(start_location, arg)))
 }
@@ -242,7 +247,19 @@ fn words<'a>(
     i: BlockSpan<'a>,
     start_location: Location,
 ) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
-    unimplemented!()
+    let (i, arg) = function_argument(i)?;
+    if i.len() != 0 {
+        return error_out(i, ParseErrorKind::ExtraArguments("words"));
+    }
+
+    let (arg_remaining, arg) = parse_ast(arg)?;
+
+    #[cfg(test)]
+    {
+        assert_complete!(arg_remaining);
+    }
+
+    Ok((i, ast::words(start_location, arg)))
 }
 
 fn word<'a>(
