@@ -59,7 +59,9 @@ pub(crate) fn parse_line<'a>(
 
         let mut prev;
         let mut curr = ' ';
+        let mut posix_simple_assign = false; // flag that is set when we see a POSIX assignment
         let mut it = i.iter_indices().peekable();
+
         let eq_idx = loop {
             prev = curr;
             let (curr_index, next) = next_safe!(it, "outer search");
@@ -111,6 +113,7 @@ pub(crate) fn parse_line<'a>(
                         // This is definitely a POSIX assignment. Break using the peeked index.
                         // Since prev is already ':', we should get picked up by
                         // the existing GNU syntax handling
+                        posix_simple_assign = true;
                         break *idx;
                     }
                 }
@@ -122,20 +125,25 @@ pub(crate) fn parse_line<'a>(
                 // #SPC-P-Variable.simple
                 // This catches both GNU style (:=) and POSIX style (::=)
                 // assignments
+                let end = if posix_simple_assign {
+                    eq_idx - 2
+                } else {
+                    eq_idx - 1
+                };
 
-                (Some(Flavor::Simple), eq_idx - 2, eq_idx + 1)
+                (Some(Flavor::Simple), end, eq_idx + 1)
             }
             '+' => {
                 // #SPC-P-Variable.append_set
-                (None, eq_idx - 2, eq_idx + 1)
+                (None, eq_idx - 1, eq_idx + 1)
             }
             '?' => {
                 // #SPC-P-Variable.conditional_set
-                (Some(Flavor::Conditional), eq_idx - 2, eq_idx + 1)
+                (Some(Flavor::Conditional), eq_idx - 1, eq_idx + 1)
             }
             '!' => {
                 // #SPC-P-Variable.shell_set
-                (Some(Flavor::Shell), eq_idx - 2, eq_idx + 1)
+                (Some(Flavor::Shell), eq_idx - 1, eq_idx + 1)
             }
             c => {
                 if !c.is_whitespace() && seen_whitespace {
@@ -149,7 +157,7 @@ pub(crate) fn parse_line<'a>(
                     );
                 } else {
                     // #SPC-P-Variable.recursive
-                    (Some(Flavor::Recursive), eq_idx - 1, eq_idx + 1)
+                    (Some(Flavor::Recursive), eq_idx, eq_idx + 1)
                 }
             }
         };
