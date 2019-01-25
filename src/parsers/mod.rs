@@ -11,12 +11,12 @@ mod test;
 #[macro_use]
 mod macros;
 
-mod ast;
+pub(crate) mod ast;
 mod comment;
 mod conditional;
 mod error_utils;
 mod recipe_line;
-mod variable;
+pub(crate) mod variable;
 
 use self::error_utils::lift_collapsed_span_error;
 use self::recipe_line::recipe_line;

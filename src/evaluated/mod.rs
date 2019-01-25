@@ -92,6 +92,11 @@ impl Block {
         self.content.push(content);
     }
 
+    /// Iterate over the contents of this block
+    pub fn content(&self) -> impl Iterator<Item = &ContentReference> {
+        self.content.iter()
+    }
+
     /// Simplify the contents of the block by reducing the size of concats and constants
     fn simplify(&mut self) {
         self.content = self
@@ -107,4 +112,33 @@ impl Block {
             })
             .collect();
     }
+}
+
+/// Create a content reference to a constant
+pub fn constant(contents: crate::source_location::LocatedString) -> ContentReference {
+    ContentReference::new_from_node(Arc::new(EvaluatedNode::Constant(contents)))
+}
+
+/// Create a content reference to a concatenation
+pub fn concat(contents: Arc<Block>) -> ContentReference {
+    ContentReference::new_from_node(Arc::new(EvaluatedNode::Concat(contents)))
+}
+
+/// Create a content reference to a variable reference
+pub fn variable_reference(name: Arc<Block>, value: Arc<Block>) -> ContentReference {
+    ContentReference::new_from_node(Arc::new(EvaluatedNode::VariableReference(
+        nodes::VariableReference::new(name, value),
+    )))
+}
+
+/// Create a content reference to a variable substitution reference
+pub fn substitution_reference(
+    name: Arc<Block>,
+    key: Arc<Block>,
+    replacement: Arc<Block>,
+    value: Arc<Block>,
+) -> ContentReference {
+    ContentReference::new_from_node(Arc::new(EvaluatedNode::SubstitutionReference(
+        nodes::SubstitutionReference::new(name, key, replacement, value),
+    )))
 }

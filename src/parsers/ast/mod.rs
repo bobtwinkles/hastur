@@ -11,7 +11,7 @@ use nom::{Err, ErrorKind, IResult};
 mod test;
 
 /// Extract a semantic variable evaluation AST from the provided block span
-pub(super) fn parse_ast<'a>(
+pub(crate) fn parse_ast<'a>(
     mut i: BlockSpan<'a>,
 ) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
     use nom::Slice;

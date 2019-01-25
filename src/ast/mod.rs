@@ -8,6 +8,9 @@ use crate::source_location::{LocatedString, Location, Marker};
 use crate::VariableName;
 use std::sync::Arc;
 
+#[cfg(test)]
+mod test;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct AstNode {
     source_location: Marker,
@@ -65,17 +68,14 @@ impl AstNode {
 
         macro_rules! deref_variable {
             ($name:expr) => {{
-                // TODO: rewrite this fragment so we only try interning once.
-                // this will require an API for getting variable values from the
-                // context using interned variable names.
-                let name = $name;
-                let value = if let Some(var) = context.get_variable(&name) {
+                let interned_variable_name = context.intern_variable_name($name);
+                let value = if let Some(var) = context.get_variable(interned_variable_name) {
                     let var_ast = var.ast().clone();
                     eval_subexpr!(var_ast)
                 } else {
                     Block::empty()
                 };
-                sensitivity.insert(context.intern_variable_name(name));
+                sensitivity.insert(interned_variable_name);
 
                 value
             }};
@@ -90,6 +90,7 @@ impl AstNode {
                 .map(|child| eval_child!(child))
                 .flatten()
                 .collect(),
+            AstChildren::PreEvaluated(ref block) => block.content().map(|x| x.clone()).collect(),
             AstChildren::VariableReference(name) => {
                 // Compute the variable name, and then try to evaluate it
                 let name = eval_subexpr!(name);

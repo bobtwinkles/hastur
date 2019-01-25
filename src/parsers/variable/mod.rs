@@ -15,7 +15,7 @@ use nom::{Err, ErrorKind, IResult};
 mod test;
 
 /// Attempt to parse a variable reference in the context of a given database
-pub(super) fn parse_line<'a>(
+pub(crate) fn parse_line<'a>(
     i: BlockSpan<'a>,
     db: &mut crate::Database,
 ) -> IResult<BlockSpan<'a>, (VariableName, VariableParameters), ParseErrorKind> {

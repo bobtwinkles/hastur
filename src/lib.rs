@@ -288,10 +288,7 @@ impl Database {
     }
 
     /// Set the value of a variable
-    /// TODO: audit this function's parameters. We don't always need to allocate here
-    pub fn set_variable(&mut self, name: impl Into<String>, value: VariableParameters) {
-        let name = name.into();
-        let name = self.intern_variable_name(name);
+    pub fn set_variable(&mut self, name: VariableName, value: VariableParameters) {
         self.variables.insert(name, value);
     }
 
@@ -300,11 +297,10 @@ impl Database {
     pub fn set_variable_for_target(
         &mut self,
         target: impl Into<String>,
-        name: impl Into<String>,
+        name: VariableName,
         value: VariableParameters,
     ) {
         let target = target.into();
-        let name = self.intern_variable_name(name.into());
         self.target_variables
             .entry(target)
             .or_default()
@@ -312,7 +308,14 @@ impl Database {
     }
 
     /// Get a variable based on a name
-    pub fn get_variable(&self, name: impl AsRef<str>) -> Option<Variable> {
+    pub fn get_variable(&self, name: VariableName) -> Option<Variable> {
+        self.variables
+            .get(&name)
+            .map(|val| Variable::new(self, val))
+    }
+
+    /// Get a variable based on a string name
+    pub fn get_variable_str(&self, name: &str) -> Option<Variable> {
         self.variables
             .get(&VariableName(self.variable_names.get(name)?))
             .map(|val| Variable::new(self, val))
@@ -573,9 +576,15 @@ impl Engine {
      */
 }
 
-/*
 #[cfg(test)]
 mod test {
+    use super::Database;
+
+    pub(crate) fn empty_database() -> Database {
+        Default::default()
+    }
+
+    /*
     use crate::ParserState;
 
     fn clean_parser_state<'a>(fname: &'a str) -> ParserState<'a> {
@@ -622,5 +631,5 @@ mod test {
             assert_eq!(parse_state, parse_state_reference);
         }
     }
+     */
 }
-*/
