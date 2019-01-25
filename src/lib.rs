@@ -28,6 +28,11 @@ extern crate nom;
 // #[macro_use]
 // extern crate lazy_static;
 
+/// Internal macros for use in test assertions
+#[cfg(test)]
+#[macro_use]
+mod test_macros;
+
 pub mod ast;
 mod eval;
 pub mod evaluated;

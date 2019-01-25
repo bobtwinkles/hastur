@@ -30,60 +30,6 @@ pub(super) fn leftover_span(fragment: &str, character: u32, line: u32) -> Arc<Bl
     tr
 }
 
-#[macro_export]
-macro_rules! assert_ok {
-    ($r:expr) => {{
-        let r = $r;
-        match r {
-            Ok(v) => v,
-            Err(e) => panic!("Unexpected error {:?}", e),
-        }
-    }};
-}
-
-#[macro_export]
-macro_rules! assert_err {
-    ($r:expr) => {{
-        let r = $r;
-        match r {
-            Ok(v) => panic!("Unexpected success {:?}", v),
-            Err(e) => e,
-        }
-    }};
-}
-
-#[macro_export]
-macro_rules! assert_err_contains {
-    ($err:expr, $e:expr) => {{
-        let context = error_context($err).expect("There should be an error context");
-        let errors = std::dbg!(nom::error_to_list(&context));
-        assert!(error_list_contains(&errors, ErrorKind::Custom($e)));
-    }};
-}
-
-#[macro_export]
-macro_rules! assert_complete {
-    ($b:expr) => {{
-        let b = $b;
-        assert_eq!(b.segments().next(), None);
-    }};
-}
-
-#[macro_export]
-macro_rules! assert_segments_eq {
-    ($s:expr, $contents:expr) => {{
-        use crate::source_location::LocatedStr;
-        let s = $s;
-        let contents = $contents;
-
-        for (ref segment, (content, loc)) in s.segments().zip(contents.iter()) {
-            assert_eq!(segment, &LocatedStr::new(loc.clone().into(), content));
-        }
-
-        assert_eq!(s.segments().count(), contents.len());
-    }};
-}
-
 pub(super) fn simple_line(s: &str) -> Arc<Block> {
     super::makefile_line(create_span(s).span(), super::ParserCompliance::GNU, false)
         .unwrap()
