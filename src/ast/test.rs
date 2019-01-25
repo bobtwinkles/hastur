@@ -38,6 +38,10 @@ fn insert_variable_from_line(db: &mut Database, variable: LocatedString) -> Vari
     variable_name
 }
 
+fn mk_sensitivity(expected: &[VariableName]) -> fxhash::FxHashSet<VariableName> {
+    expected.iter().map(|x| *x).collect()
+}
+
 #[test]
 fn const_sanity() {
     let block = single_block("foo");
@@ -58,7 +62,7 @@ fn var_ref_simple() {
     let mut database = empty_database();
     let variable =
         insert_variable_from_line(&mut database, LocatedString::test_new(2, 1, "foo := bar"));
-    let expected_sensitivity = [variable].iter().map(|x| *x).collect();
+    let expected_sensitivity = mk_sensitivity(&[variable]);
 
     let val = ast.eval(&mut database);
     assert_eq!(
@@ -68,6 +72,50 @@ fn var_ref_simple() {
             vec![evaluated::variable_reference(
                 block_from_reference(evaluated::constant(LocatedString::test_new(1, 3, "foo"))),
                 block_from_reference(evaluated::constant(LocatedString::test_new(2, 8, "bar")))
+            )]
+        )
+    )
+}
+
+#[test]
+fn var_ref_recursive() {
+    let block = single_block("$($(foo))");
+    let ast = ast_parse!(block);
+
+    let mut database = empty_database();
+    let foo = insert_variable_from_line(&mut database, LocatedString::test_new(2, 1, "foo := bar"));
+    let bar = insert_variable_from_line(&mut database, LocatedString::test_new(3, 1, "bar := baz"));
+
+    let foo_senstivity = mk_sensitivity(&[foo]);
+    let overall_sensitivity = mk_sensitivity(&[foo, bar]);
+
+    let val = ast.eval(&mut database);
+
+    assert_eq!(
+        val,
+        Block::new(
+            overall_sensitivity,
+            vec![evaluated::variable_reference(
+                Block::new(
+                    foo_senstivity.clone(),
+                    vec![evaluated::variable_reference(
+                        Block::new(
+                            foo_senstivity,
+                            vec![evaluated::variable_reference(
+                                block_from_reference(evaluated::constant(LocatedString::test_new(
+                                    1, 5, "foo"
+                                ))),
+                                block_from_reference(evaluated::constant(LocatedString::test_new(
+                                    2, 9, "bar"
+                                ))),
+                            )]
+                        ),
+                        block_from_reference(evaluated::constant(LocatedString::test_new(
+                            2, 8, "bar"
+                        ))),
+                    )]
+                ),
+                block_from_reference(evaluated::constant(LocatedString::test_new(3, 8, "baz")))
             )]
         )
     )
