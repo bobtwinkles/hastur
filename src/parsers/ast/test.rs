@@ -14,7 +14,7 @@ fn simple() {
         res.1,
         ast::constant(
             Location::test_location(1, 1),
-            LocatedString::new(Location::test_location(1, 1).into(), "ab".into())
+            LocatedString::test_new(1, 1, "ab")
         )
     )
 }
@@ -31,7 +31,7 @@ fn single_char_ref() {
             Location::test_location(1, 1),
             ast::constant(
                 Location::test_location(1, 2),
-                LocatedString::new(Location::test_location(1, 2).into(), "a".into())
+                LocatedString::test_new(1, 2, "a")
             )
         )
     )
@@ -47,7 +47,7 @@ fn dollar_at_end() {
         res.1,
         ast::constant(
             Location::test_location(1, 1),
-            LocatedString::new(Location::test_location(1, 1).into(), "$".into())
+            LocatedString::test_new(1, 1, "$")
         )
     );
 }
@@ -62,7 +62,7 @@ fn dollar_escape() {
         res.1,
         ast::constant(
             Location::test_location(1, 1),
-            LocatedString::new(Location::test_location(1, 2).into(), "$".into())
+            LocatedString::test_new(1, 2, "$")
         )
     );
 }
@@ -79,7 +79,7 @@ fn long_var_name() {
             Location::test_location(1, 1),
             ast::constant(
                 Location::test_location(1, 3),
-                LocatedString::new(Location::test_location(1, 3).into(), "foo".into())
+                LocatedString::test_new(1, 3, "foo")
             )
         )
     );
@@ -99,7 +99,7 @@ fn recursive_variable_expansion() {
                 Location::test_location(1, 3),
                 ast::constant(
                     Location::test_location(1, 5),
-                    LocatedString::new(Location::test_location(1, 5).into(), "foo".into())
+                    LocatedString::test_new(1, 5, "foo")
                 )
             )
         )
@@ -117,7 +117,7 @@ fn strip_basic() {
             Location::test_location(1, 3),
             ast::constant(
                 Location::test_location(1, 9),
-                LocatedString::new(Location::test_location(1, 9).into(), "foo".into())
+                LocatedString::test_new(1, 9, "foo")
             )
         )
     )
@@ -141,7 +141,7 @@ fn words_basic() {
             Location::test_location(1, 3),
             ast::constant(
                 Location::test_location(1, 9),
-                LocatedString::new(Location::test_location(1, 9).into(), "foo bar".into())
+                LocatedString::test_new(1, 9, "foo bar")
             )
         )
     )
@@ -158,11 +158,11 @@ fn word_basic() {
             Location::test_location(1, 3),
             ast::constant(
                 Location::test_location(1, 8),
-                LocatedString::new(Location::test_location(1, 8).into(), "1".into())
+                LocatedString::test_new(1, 8, "1")
             ),
             ast::constant(
                 Location::test_location(1, 10),
-                LocatedString::new(Location::test_location(1, 10).into(), "foo".into())
+                LocatedString::test_new(1, 10, "foo")
             )
         )
     )
