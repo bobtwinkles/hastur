@@ -6,7 +6,7 @@ use crate::evaluated;
 use crate::evaluated::test::single_block;
 use crate::parsers::ast::parse_ast;
 use crate::parsers::variable::parse_line as parse_variable_line;
-use crate::source_location::{LocatedString, Location};
+use crate::source_location::{LocatedString};
 use crate::test::empty_database;
 use crate::Database;
 
@@ -25,17 +25,23 @@ fn block_from_reference(c: ContentReference) -> std::sync::Arc<evaluated::Block>
 }
 
 fn insert_variable_from_line(db: &mut Database, variable: LocatedString) -> VariableName {
+    use crate::parsers::variable::Action;
+
     let block = block_from_reference(evaluated::constant(variable));
     let variable_op = assert_ok!(parse_variable_line(block.span(), db));
     assert_complete!(variable_op.0);
-    let (variable_name, variable_op) = variable_op.1;
+    let variable_op = variable_op.1;
 
-    match variable_op.flavor {
-        Flavor::Recursive | Flavor::Simple => db.set_variable(variable_name, variable_op),
-        _ => unimplemented!(),
+    match variable_op.action {
+        Action::Define(params) =>
+            match params.flavor {
+                Flavor::Recursive | Flavor::Simple => db.set_variable(variable_op.name, params),
+                v => unimplemented!("{:?}", v),
+            }
+        v => unimplemented!("{:?}", v)
     }
 
-    variable_name
+    variable_op.name
 }
 
 fn mk_sensitivity(expected: &[VariableName]) -> fxhash::FxHashSet<VariableName> {

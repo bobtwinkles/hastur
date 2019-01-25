@@ -11,21 +11,15 @@ mod test;
 /// What flavor is this variable
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Flavor {
-    /// For variable that can't be expanded for whatever reason
-    Bogus,
     /// Simple (non-recursively expanded, not from shell, etc.) variables
     /// Created from := or ::= statements
     Simple,
     /// Recursively expanded variable (assigned via =)
     Recursive,
     /// An appending definition from +=
-    Append,
-    /// A definition from a ?= statement
     Conditional,
     /// A shell assignment (!=)
     Shell,
-    /// Append unexpanded value
-    AppendUnexpanded,
 }
 
 /// Where did the variable come from
@@ -48,6 +42,7 @@ pub enum Origin {
 }
 
 /// Everything we need to know to expand a variable
+#[derive(Clone, Debug, PartialEq)]
 pub struct VariableParameters {
     pub(crate) unexpanded_value: AstNode,
     pub(crate) flavor: Flavor,

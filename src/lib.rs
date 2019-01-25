@@ -284,7 +284,13 @@ impl Database {
 
     /// Intern a variable name
     pub fn intern_variable_name(&mut self, variable_name: String) -> VariableName {
+        eprintln!("Intern variable {:?}", variable_name);
         VariableName(self.variable_names.get_or_intern(variable_name))
+    }
+
+    /// Try to get a variable name from a string
+    pub fn variable_name(&self, variable_name: &str) -> Option<VariableName> {
+        self.variable_names.get(variable_name).map(VariableName)
     }
 
     /// Set the value of a variable

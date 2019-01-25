@@ -9,16 +9,32 @@ use crate::evaluated::BlockSpan;
 use crate::parsers::ast::parse_ast;
 use crate::ParseErrorKind;
 use crate::VariableName;
-use nom::{Err, ErrorKind, IResult};
+use nom::IResult;
 
 #[cfg(test)]
 mod test;
+
+/// What action to apply to the variable
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum Action {
+    /// (re)define the variable
+    Define(VariableParameters),
+    /// Append to the specified variable
+    Append,
+}
+
+/// What action to take with the variable
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct VariableAction {
+    pub name: VariableName,
+    pub action: Action,
+}
 
 /// Attempt to parse a variable reference in the context of a given database
 pub(crate) fn parse_line<'a>(
     i: BlockSpan<'a>,
     db: &mut crate::Database,
-) -> IResult<BlockSpan<'a>, (VariableName, VariableParameters), ParseErrorKind> {
+) -> IResult<BlockSpan<'a>, VariableAction, ParseErrorKind> {
     use nom::Slice;
 
     let (i, _) = makefile_whitespace(i)?; // Skip to the first non-whitespace token
@@ -96,19 +112,19 @@ pub(crate) fn parse_line<'a>(
                 // This catches both GNU style (:=) and POSIX style (::=)
                 // assignments
 
-                (Flavor::Simple, eq_idx - 2, eq_idx + 1)
+                (Some(Flavor::Simple), eq_idx - 2, eq_idx + 1)
             }
             '+' => {
                 // #SPC-P-Variable.append_set
-                (Flavor::Append, eq_idx - 2, eq_idx + 1)
+                (None, eq_idx - 2, eq_idx + 1)
             }
             '?' => {
                 // #SPC-P-Variable.conditional_set
-                (Flavor::Conditional, eq_idx - 2, eq_idx + 1)
+                (Some(Flavor::Conditional), eq_idx - 2, eq_idx + 1)
             }
             '!' => {
                 // #SPC-P-Variable.shell_set
-                (Flavor::Shell, eq_idx - 2, eq_idx + 1)
+                (Some(Flavor::Shell), eq_idx - 2, eq_idx + 1)
             }
             c => {
                 if !c.is_whitespace() && seen_whitespace {
@@ -122,7 +138,7 @@ pub(crate) fn parse_line<'a>(
                     );
                 } else {
                     // #SPC-P-Variable.recursive
-                    (Flavor::Recursive, eq_idx - 1, eq_idx + 1)
+                    (Some(Flavor::Recursive), eq_idx - 1, eq_idx + 1)
                 }
             }
         };
@@ -136,10 +152,10 @@ pub(crate) fn parse_line<'a>(
     let (_, name_ast) = parse_ast(name_segment)?;
     let (post_value, mut value_ast) = parse_ast(value_segment)?;
 
-    let variable_name = name_ast.eval(db).into_string();
+    let variable_name = name_ast.eval(db).into_string().trim().into();
     let variable_name = db.intern_variable_name(variable_name);
 
-    if flavor == Flavor::Simple {
+    if flavor == Some(Flavor::Simple) {
         // Evaluate the value AST
         let contents = value_ast.eval(db);
         let location = value_segment.segments().next().unwrap().location().clone();
@@ -150,9 +166,16 @@ pub(crate) fn parse_line<'a>(
     // inspect ask the block span whether it comes from an $(eval) or a file
     Ok((
         post_value,
-        (
-            variable_name,
-            VariableParameters::new(value_ast, flavor, crate::eval::Origin::File),
-        ),
+        VariableAction {
+            name: variable_name,
+            action: match flavor {
+                Some(flavor) => Action::Define(VariableParameters::new(
+                    value_ast,
+                    flavor,
+                    crate::eval::Origin::File,
+                )),
+                None => Action::Append,
+            },
+        },
     ))
 }
