@@ -59,7 +59,7 @@ pub(crate) fn parse_line<'a>(
 
         let mut prev;
         let mut curr = ' ';
-        let mut it = i.iter_indices();
+        let mut it = i.iter_indices().peekable();
         let eq_idx = loop {
             prev = curr;
             let (curr_index, next) = next_safe!(it, "outer search");
@@ -103,6 +103,17 @@ pub(crate) fn parse_line<'a>(
             }
             if curr == '=' {
                 break curr_index;
+            }
+            if curr == ':' && prev == ':' {
+                // We're on the second colon of a double colon. This could be a POSIX assignment
+                if let Some((idx, next)) = it.peek() {
+                    if *next == '=' {
+                        // This is definitely a POSIX assignment. Break using the peeked index.
+                        // Since prev is already ':', we should get picked up by
+                        // the existing GNU syntax handling
+                        break *idx;
+                    }
+                }
             }
         };
 
