@@ -1,7 +1,7 @@
 //! Parser for variable definitions
 
 // #SPC-P-Variable
-use super::makefile_whitespace;
+use super::{error_out, makefile_whitespace};
 use crate::ast;
 use crate::eval::Flavor;
 use crate::eval::VariableParameters;
@@ -31,10 +31,7 @@ pub(super) fn parse_line<'a>(
                 None => {
                     // We reached the end of the block span without finding an equals sign,
                     // this isn't a variable expansion
-                    return Err(Err::Failure(nom::Context::Code(
-                        i,
-                        ErrorKind::Custom(ParseErrorKind::InternalFailure($op)),
-                    )));
+                    return error_out(i, ParseErrorKind::InternalFailure($op));
                 }
             }
         };
@@ -71,10 +68,7 @@ pub(super) fn parse_line<'a>(
                     let (_, next) = match it.next() {
                         Some(v) => v,
                         None => {
-                            return Err(Err::Failure(nom::Context::Code(
-                                i,
-                                nom::ErrorKind::Custom(ParseErrorKind::UnternimatedVariable),
-                            )));
+                            return error_out(i, ParseErrorKind::UnternimatedVariable);
                         }
                     };
                     curr = next;
@@ -120,12 +114,12 @@ pub(super) fn parse_line<'a>(
                 if !c.is_whitespace() && seen_whitespace {
                     // We skipped over some whitespace, but then got some garbage
                     // character before the = operator. This is not an assignment
-                    return Err(Err::Failure(nom::Context::Code(
+                    return error_out(
                         i,
-                        ErrorKind::Custom(ParseErrorKind::InternalFailure(
+                        ParseErrorKind::InternalFailure(
                             "seen whitespace but not a valid variable assign",
-                        )),
-                    )));
+                        ),
+                    );
                 } else {
                     // #SPC-P-Variable.recursive
                     (Flavor::Recursive, eq_idx - 1, eq_idx + 1)
