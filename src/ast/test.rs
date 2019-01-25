@@ -97,19 +97,11 @@ fn var_ref_recursive() {
             overall_sensitivity,
             vec![evaluated::variable_reference(
                 Block::new(
-                    foo_senstivity.clone(),
+                    foo_senstivity,
                     vec![evaluated::variable_reference(
-                        Block::new(
-                            foo_senstivity,
-                            vec![evaluated::variable_reference(
-                                block_from_reference(evaluated::constant(LocatedString::test_new(
-                                    1, 5, "foo"
-                                ))),
-                                block_from_reference(evaluated::constant(LocatedString::test_new(
-                                    2, 9, "bar"
-                                ))),
-                            )]
-                        ),
+                        block_from_reference(evaluated::constant(LocatedString::test_new(
+                            1, 5, "foo"
+                        ))),
                         block_from_reference(evaluated::constant(LocatedString::test_new(
                             2, 8, "bar"
                         ))),
