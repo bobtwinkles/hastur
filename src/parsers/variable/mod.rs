@@ -1,14 +1,15 @@
 //! Parser for variable definitions
-use super::{makefile_line, makefile_whitespace};
+
+// #SPC-P-Variable
+use super::makefile_whitespace;
 use crate::ast;
 use crate::eval::Flavor;
 use crate::eval::VariableParameters;
-use crate::evaluated::{Block, BlockSpan};
+use crate::evaluated::BlockSpan;
 use crate::parsers::ast::parse_ast;
 use crate::ParseErrorKind;
-use crate::{Database, VariableName};
+use crate::VariableName;
 use nom::{Err, ErrorKind, IResult};
-use std::sync::Arc;
 
 #[cfg(test)]
 mod test;
@@ -43,7 +44,7 @@ pub(super) fn parse_line<'a>(
     let (flavor, name_end, value_start) = {
         use nom::InputIter;
 
-        let mut prev = ' ';
+        let mut prev;
         let mut curr = ' ';
         let mut it = i.iter_indices();
         let eq_idx = loop {
@@ -67,7 +68,6 @@ pub(super) fn parse_line<'a>(
                 let mut count = 0;
                 // The actual skip loop
                 while curr != close && count > 0 {
-                    prev = curr;
                     let (_, next) = match it.next() {
                         Some(v) => v,
                         None => {
@@ -98,14 +98,24 @@ pub(super) fn parse_line<'a>(
 
         let (flavor, name_end, value_start) = match prev {
             ':' => {
+                // #SPC-P-Variable.simple
                 // This catches both GNU style (:=) and POSIX style (::=)
                 // assignments
 
                 (Flavor::Simple, eq_idx - 2, eq_idx + 1)
             }
-            '+' => (Flavor::Append, eq_idx - 2, eq_idx + 1),
-            '?' => (Flavor::Conditional, eq_idx - 2, eq_idx + 1),
-            '!' => (Flavor::Shell, eq_idx - 2, eq_idx + 1),
+            '+' => {
+                // #SPC-P-Variable.append_set
+                (Flavor::Append, eq_idx - 2, eq_idx + 1)
+            }
+            '?' => {
+                // #SPC-P-Variable.conditional_set
+                (Flavor::Conditional, eq_idx - 2, eq_idx + 1)
+            }
+            '!' => {
+                // #SPC-P-Variable.shell_set
+                (Flavor::Shell, eq_idx - 2, eq_idx + 1)
+            }
             c => {
                 if !c.is_whitespace() && seen_whitespace {
                     // We skipped over some whitespace, but then got some garbage
@@ -117,6 +127,7 @@ pub(super) fn parse_line<'a>(
                         )),
                     )));
                 } else {
+                    // #SPC-P-Variable.recursive
                     (Flavor::Recursive, eq_idx - 1, eq_idx + 1)
                 }
             }
