@@ -227,6 +227,7 @@ pub fn variable_reference(source_location: Location, name: AstNode) -> AstNode {
 }
 
 /// Create a new `strip` node
+#[inline]
 pub fn strip(source_location: Location, value: AstNode) -> AstNode {
     AstNode {
         children: Box::new(AstChildren::Strip(value)),
@@ -235,6 +236,7 @@ pub fn strip(source_location: Location, value: AstNode) -> AstNode {
 }
 
 /// Create a new `words` node
+#[inline]
 pub fn words(source_location: Location, arg: AstNode) -> AstNode {
     AstNode {
         children: Box::new(AstChildren::Words(arg)),
@@ -243,6 +245,7 @@ pub fn words(source_location: Location, arg: AstNode) -> AstNode {
 }
 
 /// Create a new `word` node
+#[inline]
 pub fn word(source_location: Location, index: AstNode, words: AstNode) -> AstNode {
     AstNode {
         children: Box::new(AstChildren::Word { index, words }),
