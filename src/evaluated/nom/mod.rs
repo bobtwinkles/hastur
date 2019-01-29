@@ -2,7 +2,8 @@
 use super::BlockSpan;
 
 use nom::{
-    AtEof, Compare, FindSubstring, InputIter, InputLength, InputTake, InputTakeAtPosition, Slice,
+    AtEof, Compare, FindSubstring, InputIter, InputLength, InputTake, InputTakeAtPosition, Offset,
+    Slice,
 };
 use nom::{CompareResult, Context, Err, ErrorKind, IResult};
 use std::ops::{Range, RangeFrom, RangeTo};
@@ -234,5 +235,27 @@ impl<'a, 'b> FindSubstring<&'b str> for BlockSpan<'a> {
         }
 
         None
+    }
+}
+
+impl<'a> Offset for BlockSpan<'a> {
+    fn offset(&self, second: &Self) -> usize {
+        let fst = self.contents.as_ptr();
+        let snd = second.contents.as_ptr();
+        assert!(fst <= snd);
+        assert!(snd <= unsafe{fst.offset(self.contents.len() as isize)});
+
+        let delta_ptrs = (snd as usize) - (fst as usize);
+        if delta_ptrs == 0 {
+            second.offset - self.offset
+        } else {
+            let mut tr = self.contents[0].length - self.offset;
+            let mut walk = &self.contents[1..];
+            while walk.len() > 0 && walk.as_ptr() != snd {
+                tr += walk[0].length;
+                walk = &walk[1..];
+            }
+            tr
+        }
     }
 }

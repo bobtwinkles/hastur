@@ -8,7 +8,6 @@ mod arguments;
 mod strip;
 mod word;
 mod words;
-mod substitution_reference;
 
 #[test]
 fn simple() {

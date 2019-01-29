@@ -94,35 +94,43 @@ impl AstNode {
             AstChildren::VariableReference(name) => {
                 // Compute the variable name, and then try to evaluate it
                 let name = eval_subexpr!(name);
-                let value = deref_variable!(name.into_string());
-
-                vec![ContentReference::new_from_node(Arc::new(
-                    EvaluatedNode::VariableReference(enodes::VariableReference::new(name, value)),
-                ))]
-            }
-            AstChildren::SubstitutionReference {
-                ref variable,
-                ref key,
-                ref replacement,
-            } => {
-                let variable = eval_subexpr!(variable);
-                let variable_value = deref_variable!(variable.into_string());
-                let key = eval_subexpr!(key);
-                let replacement = eval_subexpr!(replacement);
-
-                let value = Block::new(
-                    sensitivity.clone(),
-                    do_subref(variable_value, key.clone(), replacement.clone()),
+                eprintln!("Name is {:?}", name.into_string());
+                let colon_find = pair!(
+                    name.span(),
+                    recognize!(many1!(take_until_and_consume!(":"))),
+                    recognize!(many1!(take_until_and_consume!("=")))
                 );
+                match colon_find {
+                    Ok((replacement, (name, key))) => {
+                        use nom::Slice;
+                        // We need to strip off the terminating : and =, hence the slices
+                        let name = name.slice(..name.len() - 1).to_new_block();
+                        let key = key.slice(..key.len() - 1).to_new_block();
+                        let replacement = replacement.to_new_block();
+                        let value = deref_variable!(name.into_string());
 
-                vec![ContentReference::new_from_node(Arc::new(
-                    EvaluatedNode::SubstitutionReference(enodes::SubstitutionReference::new(
-                        variable,
-                        key,
-                        replacement,
-                        value,
-                    )),
-                ))]
+                        let value = Block::new(
+                            sensitivity.clone(),
+                            do_subref(value, key.clone(), replacement.clone()),
+                        );
+
+                        vec![ContentReference::new_from_node(Arc::new(
+                            EvaluatedNode::SubstitutionReference(
+                                enodes::SubstitutionReference::new(name, key, replacement, value),
+                            ),
+                        ))]
+                    }
+                    Err(_) => {
+                        // If we fail to recognize a replacement, just treat it as a regular reference
+                        let value = deref_variable!(name.into_string());
+
+                        vec![ContentReference::new_from_node(Arc::new(
+                            EvaluatedNode::VariableReference(enodes::VariableReference::new(
+                                name, value,
+                            )),
+                        ))]
+                    }
+                }
             }
             v => unimplemented!("Node {:?} unimplemented", v),
         };
@@ -137,7 +145,12 @@ fn do_subref(
     key: Arc<Block>,
     replacement: Arc<Block>,
 ) -> Vec<ContentReference> {
-    unimplemented!();
+    unimplemented!(
+        "variable substitution: replacing {:?} with {:?} in {:?}",
+        key.into_string(),
+        replacement.into_string(),
+        variable_value.into_string()
+    );
 }
 
 /// Represents the different types of AST nodes
@@ -158,13 +171,6 @@ pub enum AstChildren {
     /// Reference to a variable
     // #SPC-V-AST.variable_reference
     VariableReference(AstNode),
-    /// Reference to a variable, performing substitution
-    // #SPC-V-AST.substitution_reference
-    SubstitutionReference {
-        variable: AstNode,
-        key: AstNode,
-        replacement: AstNode,
-    },
     /// The `strip` make function
     // #SPC-V-AST.strip
     Strip(AstNode),
