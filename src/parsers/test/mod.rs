@@ -263,3 +263,40 @@ mod makefile_whitespace {
         assert_segments_eq!(parse.0, &[("a", Location::test_location(1, 4))]);
     }
 }
+
+mod tokens {
+    use crate::parsers::makefile_token;
+    use nom::types::CompleteStr;
+    use std::ops::Deref;
+
+    #[test]
+    fn empty() {
+        let (remaining, content) = assert_ok!(makefile_token(CompleteStr("")));
+        assert_eq!(*remaining.deref(), "");
+        assert_eq!(*content.deref(), "");
+    }
+
+    #[test]
+    fn pre_spaces() {
+        let (remaining, content) = assert_ok!(makefile_token(CompleteStr(" \ta")));
+        assert_eq!(*remaining.deref(), "");
+        assert_eq!(*content.deref(), "a");
+    }
+
+    #[test]
+    fn post_spaces() {
+        let (remaining, content) = assert_ok!(makefile_token(CompleteStr("a \t")));
+        assert_eq!(*remaining.deref(), "");
+        assert_eq!(*content.deref(), "a");
+    }
+
+    #[test]
+    fn multiple() {
+        let (remaining, content) = assert_ok!(makefile_token(CompleteStr("a b")));
+        assert_eq!(*remaining.deref(), "b");
+        assert_eq!(*content.deref(), "a");
+        let (remaining, content) = assert_ok!(makefile_token(remaining));
+        assert_eq!(*remaining.deref(), "");
+        assert_eq!(*content.deref(), "b");
+    }
+}

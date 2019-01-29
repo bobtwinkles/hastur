@@ -221,6 +221,22 @@ fn makefile_whitespace<T: nom::InputTakeAtPosition<Item = char>>(
     fix_error!(input, ParseErrorKind, take_till!(|c| c != ' ' && c != '\t'))
 }
 
+/// Capture the next token in the input
+#[inline]
+pub fn makefile_token<T>(input: T) -> IResult<T, T, ParseErrorKind>
+where
+    T: Clone + nom::InputTakeAtPosition<Item = char>,
+{
+    pe_fix!(
+        input,
+        delimited!(
+            makefile_whitespace,
+            pe_fix!(take_while!(|c| c != ' ' && c != '\t')),
+            makefile_whitespace
+        )
+    )
+}
+
 /// Controls various aspects of the parser, making it conform to either the GNU
 /// conventions or have strict POSIX compliance
 #[derive(Copy, Clone, Debug, PartialEq)]
