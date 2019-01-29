@@ -17,7 +17,7 @@ pub struct BlockSpan<'a> {
 }
 
 impl<'a> BlockSpan<'a> {
-    pub(super) fn empty() -> BlockSpan<'static> {
+    pub(crate) fn empty() -> BlockSpan<'static> {
         BlockSpan {
             parent: &super::EMPTY_BLOCK,
             contents: &[],

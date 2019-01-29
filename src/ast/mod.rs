@@ -8,6 +8,8 @@ use crate::source_location::{LocatedString, Location, Marker};
 use crate::VariableName;
 use std::sync::Arc;
 
+mod text_functions;
+
 #[cfg(test)]
 mod test;
 
@@ -109,9 +111,11 @@ impl AstNode {
                         let replacement = replacement.to_new_block();
                         let value = deref_variable!(name.into_string());
 
-                        let value = Block::new(
+                        let value = text_functions::do_subref(
                             sensitivity.clone(),
-                            do_subref(value, key.clone(), replacement.clone()),
+                            value,
+                            key.clone(),
+                            replacement.clone(),
                         );
 
                         vec![ContentReference::new_from_node(Arc::new(
@@ -137,20 +141,6 @@ impl AstNode {
 
         (sensitivity, content)
     }
-}
-
-/// Parses a variable value, and returns the root of the combined tree node
-fn do_subref(
-    variable_value: Arc<Block>,
-    key: Arc<Block>,
-    replacement: Arc<Block>,
-) -> Vec<ContentReference> {
-    unimplemented!(
-        "variable substitution: replacing {:?} with {:?} in {:?}",
-        key.into_string(),
-        replacement.into_string(),
-        variable_value.into_string()
-    );
 }
 
 /// Represents the different types of AST nodes

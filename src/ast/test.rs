@@ -93,6 +93,7 @@ fn var_ref_substitution() {
     let expected_sensitivity = mk_sensitivity(&[variable]);
 
     let val = ast.eval(&mut database);
+    eprintln!("{:?}", val.into_string());
     assert_eq!(
         val,
         Block::new(
@@ -100,12 +101,12 @@ fn var_ref_substitution() {
             vec![evaluated::substitution_reference(
                 block_from_reference(evaluated::constant(LocatedString::test_new(1, 3, "foo"))),
                 block_from_reference(evaluated::constant(LocatedString::test_new(1, 7, ".c"))),
-                block_from_reference(evaluated::constant(LocatedString::test_new(1, 9, ".o"))),
+                block_from_reference(evaluated::constant(LocatedString::test_new(1, 10, ".o"))),
                 Block::new(
                     expected_sensitivity,
                     vec![
                         evaluated::constant(LocatedString::test_new(2, 8, "a")),
-                        evaluated::constant(LocatedString::test_new(1, 9, ".o")),
+                        evaluated::constant(LocatedString::test_new(1, 10, ".o")),
                     ]
                 )
             )]
@@ -131,12 +132,12 @@ fn var_ref_substitution_complex() {
             vec![evaluated::substitution_reference(
                 block_from_reference(evaluated::constant(LocatedString::test_new(1, 3, "foo"))),
                 block_from_reference(evaluated::constant(LocatedString::test_new(1, 7, ".c="))),
-                block_from_reference(evaluated::constant(LocatedString::test_new(1, 9, ".o"))),
+                block_from_reference(evaluated::constant(LocatedString::test_new(1, 11, ".o"))),
                 Block::new(
                     expected_sensitivity,
                     vec![
                         evaluated::constant(LocatedString::test_new(2, 8, "a")),
-                        evaluated::constant(LocatedString::test_new(1, 9, ".o")),
+                        evaluated::constant(LocatedString::test_new(1, 11, ".o")),
                     ]
                 )
             )]

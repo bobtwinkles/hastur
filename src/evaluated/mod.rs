@@ -92,13 +92,42 @@ impl Block {
         self.content.push(content);
     }
 
+    /// Push all the contents from a span into this block
+    pub fn push_all_contents(&mut self, span: BlockSpan) {
+        if span.length == 0 {
+            return;
+        }
+
+        assert!(span.contents.len() > 0);
+        assert!(span.offset < span.contents[0].length);
+
+        let mut contents_iter = span.contents.iter().map(|x| x.clone());
+        // Unwrap is safe since we asserted above that contents length was > 0
+        let mut to_push = contents_iter.next().unwrap();
+        to_push.offset += span.offset;
+        to_push.length -= span.offset;
+
+        let mut remaining_length = span.length;
+
+        while to_push.length < remaining_length {
+            remaining_length -= to_push.length;
+            self.content.push(to_push);
+            to_push = contents_iter
+                .next()
+                .expect("ran out of contents before reaching the expected length");
+        }
+        assert!(to_push.length >= remaining_length);
+        to_push.length = remaining_length;
+        self.content.push(to_push);
+    }
+
     /// Iterate over the contents of this block
     pub fn content(&self) -> impl Iterator<Item = &ContentReference> {
         self.content.iter()
     }
 
     /// Simplify the contents of the block by reducing the size of concats and constants
-    fn simplify(&mut self) {
+    pub(crate) fn simplify(&mut self) {
         self.content = self
             .content
             .iter_mut()
