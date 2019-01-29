@@ -17,7 +17,10 @@ fn simple() {
         e => panic!("Unexpected action {:?}", e),
     };
 
-    assert_eq!(database.variable_name("a").expect("name was not interned"), variable_action.name);
+    assert_eq!(
+        database.variable_name("a").expect("name was not interned"),
+        variable_action.name
+    );
 }
 
 #[test]
@@ -34,7 +37,10 @@ fn posix_simple() {
         e => panic!("Unexpected action {:?}", e),
     }
 
-    assert_eq!(database.variable_name("a").expect("name was not interned"), variable_action.name);
+    assert_eq!(
+        database.variable_name("a").expect("name was not interned"),
+        variable_action.name
+    );
 }
 
 #[test]
@@ -51,7 +57,10 @@ fn simple_no_space() {
         e => panic!("Unexpected action {:?}", e),
     }
 
-    assert_eq!(database.variable_name("a").expect("name was not interned"), variable_action.name);
+    assert_eq!(
+        database.variable_name("a").expect("name was not interned"),
+        variable_action.name
+    );
 }
 
 #[test]
@@ -68,7 +77,10 @@ fn posix_simple_no_space() {
         e => panic!("Unexpected action {:?}", e),
     }
 
-    assert_eq!(database.variable_name("a").expect("name was not interned"), variable_action.name);
+    assert_eq!(
+        database.variable_name("a").expect("name was not interned"),
+        variable_action.name
+    );
 }
 
 #[test]
@@ -85,9 +97,11 @@ fn recursive() {
         e => panic!("Unexpected action {:?}", e),
     }
 
-    assert_eq!(database.variable_name("a").expect("name was not interned"), variable_action.name);
+    assert_eq!(
+        database.variable_name("a").expect("name was not interned"),
+        variable_action.name
+    );
 }
-
 
 #[test]
 fn recursive_no_space() {
@@ -103,5 +117,8 @@ fn recursive_no_space() {
         e => panic!("Unexpected action {:?}", e),
     }
 
-    assert_eq!(database.variable_name("a").expect("name was not interned"), variable_action.name);
+    assert_eq!(
+        database.variable_name("a").expect("name was not interned"),
+        variable_action.name
+    );
 }

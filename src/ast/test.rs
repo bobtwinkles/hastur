@@ -6,7 +6,7 @@ use crate::evaluated;
 use crate::evaluated::test::single_block;
 use crate::parsers::ast::parse_ast;
 use crate::parsers::variable::parse_line as parse_variable_line;
-use crate::source_location::{LocatedString};
+use crate::source_location::LocatedString;
 use crate::test::empty_database;
 use crate::Database;
 
@@ -33,12 +33,11 @@ fn insert_variable_from_line(db: &mut Database, variable: LocatedString) -> Vari
     let variable_op = variable_op.1;
 
     match variable_op.action {
-        Action::Define(params) =>
-            match params.flavor {
-                Flavor::Recursive | Flavor::Simple => db.set_variable(variable_op.name, params),
-                v => unimplemented!("{:?}", v),
-            }
-        v => unimplemented!("{:?}", v)
+        Action::Define(params) => match params.flavor {
+            Flavor::Recursive | Flavor::Simple => db.set_variable(variable_op.name, params),
+            v => unimplemented!("{:?}", v),
+        },
+        v => unimplemented!("{:?}", v),
     }
 
     variable_op.name
@@ -144,7 +143,6 @@ fn var_ref_substitution_complex() {
         )
     )
 }
-
 
 #[test]
 fn var_ref_recursive() {

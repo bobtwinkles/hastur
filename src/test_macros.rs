@@ -1,4 +1,3 @@
-
 /// Assert that the provided `Result<T, E>` is the Ok variant
 #[macro_export]
 macro_rules! assert_ok {
@@ -27,7 +26,8 @@ macro_rules! assert_err {
 #[macro_export]
 macro_rules! assert_err_contains {
     ($err:expr, $e:expr) => {{
-        let context = crate::parsers::test::error_context($err).expect("There should be an error context");
+        let context =
+            crate::parsers::test::error_context($err).expect("There should be an error context");
         let errors = std::dbg!(nom::error_to_list(&context));
         assert!(error_list_contains(&errors, ErrorKind::Custom($e)));
     }};

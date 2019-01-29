@@ -265,7 +265,10 @@ impl Located<String> {
     /// Create a new located string for use in tests
     #[cfg(test)]
     pub fn test_new(line: u32, character: u32, contents: impl Into<String>) -> LocatedString {
-        LocatedString::new(Location::test_location(line, character).into(), contents.into())
+        LocatedString::new(
+            Location::test_location(line, character).into(),
+            contents.into(),
+        )
     }
 
     pub fn slice(&self, bytes: usize, length: usize) -> LocatedString {

@@ -243,7 +243,7 @@ impl<'a> Offset for BlockSpan<'a> {
         let fst = self.contents.as_ptr();
         let snd = second.contents.as_ptr();
         assert!(fst <= snd);
-        assert!(snd <= unsafe{fst.offset(self.contents.len() as isize)});
+        assert!(snd <= unsafe { fst.offset(self.contents.len() as isize) });
 
         let delta_ptrs = (snd as usize) - (fst as usize);
         if delta_ptrs == 0 {
