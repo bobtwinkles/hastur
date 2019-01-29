@@ -115,7 +115,7 @@ fn var_ref_substitution() {
 }
 
 #[test]
-fn var_ref_substitution_complex() {
+fn var_ref_substitution_extra_equals() {
     let block = single_block("$(foo:.c==.o)");
     let ast = ast_parse!(block);
 
