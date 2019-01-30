@@ -300,3 +300,85 @@ mod tokens {
         assert_eq!(*content.deref(), "b");
     }
 }
+
+mod unquote {
+    use crate::evaluated::test::single_block;
+    use crate::parsers::makefile_take_until_unquote;
+    use crate::source_location::Location;
+    use crate::ParseErrorKind;
+
+    #[test]
+    fn match_at_start() {
+        let block = single_block("%a");
+        let (remaining, captured) = assert_ok!(makefile_take_until_unquote(block.span(), '%'));
+        assert_segments_eq!(remaining, [("a", Location::test_location(1, 2))]);
+        assert_eq!(captured.len(), 0);
+    }
+
+    #[test]
+    fn match_after_content() {
+        let block = single_block("ab%");
+        let (remaining, captured) = assert_ok!(makefile_take_until_unquote(block.span(), '%'));
+        assert_complete!(remaining);
+        assert_segments_eq!(captured.span(), [("ab", Location::test_location(1, 1))]);
+    }
+
+    #[test]
+    fn starts_with_escaped() {
+        let block = single_block(r"\\\%%");
+        let (remaining, captured) = assert_ok!(makefile_take_until_unquote(block.span(), '%'));
+        assert_complete!(remaining);
+        assert_segments_eq!(
+            captured.span(),
+            [
+                (r"\", Location::test_location(1, 1)),
+                ("%", Location::test_location(1, 4))
+            ]
+        );
+    }
+
+    #[test]
+    fn starts_unescaped() {
+        let block = single_block(r"\\\\%");
+        let (remaining, captured) = assert_ok!(makefile_take_until_unquote(block.span(), '%'));
+        assert_complete!(remaining);
+        assert_segments_eq!(captured.span(), [(r"\\", Location::test_location(1, 1))]);
+    }
+
+    #[test]
+    fn content_then_escaped() {
+        let block = single_block(r"ab\\\%%");
+        let (remaining, captured) = assert_ok!(makefile_take_until_unquote(block.span(), '%'));
+        assert_complete!(remaining);
+        assert_segments_eq!(
+            captured.span(),
+            [
+                (r"ab\", Location::test_location(1, 1)),
+                ("%", Location::test_location(1, 6))
+            ]
+        );
+    }
+
+    #[test]
+    fn content_then_unescaped() {
+        let block = single_block(r"ab\\\\%");
+        let (remaining, captured) = assert_ok!(makefile_take_until_unquote(block.span(), '%'));
+        assert_complete!(remaining);
+        assert_segments_eq!(captured.span(), [(r"ab\\", Location::test_location(1, 1))]);
+    }
+
+    #[test]
+    fn no_expand_after_match() {
+        let block = single_block(r"ab%\\\\");
+        let (remaining, captured) = assert_ok!(makefile_take_until_unquote(block.span(), '%'));
+        assert_segments_eq!(remaining, [(r"\\\\", Location::test_location(1, 4))]);
+        assert_segments_eq!(captured.span(), [(r"ab", Location::test_location(1, 1))]);
+    }
+
+    #[test]
+    fn does_error() {
+        let block = single_block(r"abc");
+        let err = assert_err!(makefile_take_until_unquote(block.span(), '%'));
+        assert_err_contains!(err, ParseErrorKind::InternalFailure("failed to find stopchar"));
+    }
+}

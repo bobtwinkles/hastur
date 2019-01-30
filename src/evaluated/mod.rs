@@ -82,6 +82,11 @@ impl Block {
         self.sensitivity.iter()
     }
 
+    /// Get a copy of the raw sensitivity set
+    pub(crate) fn raw_sensitivity(&self) -> fxhash::FxHashSet<VariableName> {
+        self.sensitivity.clone()
+    }
+
     /// Consume this tree, leaving behind an iterator over its sensitivities
     pub fn into_sensitivity(self) -> impl Iterator<Item = VariableName> {
         self.sensitivity.into_iter()

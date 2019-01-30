@@ -237,6 +237,76 @@ where
     )
 }
 
+/// Find a particular character, unquoted by `\`, returning the preceding text
+/// with all quoting '\' removed. Note that this DOES NOT remove `\`s in things
+/// that do not immediately precede the character of interest. For example,
+/// (assuming we're looking for an unquoted `%` character)the string `\\%` will
+/// be turned into `\%`, with a match on the `%`. However, `\\c%` *will not*
+/// remove either of the two `\` characters, and will still match on the `%`
+/// character. Some further examples
+///   - `\\\%` will not match at all, since the `%` is escaped.
+///   - `%\\%` will match the first `%`, and leave the `\\%` untouched
+///   - `\\\%.%` will match on the second `%`, returning `\%` as the preceding content.
+pub fn makefile_take_until_unquote<'a>(
+    i: BlockSpan<'a>,
+    stop: char,
+) -> IResult<BlockSpan<'a>, Arc<Block>, ParseErrorKind> {
+    use nom::{InputIter, Slice};
+    let mut tr = Block::new(i.parent().raw_sensitivity(), Vec::new());
+
+    let mut last_nonslash_idx = -1;
+    let mut next_push_start = 0;
+    let mut stopchar_index = i.len() + 1;
+    for (idx, ch) in i.iter_indices() {
+        if ch == stop {
+            // We found a stopchar. Push the previous span and figure out if it
+            // actually matches
+
+            // slash count examples:
+            //  0 1 2 3
+            //  a b %   => 2 - 1 - 1    = 0
+            //  a b \ % => 3 - 1 - 1    = 1
+            //  \ \ %   => 2 - (-1) - 1 = 2
+            //  \ %     => 1 - (-1) - 1 = 1
+            let slash_count = idx as isize - last_nonslash_idx - 1;
+
+            let end_idx = (idx as isize - slash_count.checked_div(2).unwrap()) as usize;
+
+            if slash_count % 2 == 1 {
+                // Odd number of slashes. Continue on since this means that the
+                // stopchar is escaped. Leave next_push_start setup to push the
+                // '%' and extra backslashes for us.
+                Arc::make_mut(&mut tr).push_all_contents(i.slice(next_push_start..end_idx - 1));
+                next_push_start = idx;
+            } else {
+                // Even number of slashes. Push half of them, indicate that we
+                // found the stopchar, and then break out
+                Arc::make_mut(&mut tr).push_all_contents(i.slice(next_push_start..end_idx));
+                stopchar_index = idx;
+                break;
+            }
+        }
+        if ch != '\\' {
+            last_nonslash_idx = idx as isize;
+        }
+    }
+
+    if stopchar_index <= i.len() {
+        // We found the stopchar. Do one last push and then simplify and return
+        // let slash_count = stopchar_index as isize - last_nonslash_idx - 1;
+        // let end_idx = (stopchar_index as isize - slash_count.checked_div(2).unwrap()) as usize;
+        // Arc::make_mut(&mut tr).push_all_contents(i.slice(next_push_start..end_idx));
+        Arc::make_mut(&mut tr).simplify();
+        Ok((i.slice(stopchar_index + 1..), tr))
+    } else {
+        // We didn't find it. Abandon our work and return an error
+        error_out(
+            i,
+            ParseErrorKind::InternalFailure("failed to find stopchar"),
+        )
+    }
+}
+
 /// Controls various aspects of the parser, making it conform to either the GNU
 /// conventions or have strict POSIX compliance
 #[derive(Copy, Clone, Debug, PartialEq)]

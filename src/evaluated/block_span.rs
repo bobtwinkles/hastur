@@ -40,6 +40,11 @@ impl<'a> BlockSpan<'a> {
         }
     }
 
+    /// Get a reference to the parent block
+    pub fn parent(&self) -> &Block {
+        self.parent
+    }
+
     /// Get the length of this span
     pub fn len(&self) -> usize {
         self.length
