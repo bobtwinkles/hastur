@@ -206,6 +206,42 @@ fn var_ref_substitution_pre_both() {
 }
 
 #[test]
+fn var_ref_substitution_multiple() {
+    let block = single_block("$(foo:.c=.o)");
+    let ast = ast_parse!(block);
+
+    let mut database = empty_database();
+    let variable = insert_variable_from_line(
+        &mut database,
+        LocatedString::test_new(2, 1, "foo := 1.c 2.c"),
+    );
+    let expected_sensitivity = mk_sensitivity(&[variable]);
+
+    let val = ast.eval(&mut database);
+    assert_eq!(
+        val,
+        Block::new(
+            expected_sensitivity.clone(),
+            vec![evaluated::substitution_reference(
+                block_from_reference(evaluated::constant(LocatedString::test_new(1, 3, "foo"))),
+                block_from_reference(evaluated::constant(LocatedString::test_new(1, 7, ".c"))),
+                block_from_reference(evaluated::constant(LocatedString::test_new(1, 10, ".o"))),
+                Block::new(
+                    expected_sensitivity,
+                    vec![
+                        evaluated::constant(LocatedString::test_new(2, 8, "1")),
+                        evaluated::constant(LocatedString::test_new(1, 10, ".o")),
+                        evaluated::constant(LocatedString::synthetic_new(" ")),
+                        evaluated::constant(LocatedString::test_new(2, 12, "2")),
+                        evaluated::constant(LocatedString::test_new(1, 10, ".o"))
+                    ]
+                )
+            )]
+        )
+    )
+}
+
+#[test]
 fn var_ref_recursive() {
     let block = single_block("$($(foo))");
     let ast = ast_parse!(block);

@@ -56,11 +56,19 @@ fn do_replacement<'a>(
 ) -> Arc<Block> {
     let mut output = Block::new(sensitivity, Default::default());
     let total_key_length = pre_key.len() + post_key.len();
+    let mut first = true;
     while tokens.len() > 0 {
         use nom::Slice;
 
         let (new_tokens, token) = makefile_token(tokens).expect("tokens should never fail");
         tokens = new_tokens;
+
+        if !first {
+            // We just pushed something else, so push a space
+            Arc::make_mut(&mut output).push(crate::evaluated::ContentReference::space());
+        } else {
+            first = false;
+        }
 
         eprintln!("processing token {:?}", token.into_string());
 

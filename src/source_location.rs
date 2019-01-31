@@ -271,6 +271,11 @@ impl Located<String> {
         )
     }
 
+    /// Create a new located string with a synthetic location
+    pub fn synthetic_new(contents: impl Into<String>) -> LocatedString {
+        LocatedString::new(Location::Synthetic.into(), contents.into())
+    }
+
     pub fn slice(&self, bytes: usize, length: usize) -> LocatedString {
         self.as_str().slice(bytes, length).into()
     }
