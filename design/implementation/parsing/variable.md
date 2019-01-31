@@ -181,17 +181,23 @@ the impact of each variable on the database.
 Tests for [[.simple]] variable expansions:
   - [[.simple_assignment]] A single `a := b` statement shall
     produce a simply-expanded variable
+  - [[.simple_nospace]] An assignment with no space between the variable name
+    and the assignment operator
   - [[.simple_constructed]] All variable references shall
     be expanded in `a := $(foo_$(bar))`
   - [[.simple_dcolon]] An assignment of the form `a ::= b` shall
     create a simply-expanded variable
+  - [[.dcolon_nospace]] A POSIX assignment with no space between the variable name
+    and the assignment operator
   - [[.db_simple]] A simple variable expansion shall
     add the literal value to the database.
   
 Tests for [[.recursive]]
   - [[.recursive_assignment]] A single `a = b` statement 
     shall produce a recursively-expanded variable
-  - [[.recursive_defer]] The statement `a := $(foo)` shall
+  - [[.recursive_nospace]] Recursive assignment with no space between the
+    variable name and the operator
+  - [[.recursive_defer]] The statement `a = $(foo)` shall
     produce a recursively-expanded variable with
     an appropriate variable evaluation AST.
   - [[.db_recursive]] A recursively expanded variable

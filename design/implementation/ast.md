@@ -38,9 +38,6 @@ The AST shall support the following nodes:
    to form the full value
  - [[.variable_reference]] for when we need
    to dynamically dereference a variable
- - [[.substitution_reference]] for when we
-   need to dynamically dereference a variable,
-   applying some substitution
 
 We also need nodes for the following Make functions.
  - [[.abspath]] for the `abspath` function.

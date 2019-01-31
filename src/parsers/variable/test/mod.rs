@@ -1,8 +1,13 @@
 //! Tests for the variable parsing infrastructure
 
+// #TST-P-Variable
+
 use super::*;
 use crate::parsers::test::create_span;
 
+// #TST-P-Variable.simple
+
+// #TST-P-Variable.simple_assignment
 #[test]
 fn simple() {
     let mut database = Default::default();
@@ -23,6 +28,7 @@ fn simple() {
     );
 }
 
+// #TST-P-Variable.simple_dcolon
 #[test]
 fn posix_simple() {
     let mut database = Default::default();
@@ -43,6 +49,7 @@ fn posix_simple() {
     );
 }
 
+// #TST-P-Variable.simple_nospace
 #[test]
 fn simple_no_space() {
     let mut database = Default::default();
@@ -63,6 +70,7 @@ fn simple_no_space() {
     );
 }
 
+// #TST-P-Variable.dcolon_nospace
 #[test]
 fn posix_simple_no_space() {
     let mut database = Default::default();
@@ -83,6 +91,9 @@ fn posix_simple_no_space() {
     );
 }
 
+// #TST-P-Variable.recursive
+
+// #TST-P-Variable.recursive_assignment
 #[test]
 fn recursive() {
     let mut database = Default::default();
@@ -103,6 +114,7 @@ fn recursive() {
     );
 }
 
+// #TST-P-Variable.recursive_nospace
 #[test]
 fn recursive_no_space() {
     let mut database = Default::default();
