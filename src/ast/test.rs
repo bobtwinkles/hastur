@@ -146,6 +146,66 @@ fn var_ref_substitution_extra_equals() {
 }
 
 #[test]
+fn var_ref_substitution_pre_key() {
+    let block = single_block("$(foo:a%c=%)");
+    let ast = ast_parse!(block);
+
+    let mut database = empty_database();
+    let variable =
+        insert_variable_from_line(&mut database, LocatedString::test_new(2, 1, "foo := abc"));
+    let expected_sensitivity = mk_sensitivity(&[variable]);
+
+    let val = ast.eval(&mut database);
+    assert_eq!(
+        val,
+        Block::new(
+            expected_sensitivity.clone(),
+            vec![evaluated::substitution_reference(
+                block_from_reference(evaluated::constant(LocatedString::test_new(1, 3, "foo"))),
+                block_from_reference(evaluated::constant(LocatedString::test_new(1, 7, "a%c"))),
+                block_from_reference(evaluated::constant(LocatedString::test_new(1, 11, "%"))),
+                Block::new(
+                    expected_sensitivity,
+                    vec![evaluated::constant(LocatedString::test_new(2, 9, "b"))]
+                )
+            )]
+        )
+    )
+}
+
+#[test]
+fn var_ref_substitution_pre_both() {
+    let block = single_block("$(foo:a%c=d%f)");
+    let ast = ast_parse!(block);
+
+    let mut database = empty_database();
+    let variable =
+        insert_variable_from_line(&mut database, LocatedString::test_new(2, 1, "foo := abc"));
+    let expected_sensitivity = mk_sensitivity(&[variable]);
+
+    let val = ast.eval(&mut database);
+    assert_eq!(
+        val,
+        Block::new(
+            expected_sensitivity.clone(),
+            vec![evaluated::substitution_reference(
+                block_from_reference(evaluated::constant(LocatedString::test_new(1, 3, "foo"))),
+                block_from_reference(evaluated::constant(LocatedString::test_new(1, 7, "a%c"))),
+                block_from_reference(evaluated::constant(LocatedString::test_new(1, 11, "d%f"))),
+                Block::new(
+                    expected_sensitivity,
+                    vec![
+                        evaluated::constant(LocatedString::test_new(1, 11, "d")),
+                        evaluated::constant(LocatedString::test_new(2, 9, "b")),
+                        evaluated::constant(LocatedString::test_new(1, 13, "f"))
+                    ]
+                )
+            )]
+        )
+    )
+}
+
+#[test]
 fn var_ref_recursive() {
     let block = single_block("$($(foo))");
     let ast = ast_parse!(block);

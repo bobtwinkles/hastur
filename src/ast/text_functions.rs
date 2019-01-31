@@ -1,34 +1,47 @@
 //! implementation of all the text-munging functions ()
 
 use crate::evaluated::{Block, BlockSpan};
-use crate::parsers::makefile_token;
+use crate::parsers::{makefile_take_until_unquote, makefile_token};
 use crate::VariableName;
 use fxhash::FxHashSet;
 use std::sync::Arc;
 
 /// Parses a variable value, and returns the root of the combined tree node
 pub(super) fn do_subref(
-    sensitiity: FxHashSet<VariableName>,
+    sensitivity: FxHashSet<VariableName>,
     variable_value: Arc<Block>,
     key: Arc<Block>,
     replacement: Arc<Block>,
 ) -> Arc<Block> {
-    if key.span().chars().next() == Some('%') {
-        unimplemented!(
-            "patterned variable substitution: replacing {:?} with {:?} in {:?}",
-            key.into_string(),
-            replacement.into_string(),
-            variable_value.into_string()
-        )
-    } else {
-        do_replacement(
+    match makefile_take_until_unquote(key.span(), '%') {
+        Ok((post_key, pre_key)) => match makefile_take_until_unquote(replacement.span(), '%') {
+            // Both key and replacement had a %
+            Ok((post_replacement, pre_replacement)) => do_replacement(
+                variable_value.span(),
+                sensitivity,
+                &pre_key.into_string(),
+                &post_key.into_string(),
+                pre_replacement.span(),
+                post_replacement,
+            ),
+            // Only key had a %
+            Err(_) => do_replacement(
+                variable_value.span(),
+                sensitivity,
+                &pre_key.into_string(),
+                &post_key.into_string(),
+                BlockSpan::empty(),
+                replacement.span(),
+            ),
+        },
+        Err(_) => do_replacement(
             variable_value.span(),
-            sensitiity,
+            sensitivity,
             "",
             &key.into_string(),
             BlockSpan::empty(),
             replacement.span(),
-        )
+        ),
     }
 }
 
