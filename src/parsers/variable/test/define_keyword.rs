@@ -16,10 +16,12 @@ macro_rules! simple_test {
         }
 
         assert_eq!(
-            database.variable_name($name).expect("name was not interned"),
+            database
+                .variable_name($name)
+                .expect("name was not interned"),
             variable_action.name
         );
-    }}
+    }};
 }
 
 #[test]

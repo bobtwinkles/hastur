@@ -379,6 +379,9 @@ mod unquote {
     fn does_error() {
         let block = single_block(r"abc");
         let err = assert_err!(makefile_take_until_unquote(block.span(), '%'));
-        assert_err_contains!(err, ParseErrorKind::InternalFailure("failed to find stopchar"));
+        assert_err_contains!(
+            err,
+            ParseErrorKind::InternalFailure("failed to find stopchar")
+        );
     }
 }
