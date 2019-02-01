@@ -13,6 +13,7 @@ mod text_functions;
 #[cfg(test)]
 mod test;
 
+/// A node in a syntax tree representing evaluations
 #[derive(Clone, Debug, PartialEq)]
 pub struct AstNode {
     source_location: Marker,
@@ -20,10 +21,12 @@ pub struct AstNode {
 }
 
 impl AstNode {
+    /// Get the location of the node
     pub fn location(&self) -> Location {
         self.source_location.inner.clone()
     }
 
+    /// Get the children of this node. This also tells you the type of node
     pub fn children(&self) -> &AstChildren {
         &self.children
     }
@@ -166,12 +169,18 @@ pub enum AstChildren {
     Strip(AstNode),
     /// The `word` make function
     // #SPC-V-AST.word
-    Word { index: AstNode, words: AstNode },
+    Word {
+        /// Determines what index should be used
+        index: AstNode,
+        /// The list of words to index into
+        words: AstNode
+    },
     /// The `words` make function
     // #SPC-V-AST.words
     Words(AstNode),
 }
 
+/// Get an empty AST node. These are usually useful as placeholders
 #[inline]
 pub fn empty() -> AstNode {
     AstNode {

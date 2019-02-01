@@ -77,9 +77,7 @@ mod test {
         let test_span = create_span("# this is a single line comment\na");
         let test_span = test_span.span();
         let parse = assert_ok!(parse_comment(test_span));
-        let mut leftover_segments = parse.0.segments();
-
-        assert_segments_eq!(parse.0, [("a", Location::test_location(2, 1))]);
+        assert_segments_eq!(parse.0, [("a", Location::test_location(2, 1))])
     }
 
     #[test]

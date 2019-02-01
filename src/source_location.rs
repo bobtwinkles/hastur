@@ -53,16 +53,22 @@ pub enum Location {
     // #REQ-Location.raw_location
     // #SPC-Location.raw_location
     SourceLocation {
+        /// The line
         line: u32,
+        /// The character in the line
         character: u32,
+        /// The filename of the file this comes from.
         filename: FileName,
     },
     /// Represents a location in source resulting from an `$(eval ...)` block
     // #REQ-Location.eval_location
     // #SPC-Location.eval_location
     EvalLocation {
+        /// The node in the evaluation tree this points to
         tree_node: Arc<Block>,
+        /// The line
         line: u32,
+        /// The character
         character: u32,
     },
     /// Synthetically generated text from a Make invocation
@@ -276,6 +282,8 @@ impl Located<String> {
         LocatedString::new(Location::Synthetic.into(), contents.into())
     }
 
+    /// Slice this string into another owned string. Both the start and length
+    /// are in bytes.
     pub fn slice(&self, bytes: usize, length: usize) -> LocatedString {
         self.as_str().slice(bytes, length).into()
     }

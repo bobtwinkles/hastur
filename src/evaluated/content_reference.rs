@@ -126,6 +126,7 @@ impl ContentReference {
     }
 }
 
+/// An iterator over the characters in a content reference
 #[derive(Clone, Debug)]
 pub struct ContentReferenceIter<'a>(std::iter::Take<std::iter::Skip<super::nodes::Chars<'a>>>);
 
@@ -137,6 +138,9 @@ impl<'a> Iterator for ContentReferenceIter<'a> {
     }
 }
 
+/// An iterator over the characters and indicies. This differs from `.enumerate`
+/// because it actually gives the byte offset to the character rather than the
+/// ordinal of the character.
 #[derive(Clone, Debug)]
 pub struct ContentReferenceIndexIter<'a> {
     front_offset: usize,

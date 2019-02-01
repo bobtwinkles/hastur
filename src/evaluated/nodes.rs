@@ -5,6 +5,7 @@ use super::Block;
 use crate::source_location::{LocatedString, Location};
 use std::sync::Arc;
 
+/// Represents a node in the expansion history of some text.
 #[derive(Debug, Clone, PartialEq)]
 pub enum EvaluatedNode {
     /// Represents a constant block of text
@@ -168,6 +169,7 @@ pub struct SubstitutionReference {
 }
 
 impl SubstitutionReference {
+    /// Create a new substitution reference
     pub fn new(
         name: Arc<Block>,
         key: Arc<Block>,
