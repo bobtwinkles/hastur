@@ -2,6 +2,7 @@
 
 use super::{parse_line, Conditional};
 use crate::parsers::test::*;
+use crate::parsers::{makefile_line, ParserCompliance};
 use crate::ParseErrorKind;
 use nom::{error_to_list, ErrorKind};
 

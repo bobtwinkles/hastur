@@ -2,8 +2,7 @@
 
 // #SPC-P-Conditional
 
-use super::ParserCompliance;
-use super::{makefile_line, makefile_whitespace};
+use super::makefile_whitespace;
 use crate::evaluated::{Block, BlockSpan};
 use crate::ParseErrorKind;
 use nom::{Context, Err, ErrorKind, IResult};
@@ -23,21 +22,16 @@ pub(crate) enum Conditional {
 }
 
 /// Parse a conditional line
-/// TODO: allow configuring parse compliance mode
 pub(super) fn parse_line<'a>(
     i: BlockSpan<'a>,
 ) -> IResult<BlockSpan<'a>, Conditional, ParseErrorKind> {
-    let start_i = i;
-    let (i, line) = makefile_line(i, ParserCompliance::GNU, false)?;
-
-    match parse_line_internal(line.span()) {
-        Ok((_, c)) => Ok((i, c)),
+    match parse_line_internal(i) {
+        Ok((i, c)) => Ok((i, c)),
         Err(Err::Incomplete(_)) => Err(Err::Failure(Context::Code(
             i,
             ErrorKind::Custom(ParseErrorKind::ConditionalExpected),
         ))),
-        Err(Err::Error(e)) => Err(super::lift_collapsed_span_error(Err::Error(e), start_i)),
-        Err(Err::Failure(e)) => Err(super::lift_collapsed_span_error(Err::Failure(e), start_i)),
+        e => e,
     }
 }
 
@@ -46,6 +40,15 @@ pub(super) fn parse_line<'a>(
 fn parse_line_internal<'a>(
     input: BlockSpan<'a>,
 ) -> IResult<BlockSpan<'a>, Conditional, ParseErrorKind> {
+    #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+    enum ConditionalType {
+        IfDef,
+        IfNDef,
+        IfEq,
+        IfNEq,
+        Else,
+        EndIf,
+    }
     let (input, tag) = preceded!(
         input,
         makefile_whitespace,
@@ -54,24 +57,22 @@ fn parse_line_internal<'a>(
             fix_error!(
                 ParseErrorKind,
                 alt_complete!(
-                    tag_no_case!("ifdef")
-                        | tag_no_case!("ifndef")
-                        | tag_no_case!("ifeq")
-                        | tag_no_case!("ifneq")
-                        | tag_no_case!("else")
-                        | tag_no_case!("endif")
+                    tag_no_case!("ifdef") => { |_| ConditionalType::IfDef } |
+                    tag_no_case!("ifndef") => { |_| ConditionalType::IfNDef } |
+                    tag_no_case!("ifeq") => { |_| ConditionalType::IfEq } |
+                    tag_no_case!("ifneq") => { |_| ConditionalType::IfNEq } |
+                    tag_no_case!("else") => { |_| ConditionalType::Else } |
+                    tag_no_case!("endif") => { |_| ConditionalType::EndIf }
                 )
             )
         )
     )?;
 
-    let tag = tag.into_string();
-    let tag = tag.as_str();
     eprintln!("Tag is {:?}", tag);
     eprintln!("Rest is {:?}", input.into_string());
 
     match tag {
-        "ifdef" | "ifndef" => {
+        ConditionalType::IfDef | ConditionalType::IfNDef => {
             // #SPC-P-Conditional.ifdef
             let (input, rest) = return_error!(
                 input,
@@ -79,18 +80,18 @@ fn parse_line_internal<'a>(
                 preceded!(makefile_whitespace, fix_error!(ParseErrorKind, nom::rest))
             )?;
 
-            if tag == "ifdef" {
+            if tag == ConditionalType::IfDef {
                 Ok((input, Conditional::IfDef(rest.to_new_block())))
             } else {
                 // #SPC-P-Conditional.ifndef
                 Ok((input, Conditional::IfNDef(rest.to_new_block())))
             }
         }
-        "ifeq" | "ifneq" => {
+        ConditionalType::IfEq | ConditionalType::IfNEq => {
             // TODO(bobtwinkles): The quality of the errors added to the error stack here are quite low
             let (input, (arg1, arg2)) = parse_ifeq(input)?;
 
-            if tag == "ifeq" {
+            if tag == ConditionalType::IfEq {
                 Ok((
                     input,
                     Conditional::IfEq(arg1.to_new_block(), arg2.to_new_block()),
@@ -103,11 +104,11 @@ fn parse_line_internal<'a>(
                 ))
             }
         }
-        "else" => {
+        ConditionalType::Else => {
             let (input, sub_cond) = parse_else(input)?;
             Ok((input, Conditional::Else(sub_cond)))
         }
-        "endif" => {
+        ConditionalType::EndIf => {
             let (input, _) = makefile_whitespace(input)?;
             if input.len() > 0 {
                 Err(Err::Failure(Context::Code(

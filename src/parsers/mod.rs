@@ -99,6 +99,7 @@ pub(crate) enum MakefileLine {
     Comment,
     NewCommand(Arc<Block>),
     Conditional(conditional::Conditional),
+    Variable(variable::VariableAction),
 }
 
 /// Parse a makefile line
@@ -156,7 +157,37 @@ impl<'line, 'engine: 'line> LineParser<'line, 'engine> {
             });
         }
 
-        run_parser!(conditional::parse_line(i), |o| MakefileLine::Conditional(o));
+        // If it's not a recipe line, we can safely collapse all continuations
+        // TODO: expose the parser compliance knob upstream
+        let line_start = i;
+        let (i, line) = makefile_line(i, ParserCompliance::GNU, true)?;
+
+        // Convenience macro for running parsers against the line
+        macro_rules! run_line_parser(
+            ($parsed:expr, $mfc:expr) => {
+                match $parsed {
+                    Ok((_, o)) => return Ok((i, $mfc(o))),
+                    Err(NErr::Incomplete(_)) => {
+                        debug!(
+                            "Parser {:?} was incomplete, backtracking",
+                            stringify!($parsed)
+                        )
+                    }
+                    Err(NErr::Error(e)) => {
+                        debug!(
+                            "Parser {:?} emitted a recoverable error {:?}, backtracking",
+                            stringify!($parsed),
+                            e
+                        )
+                    }
+                    Err(NErr::Failure(c)) => return Err(lift_collapsed_span_error(NErr::Failure(c), line_start)),
+                }
+            }
+        );
+
+        run_line_parser!(conditional::parse_line(line.span()), |o| {
+            MakefileLine::Conditional(o)
+        });
 
         if self.state.ignoring {
             // The parse state indicates that we should just ignore this line
@@ -165,6 +196,7 @@ impl<'line, 'engine: 'line> LineParser<'line, 'engine> {
         }
 
         // TODO: Variable assignment here
+        run_line_parser!(variable::parse_line(i, &mut self.engine.database), MakefileLine::Variable);
 
         unimplemented!()
     }
