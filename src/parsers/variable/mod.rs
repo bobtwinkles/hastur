@@ -14,6 +14,15 @@ use nom::IResult;
 #[cfg(test)]
 mod test;
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum AssignmentType {
+    Recursive,
+    Conditional,
+    Simple,
+    Append,
+    Bang,
+}
+
 /// What action to apply to the variable
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Action {
@@ -23,10 +32,21 @@ pub(crate) enum Action {
     Append,
 }
 
+/// Block of modifiers
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub(crate) struct Modifiers {
+    pub export: bool,
+    pub mod_override: bool,
+    pub private: bool,
+    pub define: bool,
+    pub undefine: bool,
+}
+
 /// What action to take with the variable
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct VariableAction {
     pub name: VariableName,
+    pub modifiers: Modifiers,
     pub action: Action,
 }
 
@@ -37,136 +57,174 @@ pub(crate) fn parse_line<'a>(
 ) -> IResult<BlockSpan<'a>, VariableAction, ParseErrorKind> {
     use nom::Slice;
 
-    let (i, _) = makefile_whitespace(i)?; // Skip to the first non-whitespace token
-    let full_block = i;
-
-    macro_rules! next_safe {
-        ($it:expr, $op:expr) => {
-            match ($it).next() {
-                Some(v) => v,
-                None => {
-                    // We reached the end of the block span without finding an equals sign,
-                    // this isn't a variable expansion
-                    return error_out(i, ParseErrorKind::InternalFailure($op));
-                }
-            }
-        };
+    #[derive(Debug, Copy, Clone)]
+    enum Modifier {
+        Export,
+        Override,
+        Private,
+        Define,
+        Undefine,
     }
 
-    let mut seen_whitespace = false;
-    let (flavor, name_end, value_start) = {
-        use nom::InputIter;
+    let (mut i, _) = makefile_whitespace(i)?; // Skip to the first non-whitespace token
 
-        let mut prev;
-        let mut curr = ' ';
-        let mut posix_simple_assign = false; // flag that is set when we see a POSIX assignment
-        let mut it = i.iter_indices().peekable();
+    if i.len() == 0 {
+        return error_out(i, ParseErrorKind::InternalFailure("no content on line"));
+    }
 
-        let eq_idx = loop {
-            prev = curr;
-            let (curr_index, next) = next_safe!(it, "outer search");
-            curr = next;
-
-            if curr == '$' {
-                // This is probably a variable reference. Don't parse it into an AST now,
-                // just skip over it and we'll pick it up later during line expansion
-                let (_, open) = next_safe!(it, "var open");
-                let close = match open {
-                    '(' => ')',
-                    '{' => '}',
+    // Match modifiers
+    let mut modifiers: Modifiers = Default::default();
+    loop {
+        // If parsing as a variable definition succeeds, we're done
+        eprintln!("Parsing iteration {:?}", i.into_string());
+        match parse_variable_assignment(i, modifiers, db) {
+            Ok(v) => return Ok(v),
+            Err(e) => {
+                match e.clone().into_error_kind() {
+                    nom::ErrorKind::Custom(ParseErrorKind::UnternimatedVariable) => return Err(e),
                     _ => {
-                        // It's not an open or close so this isn't a complex variable reference. Cary on parsing.
-                        curr = open;
-                        continue;
+                        // We don't propagate any other kind of error
                     }
-                };
-                let mut count = 0;
-                // The actual skip loop
-                while curr != close && count > 0 {
-                    let (_, next) = match it.next() {
-                        Some(v) => v,
-                        None => {
-                            return error_out(i, ParseErrorKind::UnternimatedVariable);
+                }
+            }
+        }
+
+        // Otherwise, try to match against a keyword
+        let (new_i, modifier) = match terminated!(
+            i,
+            alt!(
+                pe_complete!(pe_fix!(tag_no_case!("define"))) => { |_| Modifier::Define } |
+                pe_complete!(pe_fix!(tag_no_case!("export"))) => { |_| Modifier::Export }  |
+                pe_complete!(pe_fix!(tag_no_case!("override"))) => { |_| Modifier::Override } |
+                pe_complete!(pe_fix!(tag_no_case!("private"))) => { |_| Modifier::Private } |
+                pe_complete!(pe_fix!(tag_no_case!("undefine"))) => { |_| Modifier::Undefine }
+            ),
+            makefile_whitespace
+        ) {
+            Ok(b) => b,
+            Err(_) => {
+                // We didn't match a modifier or a variable assignment,
+                // this isn't an assignment
+                return error_out(i, ParseErrorKind::InternalFailure("not an assignment"));
+            }
+        };
+        eprintln!(
+            "Advancing from {:?} to {:?}",
+            i.into_string(),
+            new_i.into_string()
+        );
+        i = new_i;
+        match std::dbg!(modifier) {
+            Modifier::Export => modifiers.export = true,
+            Modifier::Override => modifiers.mod_override = true,
+            Modifier::Private => modifiers.private = true,
+            Modifier::Define => {
+                modifiers.define = true;
+                // Try to parse this variable normally
+                if let Ok((suffix, (variable_name, assignment_type))) = parse_assignment_operator(i)
+                {
+                    if let Ok((trailing, _)) = makefile_whitespace(suffix) {
+                        if trailing.len() == 0 {
+                            let (_, name_ast) = parse_ast(variable_name)?;
+                            let variable_name = name_ast.eval(db).into_string().trim().into();
+                            let variable_name = db.intern_variable_name(variable_name);
+                            return Ok((
+                                trailing,
+                                VariableAction {
+                                    name: variable_name,
+                                    modifiers: modifiers,
+                                    action: match assignment_type {
+                                        AssignmentType::Append => Action::Append,
+                                        v => Action::Define(VariableParameters::new(
+                                            ast::empty(),
+                                            match v {
+                                                AssignmentType::Simple => Flavor::Simple,
+                                                AssignmentType::Conditional => Flavor::Conditional,
+                                                AssignmentType::Recursive => Flavor::Recursive,
+                                                AssignmentType::Bang => Flavor::Shell,
+                                                AssignmentType::Append => unreachable!(),
+                                            },
+                                            crate::eval::Origin::File,
+                                        )),
+                                    },
+                                },
+                            ));
                         }
-                    };
-                    curr = next;
-
-                    if curr == open {
-                        count += 1;
-                    } else if curr == close {
-                        count -= 1;
                     }
                 }
+                // Failing that, just assume the whole thing is one big recursive variable name
+                let variable_name = db.intern_variable_name(i.into_string().trim().into());
+                let rest = i.slice(i.len()..);
+                return Ok((
+                    rest,
+                    VariableAction {
+                        name: variable_name,
+                        modifiers: modifiers,
+                        action: Action::Define(VariableParameters::new(
+                            ast::empty(),
+                            Flavor::Recursive,
+                            crate::eval::Origin::File,
+                        )),
+                    },
+                ));
+            }
+            Modifier::Undefine => {
+                modifiers.undefine = true;
+                unimplemented!("undefine modifier");
+            }
+        }
+    }
+}
 
-                continue;
-            }
-            if curr.is_whitespace() {
-                seen_whitespace = true;
-            }
-            if curr == '=' {
-                break curr_index;
-            }
-            if curr == ':' && prev == ':' {
-                // We're on the second colon of a double colon. This could be a POSIX assignment
-                if let Some((idx, next)) = it.peek() {
-                    if *next == '=' {
-                        // This is definitely a POSIX assignment. Break using the peeked index.
-                        // Since prev is already ':', we should get picked up by
-                        // the existing GNU syntax handling
-                        posix_simple_assign = true;
-                        break *idx;
-                    }
-                }
-            }
-        };
-
-        let (flavor, name_end, value_start) = match prev {
-            ':' => {
-                // #SPC-P-Variable.simple
-                // This catches both GNU style (:=) and POSIX style (::=)
-                // assignments
-                let end = if posix_simple_assign {
-                    eq_idx - 2
-                } else {
-                    eq_idx - 1
-                };
-
-                (Some(Flavor::Simple), end, eq_idx + 1)
-            }
-            '+' => {
-                // #SPC-P-Variable.append_set
-                (None, eq_idx - 1, eq_idx + 1)
-            }
-            '?' => {
-                // #SPC-P-Variable.conditional_set
-                (Some(Flavor::Conditional), eq_idx - 1, eq_idx + 1)
-            }
-            '!' => {
-                // #SPC-P-Variable.shell_set
-                (Some(Flavor::Shell), eq_idx - 1, eq_idx + 1)
-            }
-            c => {
-                if !c.is_whitespace() && seen_whitespace {
-                    // We skipped over some whitespace, but then got some garbage
-                    // character before the = operator. This is not an assignment
-                    return error_out(
-                        i,
-                        ParseErrorKind::InternalFailure(
-                            "seen whitespace but not a valid variable assign",
-                        ),
-                    );
-                } else {
-                    // #SPC-P-Variable.recursive
-                    (Some(Flavor::Recursive), eq_idx, eq_idx + 1)
-                }
-            }
-        };
-
-        (flavor, name_end, value_start)
+/// Parse a span, returning the captured variable name and the type of
+/// assignment on success. The remaining content will start directly after the
+/// equals operator
+fn parse_assignment_operator<'a>(
+    i: BlockSpan<'a>,
+) -> IResult<BlockSpan<'a>, (BlockSpan<'a>, AssignmentType), ParseErrorKind> {
+    let (i, variable_name) = match take_till!(i, |c: char| c.is_whitespace()
+        || c == ':'
+        || c == '='
+        || c == '!'
+        || c == '?'
+        || c == '+')
+    {
+        Ok(v) => v,
+        Err(_) => return error_out(i, ParseErrorKind::InternalFailure("name not captured")),
     };
 
-    let name_segment = full_block.slice(..name_end);
-    let (value_segment, _) = makefile_whitespace(full_block.slice(value_start..))?;
+    eprintln!(
+        "Captured variable name {:?}, {:?} left to parse",
+        variable_name.into_string(),
+        i.into_string()
+    );
+
+    let (i, _) = makefile_whitespace(i)?;
+
+    let (i, assignment_type) = pe_fix!(
+        i,
+        alt!(
+            pe_complete!(pe_fix!(tag!("="))) => { |_| { AssignmentType::Recursive }} |
+            pe_complete!(pe_fix!(tag!("::="))) => { |_| { AssignmentType::Simple }} |
+            pe_complete!(pe_fix!(tag!(":="))) => { |_| { AssignmentType::Simple }} |
+            pe_complete!(pe_fix!(tag!("?="))) => { |_| { AssignmentType::Conditional }} |
+            pe_complete!(pe_fix!(tag!("!="))) => { |_| { AssignmentType::Bang }} |
+            pe_complete!(pe_fix!(tag!("+="))) => { |_| { AssignmentType::Append }}
+        )
+    )?;
+
+    let (i, _) = makefile_whitespace(i)?;
+
+    Ok((i, (variable_name, assignment_type)))
+}
+
+fn parse_variable_assignment<'a>(
+    i: BlockSpan<'a>,
+    modifiers: Modifiers,
+    db: &mut crate::Database,
+) -> IResult<BlockSpan<'a>, VariableAction, ParseErrorKind> {
+    let (i, (name_segment, assignment_type)) = parse_assignment_operator(i)?;
+    let (value_segment, _) = makefile_whitespace(i)?;
 
     let (_, name_ast) = parse_ast(name_segment)?;
     let (post_value, mut value_ast) = parse_ast(value_segment)?;
@@ -174,7 +232,7 @@ pub(crate) fn parse_line<'a>(
     let variable_name = name_ast.eval(db).into_string().trim().into();
     let variable_name = db.intern_variable_name(variable_name);
 
-    if flavor == Some(Flavor::Simple) {
+    if assignment_type == AssignmentType::Simple {
         // Evaluate the value AST
         let contents = value_ast.eval(db);
         let location = value_segment.segments().next().unwrap().location().clone();
@@ -187,13 +245,20 @@ pub(crate) fn parse_line<'a>(
         post_value,
         VariableAction {
             name: variable_name,
-            action: match flavor {
-                Some(flavor) => Action::Define(VariableParameters::new(
+            modifiers: modifiers,
+            action: match assignment_type {
+                AssignmentType::Append => Action::Append,
+                v => Action::Define(VariableParameters::new(
                     value_ast,
-                    flavor,
+                    match v {
+                        AssignmentType::Simple => Flavor::Simple,
+                        AssignmentType::Conditional => Flavor::Conditional,
+                        AssignmentType::Recursive => Flavor::Recursive,
+                        AssignmentType::Bang => Flavor::Shell,
+                        AssignmentType::Append => unreachable!(),
+                    },
                     crate::eval::Origin::File,
                 )),
-                None => Action::Append,
             },
         },
     ))
