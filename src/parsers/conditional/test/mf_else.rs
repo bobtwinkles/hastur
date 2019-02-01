@@ -1,6 +1,5 @@
 //! Tests for the else parser
 use super::*;
-use crate::parsers::test;
 use std::borrow::Borrow;
 
 #[test]

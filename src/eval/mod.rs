@@ -1,9 +1,7 @@
 //! Utilities for evaluating makefile expressions
 
 use crate::ast::AstNode;
-use crate::evaluated::{Block, BlockSpan};
-use crate::{Database, MakefileError};
-use std::sync::Arc;
+use crate::Database;
 
 #[cfg(test)]
 mod test;
@@ -64,7 +62,7 @@ impl VariableParameters {
 /// around since they tie up exclusive access to the database.
 pub struct Variable<'d> {
     value: &'d VariableParameters,
-    database: &'d Database,
+    _database: &'d Database,
     target: Option<&'d str>,
 }
 
@@ -73,7 +71,7 @@ impl<'d> Variable<'d> {
     pub fn new(db: &'d Database, value: &'d VariableParameters) -> Self {
         Self {
             value,
-            database: db,
+            _database: db,
             target: None,
         }
     }
@@ -82,32 +80,22 @@ impl<'d> Variable<'d> {
     pub fn new_for_target(db: &'d Database, value: &'d VariableParameters, fname: &'d str) -> Self {
         Self {
             value,
-            database: db,
+            _database: db,
             target: Some(fname),
         }
     }
 
     /// Expand this variable in the environment provided by a database.
     /// Shorthand for [`self.ast().eval(environment).into_string()`](struct.Variable.html#method.ast)
-    pub fn expand(&self, environment: &Database) -> String {
-        unimplemented!("variable expansion")
+    pub fn expand(&self, environment: &mut Database) -> String {
+        match self.target {
+            Some(_) => unimplemented!("Expansion in target context"),
+            None => self.ast().eval(environment).into_string()
+        }
     }
 
     /// Get the AST of this node
     pub fn ast(&self) -> &AstNode {
         &self.value.unexpanded_value
     }
-}
-
-pub(crate) fn expand_line<'a>(
-    database: &Database,
-    mut line: BlockSpan<'a>,
-) -> Result<Arc<Block>, MakefileError> {
-    let output = unimplemented!();
-
-    // while line.len() > {
-    //     let (new_line, expanded_content) = match
-    // }
-
-    Ok(output)
 }

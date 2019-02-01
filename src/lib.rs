@@ -41,10 +41,9 @@ pub mod pattern;
 pub mod source_location;
 pub mod traits;
 
-pub use crate::eval::{Variable, VariableParameters};
+pub use crate::eval::{Flavor, Origin, Variable, VariableParameters};
 pub use crate::parsers::ParserCompliance;
 
-use crate::evaluated::BlockSpan;
 use fxhash::FxHashMap;
 use std::io;
 use std::io::prelude::*;
@@ -106,6 +105,12 @@ pub enum ParseErrorKind {
     InternalFailure(&'static str),
 }
 
+impl<'a> From<u32> for ParseErrorKind {
+    fn from(other: u32) -> ParseErrorKind {
+        ParseErrorKind::NomError(other)
+    }
+}
+
 /*
 /// Represents a span of the input
 /// TODO: we should really wrap this in our own structure so that nom_locate isn't part of
@@ -148,48 +153,6 @@ impl<T> OwnedFragment<T> {
 }
 */
 
-/// A parse error
-#[derive(Clone, Debug, PartialEq)]
-pub struct ParseError<'a> {
-    span: BlockSpan<'a>,
-    kind: ParseErrorKind,
-}
-
-impl<'a> ParseError<'a> {
-    fn new(span: BlockSpan<'a>, kind: ParseErrorKind) -> ParseError {
-        ParseError { span, kind }
-    }
-
-    /*
-    fn to_static(self) -> OwnedParseError {
-        OwnedParseError {
-            line: self.span.line,
-            column: self.span.get_column(),
-            fragment: self.span.fragment.0.to_owned(),
-            kind: self.kind,
-        }
-    }
-    */
-}
-
-impl<'a> From<u32> for ParseErrorKind {
-    fn from(other: u32) -> ParseErrorKind {
-        ParseErrorKind::NomError(other)
-    }
-}
-
-/// A parse error that owns all its information
-pub struct OwnedParseError {
-    /// The line at which the error occurred
-    pub line: u32,
-    /// The column within the line at which the error occurred
-    pub column: usize,
-    /// An owned string representing a copy of the fragment that caused this error
-    pub fragment: String,
-    /// What kind of error this is
-    pub kind: ParseErrorKind,
-}
-
 /// A command.
 /// We track only the unexpanded version of the command string, since
 /// command variable expansion is not performed until after makfile reading
@@ -216,14 +179,6 @@ pub struct Rule {
 
 // TODO: move this impl into rule.rs
 impl Rule {
-    fn new(targets: Vec<String>, deps: Vec<String>) -> Self {
-        Self {
-            targets,
-            deps,
-            recipe: Vec::new(),
-        }
-    }
-
     /// Iterate over the dependencies of this rule
     /// TODO: change the return type of this to an actual iterator type
     pub fn dependencies(&self) -> &[evaluated::Block] {
@@ -347,7 +302,7 @@ pub enum MakefileError {
     /// An IO error occurred while reading the makefile
     IOError(io::Error),
     /// The parser wasn't able to handle some of the syntax
-    ParseError(OwnedParseError),
+    ParseError(ParseErrorKind),
 }
 
 impl From<io::Error> for MakefileError {

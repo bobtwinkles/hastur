@@ -14,7 +14,6 @@ mod test;
 pub(crate) fn parse_ast<'a>(
     mut i: BlockSpan<'a>,
 ) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
-    use nom::Slice;
     let start_location = match i.location() {
         Some(v) => v,
         None => return Ok((i, ast::empty())),
@@ -66,9 +65,12 @@ fn parse_var_ref<'a>(
         i,
         fix_error!(ParseErrorKind, eof!()) => {{
             let location = dollar_location.clone();
-            |l| {
+            |_| {
                 // Synthesize a magic '$'
-                ast::constant(location.clone(), crate::source_location::LocatedString::new(location.into(), "$".into()))
+                ast::constant(
+                    location.clone(),
+                    crate::source_location::LocatedString::new(location.into(), "$".into())
+                )
             }
         }} |
         fix_error!(ParseErrorKind, tag!("$")) => {{
@@ -124,7 +126,7 @@ fn advanced_var<'a>(
     let (i, name_node) = i.take_split(split_idx + 1);
     let name_node = name_node.slice(..name_node.len() - 1);
 
-    match function_call(name_node, start_char, term_char) {
+    match function_call(name_node) {
         Ok(v) => Ok(v),
         Err(Err::Failure(context)) => {
             if context.clone().into_error_kind()
@@ -145,11 +147,7 @@ fn advanced_var<'a>(
     }
 }
 
-fn function_call<'a>(
-    i: BlockSpan<'a>,
-    start_char: char,
-    term_char: char,
-) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
+fn function_call<'a>(i: BlockSpan<'a>) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
     fn no_such_function<'a>(i: BlockSpan<'a>) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
         Err(Err::Failure(nom::Context::Code(
             i,
@@ -233,12 +231,7 @@ fn strip<'a>(
         return error_out(i, ParseErrorKind::ExtraArguments("strip"));
     }
 
-    let (arg_remaining, arg) = parse_ast(arg)?;
-
-    #[cfg(test)]
-    {
-        assert_complete!(arg_remaining);
-    }
+    let (_, arg) = parse_ast(arg)?;
 
     Ok((i, ast::strip(start_location, arg)))
 }
@@ -252,12 +245,7 @@ fn words<'a>(
         return error_out(i, ParseErrorKind::ExtraArguments("words"));
     }
 
-    let (arg_remaining, arg) = parse_ast(arg)?;
-
-    #[cfg(test)]
-    {
-        assert_complete!(arg_remaining);
-    }
+    let (_, arg) = parse_ast(arg)?;
 
     Ok((i, ast::words(start_location, arg)))
 }
@@ -271,19 +259,13 @@ fn word<'a>(
         Ok(v) => v,
         Err(_) => return error_out(i, ParseErrorKind::InsufficientArguments("word")),
     };
-    let (index_remaining, index) = parse_ast(index)?;
+    let (_, index) = parse_ast(index)?;
 
     let (i, list) = function_argument(i)?;
     if i.len() != 0 {
         return error_out(i, ParseErrorKind::ExtraArguments("word"));
     }
-    let (list_remaining, list) = parse_ast(list)?;
-
-    #[cfg(test)]
-    {
-        assert_complete!(index_remaining);
-        assert_complete!(list_remaining);
-    }
+    let (_, list) = parse_ast(list)?;
 
     Ok((i, ast::word(start_location, index, list)))
 }

@@ -119,7 +119,6 @@ fn parse_line_internal<'a>(
                 Ok((input, Conditional::EndIf))
             }
         }
-        _ => unreachable!(),
     }
 }
 

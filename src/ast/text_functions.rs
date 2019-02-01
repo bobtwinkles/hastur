@@ -58,8 +58,6 @@ fn do_replacement<'a>(
     let total_key_length = pre_key.len() + post_key.len();
     let mut first = true;
     while tokens.len() > 0 {
-        use nom::Slice;
-
         let (new_tokens, token) = makefile_token(tokens).expect("tokens should never fail");
         tokens = new_tokens;
 
