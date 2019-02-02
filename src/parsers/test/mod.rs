@@ -6,6 +6,8 @@ use crate::source_location::Location;
 use nom::Context as NContext;
 use nom::{Err, ErrorKind};
 
+mod end_to_end;
+
 /// Create a span for use in testing, usually from a static string
 pub(super) fn create_span(s: &str) -> Arc<Block> {
     leftover_span(s, 1, 1)

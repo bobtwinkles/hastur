@@ -208,13 +208,13 @@ impl<'a, 'b> FindSubstring<&'b str> for BlockSpan<'a> {
         }
 
         for (i, c) in self_iter {
-            eprintln!(
-                "Inspecting {:?} for match with {:?} {:?}",
-                c,
-                substr.as_bytes(),
-                buffer
-            );
-            // Update the buffer
+            // eprintln!(
+            //     "Inspecting {:?} for match with {:?} {:?}",
+            //     c,
+            //     substr.as_bytes(),
+            //     buffer
+            // );
+            // // Update the buffer
             let char_size = c.encode_utf8(&mut char_buffer).len();
             for j in 0..char_size {
                 buffer[(buffer_start + j) % substr.len()] = char_buffer[j];

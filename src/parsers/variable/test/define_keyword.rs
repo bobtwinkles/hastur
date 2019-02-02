@@ -3,9 +3,11 @@ use super::*;
 
 macro_rules! simple_test {
     ($line:expr, $flavor:expr, $name:expr) => {{
-        let mut database = Default::default();
+        let database = Default::default();
+        let mut names = Default::default();
         let block = create_span($line);
-        let (remaining, variable_action) = assert_ok!(parse_line(block.span(), &mut database));
+        let (remaining, (_database, variable_action)) =
+            assert_ok!(parse_line(block.span(), &mut names, &database));
         assert_complete!(remaining);
 
         match variable_action.action {
@@ -16,9 +18,7 @@ macro_rules! simple_test {
         }
 
         assert_eq!(
-            database
-                .variable_name($name)
-                .expect("name was not interned"),
+            names.variable_name($name).expect("name was not interned"),
             variable_action.name
         );
     }};

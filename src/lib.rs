@@ -40,11 +40,12 @@ mod parsers;
 pub mod pattern;
 pub mod source_location;
 pub mod traits;
+mod types;
 
 pub use crate::eval::{Flavor, Origin, Variable, VariableParameters};
 pub use crate::parsers::ParserCompliance;
 
-use fxhash::FxHashMap;
+use crate::evaluated::Block;
 use std::io;
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -162,7 +163,7 @@ impl<T> OwnedFragment<T> {
 /// for more details
 #[derive(Clone, Debug, PartialEq)]
 pub struct Command {
-    unexpanded_command: String,
+    unexpanded_command: Arc<Block>,
 }
 
 /// A "rule" describes how to bring a set of "targets" up to date from a set of
@@ -184,6 +185,13 @@ impl Rule {
     pub fn dependencies(&self) -> &[evaluated::Block] {
         unimplemented!()
     }
+
+    /// Push a new line into the rule
+    fn push_command_line(&mut self, line: Arc<Block>) {
+        self.recipe.push(Command {
+            unexpanded_command: line,
+        })
+    }
 }
 
 /// Type representing an opaque variable name reference.
@@ -198,74 +206,46 @@ pub struct FileName(Sym);
 
 /// Database of rules and variables.
 /// This represents the full context required to evaluate something in Makefile syntax
-#[derive(Default)]
+#[derive(Clone, Default, Debug)]
+#[must_use]
 pub struct Database {
     /// Global variables
-    variables: FxHashMap<VariableName, VariableParameters>,
+    variables: types::Map<VariableName, VariableParameters>,
     /// Target variables, mapped from target name to variable name to value
-    target_variables: FxHashMap<String, FxHashMap<VariableName, VariableParameters>>,
+    target_variables: types::Map<FileName, types::Map<VariableName, VariableParameters>>,
     /// All known rules
-    rules: Vec<Rule>,
-    /// All the file names
-    file_names: StringInterner,
-    /// All known variable names
-    variable_names: StringInterner,
+    rules: im::Vector<Rule>,
 }
 
 impl Database {
-    /// Initialize a database by reading in from a file
-    pub fn from_file(filename: impl AsRef<str>) -> Database {
-        let filename = filename.as_ref();
-        let _ = filename;
-        unimplemented!()
-    }
-
-    /// Get the rule that will build a given target
-    pub fn get_rule_for_target(&self, target: impl AsRef<str>) -> Rule {
-        let target = target.as_ref();
-        let _ = target;
-        unimplemented!();
-    }
-
     /// Add a rule into the database
-    pub fn add_rule(&mut self, rule: Rule) {
-        self.rules.push(rule);
-    }
-
-    /// Intern a the file name for a makefile
-    pub fn intern_file_name(&mut self, file_name: String) -> FileName {
-        FileName(self.file_names.get_or_intern(file_name))
-    }
-
-    /// Intern a variable name
-    pub fn intern_variable_name(&mut self, variable_name: String) -> VariableName {
-        eprintln!("Intern variable {:?}", variable_name);
-        VariableName(self.variable_names.get_or_intern(variable_name))
-    }
-
-    /// Try to get a variable name from a string
-    pub fn variable_name(&self, variable_name: &str) -> Option<VariableName> {
-        self.variable_names.get(variable_name).map(VariableName)
+    pub fn add_rule(&self, rule: Rule) -> Self {
+        let mut tr = self.clone();
+        tr.rules.push_back(rule);
+        tr
     }
 
     /// Set the value of a variable
-    pub fn set_variable(&mut self, name: VariableName, value: VariableParameters) {
-        self.variables.insert(name, value);
+    pub fn set_variable(&self, name: VariableName, value: VariableParameters) -> Self {
+        let mut tr = self.clone();
+        tr.variables.insert(name, value);
+        tr
     }
 
     /// Override the value of a variable for a specific target
-    /// TODO: audit this function's parameters. We don't always need to allocate here
     pub fn set_variable_for_target(
-        &mut self,
-        target: impl Into<String>,
+        &self,
+        target: FileName,
         name: VariableName,
         value: VariableParameters,
-    ) {
+    ) -> Self {
+        let mut tr = self.clone();
         let target = target.into();
-        self.target_variables
+        tr.target_variables
             .entry(target)
             .or_default()
             .insert(name, value);
+        tr
     }
 
     /// Get a variable based on a name
@@ -275,24 +255,16 @@ impl Database {
             .map(|val| Variable::new(self, val))
     }
 
-    /// Get a variable based on a string name
-    pub fn get_variable_str(&self, name: &str) -> Option<Variable> {
-        self.variables
-            .get(&VariableName(self.variable_names.get(name)?))
-            .map(|val| Variable::new(self, val))
-    }
-
-    /// Get the value of a variable in the context of a target
-    pub fn get_variable_for_target<'t>(
-        &'t self,
-        target: &'t str,
-        name: &str,
-    ) -> Option<Variable<'t>> {
-        let variable_name = VariableName(self.variable_names.get(name)?);
+    /// Get a variable based on the target and name
+    pub fn get_variable_for_target(
+        &self,
+        target: FileName,
+        name: VariableName,
+    ) -> Option<Variable> {
         self.target_variables
-            .get(target)
-            .and_then(|m| m.get(&variable_name))
-            .map(|v| Variable::new_for_target(self, v, target))
+            .get(&target)?
+            .get(&name)
+            .map(|val| Variable::new(self, val))
     }
 }
 
@@ -318,6 +290,40 @@ impl<'a> From<ParseError<'a>> for MakefileError {
     }
 }
 */
+
+/// Cache of all the different kinds of name we can encounter in a makefile.
+/// There should probably only be one of these, so this intentionally doesn't
+/// implement `Clone`
+#[derive(Default)]
+pub struct NameCache {
+    /// All the file names
+    file_names: StringInterner,
+    /// All known variable names
+    variable_names: StringInterner,
+}
+
+impl NameCache {
+    /// Intern a the file name for a makefile
+    pub fn intern_file_name(&mut self, file_name: String) -> FileName {
+        FileName(self.file_names.get_or_intern(file_name))
+    }
+
+    /// Try to get a file name that has been interned
+    pub fn file_name(&self, file_name: &str) -> Option<FileName> {
+        self.file_names.get(file_name).map(FileName)
+    }
+
+    /// Intern a variable name
+    pub fn intern_variable_name(&mut self, variable_name: String) -> VariableName {
+        eprintln!("Intern variable {:?}", variable_name);
+        VariableName(self.variable_names.get_or_intern(variable_name))
+    }
+
+    /// Try to get a variable name from a string
+    pub fn variable_name(&self, variable_name: &str) -> Option<VariableName> {
+        self.variable_names.get(variable_name).map(VariableName)
+    }
+}
 
 /// Represents the state of the parsing engine
 pub struct Engine {
@@ -349,9 +355,14 @@ impl Engine {
         unimplemented!("get_path_for_filename")
     }
 
+    /// Update the internal database.
+    pub fn replace_database(&mut self, db: Database) {
+        self.database = db;
+    }
+
     /// Add a rule to the database
     fn add_rule(&mut self, rule: Rule) {
-        self.database.add_rule(rule);
+        self.database = self.database.add_rule(rule);
     }
 }
 
@@ -370,6 +381,7 @@ impl Engine {
     /// Parses a makefile
     pub fn read_makefile<F: BufRead>(
         &mut self,
+        names: &mut NameCache,
         input: &mut F,
         input_filename: &str,
     ) -> Result<(), MakefileError> {
@@ -384,7 +396,7 @@ impl Engine {
                     source_location::Location::SourceLocation {
                         character: 1,
                         line: 1,
-                        filename: self.database.intern_file_name(input_filename.into()),
+                        filename: names.intern_file_name(input_filename.into()),
                     }
                     .into(),
                     i,
@@ -409,17 +421,14 @@ impl Engine {
         use nom::Err as NErr;
 
         while !i.at_eof() {
-            let (new_i, line_action) =
-                match parsers::LineParser::new(self, &mut parser_state).parse_line(i) {
-                    Ok(v) => v,
-                    Err(NErr::Failure(_)) => unimplemented!("Unrecoverable line parsing failure"),
-                    Err(NErr::Incomplete(_)) => unimplemented!("incomplete line"),
-                    Err(NErr::Error(_)) => unimplemented!("Recoverable line parsing failure"),
-                };
+            let (new_i, _) = match parser_state.parse_line(i, names, self) {
+                Ok(v) => v,
+                Err(NErr::Failure(_)) => unimplemented!("Unrecoverable line parsing failure"),
+                Err(NErr::Incomplete(_)) => unimplemented!("incomplete line"),
+                Err(NErr::Error(_)) => unimplemented!("Recoverable line parsing failure"),
+            };
 
             i = new_i;
-
-            eprintln!("{:?}", line_action);
         }
 
         Ok(())

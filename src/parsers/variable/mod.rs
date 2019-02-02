@@ -53,8 +53,9 @@ pub(crate) struct VariableAction {
 /// Attempt to parse a variable reference in the context of a given database
 pub(crate) fn parse_line<'a>(
     i: BlockSpan<'a>,
-    db: &mut crate::Database,
-) -> IResult<BlockSpan<'a>, VariableAction, ParseErrorKind> {
+    names: &mut crate::NameCache,
+    db: &crate::Database,
+) -> IResult<BlockSpan<'a>, (crate::Database, VariableAction), ParseErrorKind> {
     use nom::Slice;
 
     #[derive(Debug, Copy, Clone)]
@@ -77,7 +78,7 @@ pub(crate) fn parse_line<'a>(
     loop {
         // If parsing as a variable definition succeeds, we're done
         eprintln!("Parsing iteration {:?}", i.into_string());
-        match parse_variable_assignment(i, modifiers, db) {
+        match parse_variable_assignment(i, modifiers, names, db) {
             Ok(v) => return Ok(v),
             Err(e) => {
                 match e.clone().into_error_kind() {
@@ -125,47 +126,57 @@ pub(crate) fn parse_line<'a>(
                 {
                     if let Ok((trailing, _)) = makefile_whitespace(suffix) {
                         if trailing.len() == 0 {
+                            // TODO: propagate sensitivity from the name?
                             let (_, name_ast) = parse_ast(variable_name)?;
-                            let variable_name = name_ast.eval(db).into_string().trim().into();
-                            let variable_name = db.intern_variable_name(variable_name);
+                            let (db, variable_name) = name_ast.eval(names, db);
+                            let variable_name = variable_name.into_string().trim().into();
+                            let variable_name = names.intern_variable_name(variable_name);
                             return Ok((
                                 trailing,
-                                VariableAction {
-                                    name: variable_name,
-                                    modifiers: modifiers,
-                                    action: match assignment_type {
-                                        AssignmentType::Append => Action::Append,
-                                        v => Action::Define(VariableParameters::new(
-                                            ast::empty(),
-                                            match v {
-                                                AssignmentType::Simple => Flavor::Simple,
-                                                AssignmentType::Conditional => Flavor::Conditional,
-                                                AssignmentType::Recursive => Flavor::Recursive,
-                                                AssignmentType::Bang => Flavor::Shell,
-                                                AssignmentType::Append => unreachable!(),
-                                            },
-                                            crate::eval::Origin::File,
-                                        )),
+                                (
+                                    db,
+                                    VariableAction {
+                                        name: variable_name,
+                                        modifiers: modifiers,
+                                        action: match assignment_type {
+                                            AssignmentType::Append => Action::Append,
+                                            v => Action::Define(VariableParameters::new(
+                                                ast::empty(),
+                                                match v {
+                                                    AssignmentType::Simple => Flavor::Simple,
+                                                    AssignmentType::Conditional => {
+                                                        Flavor::Conditional
+                                                    }
+                                                    AssignmentType::Recursive => Flavor::Recursive,
+                                                    AssignmentType::Bang => Flavor::Shell,
+                                                    AssignmentType::Append => unreachable!(),
+                                                },
+                                                crate::eval::Origin::File,
+                                            )),
+                                        },
                                     },
-                                },
+                                ),
                             ));
                         }
                     }
                 }
                 // Failing that, just assume the whole thing is one big recursive variable name
-                let variable_name = db.intern_variable_name(i.into_string().trim().into());
+                let variable_name = names.intern_variable_name(i.into_string().trim().into());
                 let rest = i.slice(i.len()..);
                 return Ok((
                     rest,
-                    VariableAction {
-                        name: variable_name,
-                        modifiers: modifiers,
-                        action: Action::Define(VariableParameters::new(
-                            ast::empty(),
-                            Flavor::Recursive,
-                            crate::eval::Origin::File,
-                        )),
-                    },
+                    (
+                        db.clone(),
+                        VariableAction {
+                            name: variable_name,
+                            modifiers: modifiers,
+                            action: Action::Define(VariableParameters::new(
+                                ast::empty(),
+                                Flavor::Recursive,
+                                crate::eval::Origin::File,
+                            )),
+                        },
+                    ),
                 ));
             }
             Modifier::Undefine => {
@@ -221,45 +232,54 @@ fn parse_assignment_operator<'a>(
 fn parse_variable_assignment<'a>(
     i: BlockSpan<'a>,
     modifiers: Modifiers,
-    db: &mut crate::Database,
-) -> IResult<BlockSpan<'a>, VariableAction, ParseErrorKind> {
+    names: &mut crate::NameCache,
+    db: &crate::Database,
+) -> IResult<BlockSpan<'a>, (crate::Database, VariableAction), ParseErrorKind> {
     let (i, (name_segment, assignment_type)) = parse_assignment_operator(i)?;
     let (value_segment, _) = makefile_whitespace(i)?;
 
     let (_, name_ast) = parse_ast(name_segment)?;
     let (post_value, mut value_ast) = parse_ast(value_segment)?;
 
-    let variable_name = name_ast.eval(db).into_string().trim().into();
-    let variable_name = db.intern_variable_name(variable_name);
+    let (mut db, variable_name) = name_ast.eval(names, db);
+    let variable_name = variable_name.into_string().trim().into();
+    let variable_name = names.intern_variable_name(variable_name);
 
     if assignment_type == AssignmentType::Simple {
         // Evaluate the value AST
-        let contents = value_ast.eval(db);
-        let location = value_segment.segments().next().unwrap().location().clone();
+        let (new_db, contents) = value_ast.eval(names, &db);
+        db = new_db;
+        let location = value_segment
+            .location()
+            .expect("value segment should have nonzero length");
         value_ast = ast::preevaluated(location.into(), contents);
     }
 
     // TODO: the origin reported here is not necessarily correct. We need to
-    // inspect ask the block span whether it comes from an $(eval) or a file
+    // inspect ask the block span whether it comes from an $(eval) or a file.
+    // We also need to correctly propagate sensitivities
     Ok((
         post_value,
-        VariableAction {
-            name: variable_name,
-            modifiers: modifiers,
-            action: match assignment_type {
-                AssignmentType::Append => Action::Append,
-                v => Action::Define(VariableParameters::new(
-                    value_ast,
-                    match v {
-                        AssignmentType::Simple => Flavor::Simple,
-                        AssignmentType::Conditional => Flavor::Conditional,
-                        AssignmentType::Recursive => Flavor::Recursive,
-                        AssignmentType::Bang => Flavor::Shell,
-                        AssignmentType::Append => unreachable!(),
-                    },
-                    crate::eval::Origin::File,
-                )),
+        (
+            db,
+            VariableAction {
+                name: variable_name,
+                modifiers: modifiers,
+                action: match assignment_type {
+                    AssignmentType::Append => Action::Append,
+                    v => Action::Define(VariableParameters::new(
+                        value_ast,
+                        match v {
+                            AssignmentType::Simple => Flavor::Simple,
+                            AssignmentType::Conditional => Flavor::Conditional,
+                            AssignmentType::Recursive => Flavor::Recursive,
+                            AssignmentType::Bang => Flavor::Shell,
+                            AssignmentType::Append => unreachable!(),
+                        },
+                        crate::eval::Origin::File,
+                    )),
+                },
             },
-        },
+        ),
     ))
 }

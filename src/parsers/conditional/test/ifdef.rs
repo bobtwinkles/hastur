@@ -12,7 +12,7 @@ fn simple() {
         Conditional::IfDef(span) => {
             assert_segments_eq!(span.span(), [("a", Location::test_location(1, 7))])
         }
-        v => panic!("Unexpected conditional type {:?}", v)
+        v => panic!("Unexpected conditional type {:?}", v),
     }
 }
 
@@ -27,7 +27,7 @@ fn simple_ndef() {
         Conditional::IfNDef(span) => {
             assert_segments_eq!(span.span(), [("a", Location::test_location(1, 8))])
         }
-        v => panic!("Unexpected conditional type {:?}", v)
+        v => panic!("Unexpected conditional type {:?}", v),
     }
 }
 
@@ -41,6 +41,6 @@ fn multiple_whitespace() {
         Conditional::IfNDef(span) => {
             assert_segments_eq!(span.span(), [("a", Location::test_location(2, 3))])
         }
-        v => panic!("Unexpected conditional type {:?}", v)
+        v => panic!("Unexpected conditional type {:?}", v),
     }
 }

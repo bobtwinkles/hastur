@@ -5,7 +5,8 @@
 use crate::evaluated::nodes as enodes;
 use crate::evaluated::{Block, ContentReference, EvaluatedNode};
 use crate::source_location::{LocatedString, Location, Marker};
-use crate::VariableName;
+use crate::types::Set;
+use crate::{Database, NameCache, VariableName};
 use std::sync::Arc;
 
 mod text_functions;
@@ -31,30 +32,44 @@ impl AstNode {
         &self.children
     }
 
-    /// Evaluate this AST
-    /// Takes a mutable database because Make Is Cursed Technology.
-    /// Since `eval` statements are valid anywhere,
-    /// AST evaluations *are not* idempotent.
-    pub fn eval(&self, context: &mut crate::Database) -> Arc<Block> {
-        let (sensitivity, content) = self.eval_internal(context);
+    /// Evaluate this AST, in the context of the provided database. The provided
+    /// database *is not* updated. To fully commit the changes of this
+    /// evaluation, one must use `Engine::replace_database` with the returned
+    /// database.
+    pub fn eval(&self, names: &mut NameCache, context: &Database) -> (Database, Arc<Block>) {
+        let (database, sensitivity, content) = self.eval_internal(names, context);
 
-        Block::new(sensitivity, content)
+        (database, Block::new(sensitivity, content))
     }
 
     /// Internal evaluation function
     fn eval_internal(
         &self,
-        context: &mut crate::Database,
-    ) -> (fxhash::FxHashSet<VariableName>, Vec<ContentReference>) {
-        let mut sensitivity: fxhash::FxHashSet<VariableName> = Default::default();
+        names: &mut NameCache,
+        context: &Database,
+    ) -> (Database, Set<VariableName>, Vec<ContentReference>) {
+        let mut sensitivity: Set<VariableName> = Default::default();
+        // This is technically a little inefficient (we don't always need to do
+        // this), but cloning databases should be pretty cheap
+        let mut database = context.clone();
+
+        macro_rules! merge_sensitivity {
+            ($new_sens:expr) => {
+                let new_sens = $new_sens;
+                sensitivity = if new_sens.len() < sensitivity.len() {
+                    sensitivity.union(new_sens)
+                } else {
+                    new_sens.union(sensitivity)
+                };
+            };
+        }
 
         macro_rules! eval_child {
             ($child:expr) => {{
                 let child = $child;
-                let (new_sens, child_content) = child.eval_internal(context);
-                for elem in new_sens.into_iter() {
-                    sensitivity.insert(elem);
-                }
+                let (new_db, new_sens, child_content) = child.eval_internal(names, context);
+                database = new_db;
+                merge_sensitivity!(new_sens);
 
                 child_content
             }};
@@ -62,10 +77,9 @@ impl AstNode {
 
         macro_rules! eval_subexpr {
             ($e: expr) => {{
-                let block = ($e).eval(context);
-                for elem in block.sensitivity() {
-                    sensitivity.insert(*elem);
-                }
+                let (new_db, block) = ($e).eval(names, context);
+                database = new_db;
+                merge_sensitivity!(block.raw_sensitivity());
 
                 block
             }};
@@ -73,7 +87,7 @@ impl AstNode {
 
         macro_rules! deref_variable {
             ($name:expr) => {{
-                let interned_variable_name = context.intern_variable_name($name);
+                let interned_variable_name = names.intern_variable_name($name);
                 let value = if let Some(var) = context.get_variable(interned_variable_name) {
                     let var_ast = var.ast().clone();
                     eval_subexpr!(var_ast)
@@ -90,11 +104,15 @@ impl AstNode {
             AstChildren::Constant(owned) => vec![ContentReference::new_from_node(Arc::new(
                 EvaluatedNode::Constant(owned.clone()),
             ))],
-            AstChildren::Concat(ref children) => children
-                .iter()
-                .map(|child| eval_child!(child))
-                .flatten()
-                .collect(),
+            AstChildren::Concat(ref children) => {
+                // Allocate a vector to store the results, guessing that we'll
+                // have a 1:1 mapping between children and produced nodes.
+                let mut contents = Vec::with_capacity(children.len());
+                for child in children {
+                    contents.extend(eval_child!(child));
+                }
+                contents
+            }
             AstChildren::PreEvaluated(ref block) => block.content().map(|x| x.clone()).collect(),
             AstChildren::VariableReference(name) => {
                 // Compute the variable name, and then try to evaluate it
@@ -142,7 +160,7 @@ impl AstNode {
             v => unimplemented!("Node {:?} unimplemented", v),
         };
 
-        (sensitivity, content)
+        (database, sensitivity, content)
     }
 }
 
@@ -173,7 +191,7 @@ pub enum AstChildren {
         /// Determines what index should be used
         index: AstNode,
         /// The list of words to index into
-        words: AstNode
+        words: AstNode,
     },
     /// The `words` make function
     // #SPC-V-AST.words

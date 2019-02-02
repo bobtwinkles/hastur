@@ -10,6 +10,7 @@ failure = "0.1"
 log = "0.4"
 string-interner = "0.7.0"
 lazy_static = "1.0"
+im = "12"
 
 [dependencies.nom]
 version = "4.1"

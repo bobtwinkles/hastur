@@ -1,5 +1,5 @@
 use crate::evaluated::{Block, BlockSpan, ContentReference};
-use crate::{Engine, ParseErrorKind};
+use crate::{Engine, NameCache, ParseErrorKind};
 use nom::Err as NErr;
 use nom::IResult;
 use std::sync::Arc;
@@ -67,62 +67,23 @@ impl<'a> ParserState<'a> {
         }
     }
 
-    /// Returns true if there is currently a rule open
-    /// That is, if we've seen a target/dep line and nothing has caused us to
-    /// dump the rule out to the database yet.
-    fn currently_processing_rule(&self) -> bool {
-        self.current_rule.is_some()
-    }
-
-    /// Close out the currently open rule, if there is one
-    fn close_rule(&mut self, engine: &mut Engine) {
-        let current_rule = std::mem::replace(&mut self.current_rule, None);
-        match current_rule {
-            Some(rule) => engine.add_rule(rule),
-            None => {}
-        }
-    }
-}
-
-/// Structure that actually parses makefile lines
-pub(crate) struct LineParser<'line, 'engine: 'line> {
-    /// The engine context for the parse
-    engine: &'line mut crate::Engine,
-
-    /// The current parser state
-    state: &'line mut ParserState<'engine>,
-}
-
-/// Represents the result of parsing a makefile line
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) enum MakefileLine {
-    Comment,
-    NewCommand(Arc<Block>),
-    Conditional(conditional::Conditional),
-    Variable(variable::VariableAction),
-}
-
-/// Parse a makefile line
-impl<'line, 'engine: 'line> LineParser<'line, 'engine> {
-    pub(crate) fn new(
-        engine: &'line mut crate::Engine,
-        state: &'line mut ParserState<'engine>,
-    ) -> Self {
-        Self { engine, state }
-    }
-
-    /// The parser entry point
+    /// Feed a line into the parser
     pub(crate) fn parse_line(
-        &'line mut self,
-        i: BlockSpan<'engine>,
-    ) -> IResult<BlockSpan<'engine>, MakefileLine, ParseErrorKind> {
+        &mut self,
+        i: BlockSpan<'a>,
+        names: &mut NameCache,
+        engine: &mut Engine,
+    ) -> IResult<BlockSpan<'a>, (), ParseErrorKind> {
         /// A small macro that returns on Err(NErr::Failure) or Ok()
         /// but "backtracks" (ignores the result) on recoverable failures or
         /// incomplete
         macro_rules! run_parser(
-            ($parsed:expr, $mfc:expr) => {
+            ($parsed:expr, $cleanup:expr) => {
                 match $parsed {
-                    Ok((i, o)) => return Ok((i, $mfc(o))),
+                    Ok((i, o)) => {
+                        $cleanup(o);
+                        return Ok((i, ()))
+                    },
                     Err(NErr::Incomplete(_)) => {
                         debug!(
                             "Parser {:?} was incomplete, backtracking",
@@ -146,14 +107,16 @@ impl<'line, 'engine: 'line> LineParser<'line, 'engine> {
         // since it diverges slightly from the GNU make behavior (which has
         // bespoke comment processing sprinkled through every other case)
         run_parser!(comment::parse_comment_following_whitespace(i), |_| {
-            MakefileLine::Comment
+            // Comment lines don't require any particular action
         });
 
-        if self.state.currently_processing_rule() {
+        if self.currently_processing_rule() {
             // We only check for command lines when we can reasonably expect
             // that we're currently processing a recipe
-            run_parser!(recipe_line(i, self.engine.command_char), |line| {
-                MakefileLine::NewCommand(line)
+            run_parser!(recipe_line(i, engine.command_char), |line| {
+                // Push the line. This is safe since we only run this parser if
+                // we're currently processing a rule
+                self.push_command_line(line);
             });
         }
 
@@ -164,9 +127,9 @@ impl<'line, 'engine: 'line> LineParser<'line, 'engine> {
 
         // Convenience macro for running parsers against the line
         macro_rules! run_line_parser(
-            ($parsed:expr, $mfc:expr) => {
+            ($parsed:expr, $cleanup:expr) => {
                 match $parsed {
-                    Ok((_, o)) => return Ok((i, $mfc(o))),
+                    Ok((_, o)) => {$cleanup(o); return Ok((i, ()))},
                     Err(NErr::Incomplete(_)) => {
                         debug!(
                             "Parser {:?} was incomplete, backtracking",
@@ -185,20 +148,55 @@ impl<'line, 'engine: 'line> LineParser<'line, 'engine> {
             }
         );
 
-        run_line_parser!(conditional::parse_line(line.span()), |o| {
-            MakefileLine::Conditional(o)
-        });
+        run_line_parser!(conditional::parse_line(line.span()), |conditional| self
+            .handle_conditional(conditional));
 
-        if self.state.ignoring {
+        if self.ignoring {
             // The parse state indicates that we should just ignore this line
-            // We need to also grab its continuations
-            // let (mut new_i, line) =
+            // We've already collapsed continuations, so just return immediately
+            return Ok((i, ()));
         }
 
-        // TODO: Variable assignment here
-        run_line_parser!(variable::parse_line(i, &mut self.engine.database), MakefileLine::Variable);
+        run_line_parser!(variable::parse_line(i, names, &engine.database), |(database, variable_action)| {
+            // Successful variable assignments close the current rule
+            self.close_rule(engine);
 
-        unimplemented!()
+            engine.replace_database(database);
+            unimplemented!("Handle variable action {:?}", variable_action);
+        });
+
+        unimplemented!("parsing after attempting to match variable names");
+    }
+
+    /// Handle a conditional that came back from line parsing
+    fn handle_conditional(&mut self, conditional: self::conditional::Conditional) {
+        unimplemented!("Handling conditional {:?}", conditional);
+    }
+
+    /// Returns true if there is currently a rule open
+    /// That is, if we've seen a target/dep line and nothing has caused us to
+    /// dump the rule out to the database yet.
+    fn currently_processing_rule(&self) -> bool {
+        self.current_rule.is_some()
+    }
+
+    /// Push a new command line into the currently processing rule
+    /// # Panics
+    /// Panics if there no rule is currently active
+    fn push_command_line(&mut self, line: Arc<Block>) {
+        self.current_rule
+            .as_mut()
+            .expect("cannot push command lines while not processing rules")
+            .push_command_line(line);
+    }
+
+    /// Close out the currently open rule, if there is one
+    fn close_rule(&mut self, engine: &mut Engine) {
+        let current_rule = std::mem::replace(&mut self.current_rule, None);
+        match current_rule {
+            Some(rule) => engine.add_rule(rule),
+            None => {}
+        }
     }
 }
 

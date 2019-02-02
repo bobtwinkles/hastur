@@ -2,13 +2,13 @@
 
 use crate::evaluated::{Block, BlockSpan};
 use crate::parsers::{makefile_take_until_unquote, makefile_token};
+use crate::types::Set;
 use crate::VariableName;
-use fxhash::FxHashSet;
 use std::sync::Arc;
 
 /// Parses a variable value, and returns the root of the combined tree node
 pub(super) fn do_subref(
-    sensitivity: FxHashSet<VariableName>,
+    sensitivity: Set<VariableName>,
     variable_value: Arc<Block>,
     key: Arc<Block>,
     replacement: Arc<Block>,
@@ -48,7 +48,7 @@ pub(super) fn do_subref(
 /// Internal function that can actually do replacement
 fn do_replacement<'a>(
     mut tokens: BlockSpan,
-    sensitivity: FxHashSet<VariableName>,
+    sensitivity: Set<VariableName>,
     pre_key: &str,
     post_key: &str,
     pre_replacement: BlockSpan,

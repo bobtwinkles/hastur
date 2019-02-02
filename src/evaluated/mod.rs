@@ -1,4 +1,5 @@
 //! The result of evaluating an AST
+use crate::types::Set;
 use crate::VariableName;
 use std::sync::Arc;
 
@@ -20,7 +21,7 @@ pub use self::nodes::*;
 pub struct Block {
     /// What variables this evaluation was sensitive to
     // #REQ-Expansion-Tracking
-    sensitivity: fxhash::FxHashSet<VariableName>,
+    sensitivity: Set<VariableName>,
     /// The different fragments of content, tagged with how they came to be part of this block
     // #SPC-Variable-Eval.concat
     content: Vec<ContentReference>,
@@ -38,7 +39,7 @@ impl Block {
 
     /// Create a new evaluated block
     pub(crate) fn new(
-        sensitivity: fxhash::FxHashSet<VariableName>,
+        sensitivity: Set<VariableName>,
         content: Vec<ContentReference>,
     ) -> Arc<Block> {
         let mut tr_block = Block {
@@ -83,7 +84,7 @@ impl Block {
     }
 
     /// Get a copy of the raw sensitivity set
-    pub(crate) fn raw_sensitivity(&self) -> fxhash::FxHashSet<VariableName> {
+    pub(crate) fn raw_sensitivity(&self) -> Set<VariableName> {
         self.sensitivity.clone()
     }
 
