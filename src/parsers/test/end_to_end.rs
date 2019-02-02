@@ -20,7 +20,11 @@ endif
     let mut parse_state = ParserState::new("test");
     let mut names = Default::default();
 
+    // Empty first line
     let (i, _) = assert_ok!(parse_state.parse_line(block.span(), &mut names, &mut engine));
+
+    // Assignment line
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
     // After processing the first line, foo should be interned
     let variable_name = names
         .variable_name("foo")
@@ -34,8 +38,16 @@ endif
             .1,
         "bar"
     );
+
+    // ifeq line
     let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+
+    // correct assignment
     let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+
+    // Incorrect assignment
     let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+
+    // endif line
     let (_i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
 }

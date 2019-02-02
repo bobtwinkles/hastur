@@ -122,6 +122,15 @@ mod makefile_line {
     }
 
     #[test]
+    fn line_break_stops() {
+        let test_span = create_span("line 1\nline 2");
+        let test_span = test_span.span();
+        let parse = assert_ok!(makefile_line(test_span, ParserCompliance::GNU, false));
+        assert_segments_eq!(parse.0, [("line 2", Location::test_location(2, 1))]);
+        assert_segments_eq!(parse.1.span(), [("line 1", Location::test_location(1, 1))]);
+    }
+
+    #[test]
     fn simple_collapse() {
         let test_span = create_span("line 1\\\nline 2");
         let test_span = test_span.span();

@@ -2,7 +2,7 @@
 use crate::ast;
 use crate::ast::AstNode;
 use crate::evaluated::BlockSpan;
-use crate::parsers::{error_out, makefile_whitespace};
+use crate::parsers::{fail_out, makefile_whitespace};
 use crate::source_location::Location;
 use crate::ParseErrorKind;
 use nom::{Err, ErrorKind, IResult};
@@ -112,7 +112,7 @@ fn advanced_var<'a>(
         let (idx, c) = match it.next() {
             Some(v) => v,
             None => {
-                return error_out(i, ParseErrorKind::UnternimatedVariable);
+                return fail_out(i, ParseErrorKind::UnternimatedVariable);
             }
         };
         split_idx = idx;
@@ -197,7 +197,7 @@ fn function_argument<'a>(
                     paren_count -= 1
                 } else {
                     // Somehow we ended up with unbalanced parens, abort
-                    return error_out(i, ParseErrorKind::UnternimatedVariable);
+                    return fail_out(i, ParseErrorKind::UnternimatedVariable);
                 }
             }
             '{' => curly_count += 1,
@@ -206,7 +206,7 @@ fn function_argument<'a>(
                     curly_count -= 1;
                 } else {
                     // Somehow we ended up with unbalanced braces, abort
-                    return error_out(i, ParseErrorKind::UnternimatedVariable);
+                    return fail_out(i, ParseErrorKind::UnternimatedVariable);
                 }
             }
             ',' => {
@@ -228,7 +228,7 @@ fn strip<'a>(
 ) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
     let (i, arg) = function_argument(i)?;
     if i.len() != 0 {
-        return error_out(i, ParseErrorKind::ExtraArguments("strip"));
+        return fail_out(i, ParseErrorKind::ExtraArguments("strip"));
     }
 
     let (_, arg) = parse_ast(arg)?;
@@ -242,7 +242,7 @@ fn words<'a>(
 ) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
     let (i, arg) = function_argument(i)?;
     if i.len() != 0 {
-        return error_out(i, ParseErrorKind::ExtraArguments("words"));
+        return fail_out(i, ParseErrorKind::ExtraArguments("words"));
     }
 
     let (_, arg) = parse_ast(arg)?;
@@ -257,13 +257,13 @@ fn word<'a>(
     let (i, index) = function_argument(i)?;
     let (i, _) = match char!(i, ',') {
         Ok(v) => v,
-        Err(_) => return error_out(i, ParseErrorKind::InsufficientArguments("word")),
+        Err(_) => return fail_out(i, ParseErrorKind::InsufficientArguments("word")),
     };
     let (_, index) = parse_ast(index)?;
 
     let (i, list) = function_argument(i)?;
     if i.len() != 0 {
-        return error_out(i, ParseErrorKind::ExtraArguments("word"));
+        return fail_out(i, ParseErrorKind::ExtraArguments("word"));
     }
     let (_, list) = parse_ast(list)?;
 

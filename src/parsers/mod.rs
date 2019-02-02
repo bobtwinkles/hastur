@@ -148,6 +148,12 @@ impl<'a> ParserState<'a> {
             }
         );
 
+        eprintln!("Parsing in collapsed line {:?}", line.into_string());
+        // If the line is empty, just succeed immediately
+        if line.len() == 0 {
+            return Ok((i, ()));
+        }
+
         run_line_parser!(conditional::parse_line(line.span()), |conditional| self
             .handle_conditional(conditional));
 
@@ -157,13 +163,16 @@ impl<'a> ParserState<'a> {
             return Ok((i, ()));
         }
 
-        run_line_parser!(variable::parse_line(i, names, &engine.database), |(database, variable_action)| {
-            // Successful variable assignments close the current rule
-            self.close_rule(engine);
+        run_line_parser!(
+            variable::parse_line(line.span(), names, &engine.database),
+            |(database, variable_action)| {
+                // Successful variable assignments close the current rule
+                self.close_rule(engine);
 
-            engine.replace_database(database);
-            unimplemented!("Handle variable action {:?}", variable_action);
-        });
+                engine.replace_database(database);
+                unimplemented!("Handle variable action {:?}", variable_action);
+            }
+        );
 
         unimplemented!("parsing after attempting to match variable names");
     }
@@ -476,8 +485,19 @@ pub(crate) fn makefile_line(
     Ok((i, Block::new(Default::default(), lines)))
 }
 
-/// Create a new Nom `IResult` with our custom error kind
+/// Create a new Nom `IResult` recoverable error with our custom error kind
 pub(crate) fn error_out<'a, T>(
+    i: BlockSpan<'a>,
+    err: ParseErrorKind,
+) -> IResult<BlockSpan<'a>, T, ParseErrorKind> {
+    Err(NErr::Error(nom::Context::Code(
+        i,
+        nom::ErrorKind::Custom(err),
+    )))
+}
+
+/// Create a new Nom `IResult` unrecoverable error with our custom error kind
+pub(crate) fn fail_out<'a, T>(
     i: BlockSpan<'a>,
     err: ParseErrorKind,
 ) -> IResult<BlockSpan<'a>, T, ParseErrorKind> {
