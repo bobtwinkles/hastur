@@ -54,16 +54,19 @@ fn parse_line_internal<'a>(
         makefile_whitespace,
         add_return_error!(
             ErrorKind::Custom(ParseErrorKind::ConditionalExpected),
-            fix_error!(
-                ParseErrorKind,
-                alt_complete!(
-                    tag_no_case!("ifdef") => { |_| ConditionalType::IfDef } |
-                    tag_no_case!("ifndef") => { |_| ConditionalType::IfNDef } |
-                    tag_no_case!("ifeq") => { |_| ConditionalType::IfEq } |
-                    tag_no_case!("ifneq") => { |_| ConditionalType::IfNEq } |
-                    tag_no_case!("else") => { |_| ConditionalType::Else } |
-                    tag_no_case!("endif") => { |_| ConditionalType::EndIf }
-                )
+            terminated!(
+                fix_error!(
+                    ParseErrorKind,
+                    alt_complete!(
+                        tag_no_case!("ifdef") => { |_| ConditionalType::IfDef } |
+                        tag_no_case!("ifndef") => { |_| ConditionalType::IfNDef } |
+                        tag_no_case!("ifeq") => { |_| ConditionalType::IfEq } |
+                        tag_no_case!("ifneq") => { |_| ConditionalType::IfNEq } |
+                        tag_no_case!("else") => { |_| ConditionalType::Else } |
+                        tag_no_case!("endif") => { |_| ConditionalType::EndIf }
+                    )
+                ),
+                makefile_whitespace
             )
         )
     )?;
@@ -77,7 +80,7 @@ fn parse_line_internal<'a>(
             let (input, rest) = return_error!(
                 input,
                 ErrorKind::Custom(ParseErrorKind::MalformedIfDef),
-                preceded!(makefile_whitespace, fix_error!(ParseErrorKind, nom::rest))
+                fix_error!(ParseErrorKind, nom::rest)
             )?;
 
             if tag == ConditionalType::IfDef {
@@ -109,7 +112,6 @@ fn parse_line_internal<'a>(
             Ok((input, Conditional::Else(sub_cond)))
         }
         ConditionalType::EndIf => {
-            let (input, _) = makefile_whitespace(input)?;
             if input.len() > 0 {
                 Err(Err::Failure(Context::Code(
                     input,
@@ -126,7 +128,6 @@ fn parse_line_internal<'a>(
 fn parse_ifeq<'a>(
     line: BlockSpan<'a>,
 ) -> IResult<BlockSpan<'a>, (BlockSpan<'a>, BlockSpan<'a>), ParseErrorKind> {
-    eprintln!("Parsing ifeq line: {:?}", line);
     fn take_till_terminator<'a, 'b>(
         line: BlockSpan<'a>,
         terminator: char,
@@ -175,6 +176,8 @@ fn parse_ifeq<'a>(
         }
     }
 
+    eprintln!("Parsing ifeq line: {:?}", line);
+
     let (line, terminator) = fix_error!(
         line,
         ParseErrorKind,
@@ -205,6 +208,7 @@ fn parse_ifeq<'a>(
     };
     let (line, arg2) = take_till_terminator(line, terminator)?;
 
+    eprintln!("ifeq parse succeeded");
     Ok((line, (arg1, arg2)))
 }
 
