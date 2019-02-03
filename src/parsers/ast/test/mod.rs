@@ -15,13 +15,7 @@ fn simple() {
     let res = assert_ok!(parse_ast(block.span()));
 
     assert_complete!(res.0);
-    assert_eq!(
-        res.1,
-        ast::constant(
-            Location::test_location(1, 1),
-            LocatedString::test_new(1, 1, "ab")
-        )
-    )
+    assert_eq!(res.1, ast::constant(LocatedString::test_new(1, 1, "ab")))
 }
 
 #[test]
@@ -34,10 +28,7 @@ fn single_char_ref() {
         res.1,
         ast::variable_reference(
             Location::test_location(1, 1),
-            ast::constant(
-                Location::test_location(1, 2),
-                LocatedString::test_new(1, 2, "a")
-            )
+            ast::constant(LocatedString::test_new(1, 2, "a"))
         )
     )
 }
@@ -48,13 +39,7 @@ fn dollar_at_end() {
     let res = assert_ok!(parse_ast(block.span()));
 
     assert_complete!(res.0);
-    assert_eq!(
-        res.1,
-        ast::constant(
-            Location::test_location(1, 1),
-            LocatedString::test_new(1, 1, "$")
-        )
-    );
+    assert_eq!(res.1, ast::constant(LocatedString::test_new(1, 1, "$")));
 }
 
 #[test]
@@ -63,13 +48,7 @@ fn dollar_escape() {
     let res = assert_ok!(parse_ast(block.span()));
 
     assert_complete!(res.0);
-    assert_eq!(
-        res.1,
-        ast::constant(
-            Location::test_location(1, 1),
-            LocatedString::test_new(1, 2, "$")
-        )
-    );
+    assert_eq!(res.1, ast::constant(LocatedString::test_new(1, 2, "$")));
 }
 
 #[test]
@@ -82,10 +61,7 @@ fn long_var_name() {
         res.1,
         ast::variable_reference(
             Location::test_location(1, 1),
-            ast::constant(
-                Location::test_location(1, 3),
-                LocatedString::test_new(1, 3, "foo")
-            )
+            ast::constant(LocatedString::test_new(1, 3, "foo"))
         )
     );
 }
@@ -102,10 +78,7 @@ fn recursive_variable_expansion() {
             Location::test_location(1, 1),
             ast::variable_reference(
                 Location::test_location(1, 3),
-                ast::constant(
-                    Location::test_location(1, 5),
-                    LocatedString::test_new(1, 5, "foo")
-                )
+                ast::constant(LocatedString::test_new(1, 5, "foo"))
             )
         )
     );

@@ -11,14 +11,8 @@ fn basic() {
         res.1,
         ast::word(
             Location::test_location(1, 3),
-            ast::constant(
-                Location::test_location(1, 8),
-                LocatedString::test_new(1, 8, "1")
-            ),
-            ast::constant(
-                Location::test_location(1, 10),
-                LocatedString::test_new(1, 10, "foo")
-            )
+            ast::constant(LocatedString::test_new(1, 8, "1")),
+            ast::constant(LocatedString::test_new(1, 10, "foo"))
         )
     )
 }

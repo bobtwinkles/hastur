@@ -1,8 +1,10 @@
 // #TST-P-Conditional
 
 use super::{parse_line, Conditional};
+use crate::ast;
 use crate::parsers::test::*;
 use crate::parsers::{makefile_line, ParserCompliance};
+use crate::source_location::{LocatedString, Location};
 use crate::ParseErrorKind;
 use nom::{error_to_list, ErrorKind};
 

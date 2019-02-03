@@ -3,20 +3,21 @@
 // #SPC-P-Conditional
 
 use super::makefile_whitespace;
-use crate::evaluated::{Block, BlockSpan};
+use crate::ast::AstNode;
+use crate::evaluated::BlockSpan;
+use crate::parsers::ast::parse_ast;
 use crate::ParseErrorKind;
 use nom::{Context, Err, ErrorKind, IResult};
-use std::sync::Arc;
 
 #[cfg(test)]
 mod test;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Conditional {
-    IfDef(Arc<Block>),
-    IfNDef(Arc<Block>),
-    IfEq(Arc<Block>, Arc<Block>),
-    IfNEq(Arc<Block>, Arc<Block>),
+    IfDef(AstNode),
+    IfNDef(AstNode),
+    IfEq(AstNode, AstNode),
+    IfNEq(AstNode, AstNode),
     Else(Option<Box<Conditional>>),
     EndIf,
 }
@@ -87,14 +88,14 @@ fn parse_line_internal<'a>(
             let (input, rest) = return_error!(
                 input,
                 ErrorKind::Custom(ParseErrorKind::MalformedIfDef),
-                fix_error!(ParseErrorKind, nom::rest)
+                parse_ast
             )?;
 
             if tag == ConditionalType::IfDef {
-                Ok((input, Conditional::IfDef(rest.to_new_block())))
+                Ok((input, Conditional::IfDef(rest)))
             } else {
                 // #SPC-P-Conditional.ifndef
-                Ok((input, Conditional::IfNDef(rest.to_new_block())))
+                Ok((input, Conditional::IfNDef(rest)))
             }
         }
         ConditionalType::IfEq | ConditionalType::IfNEq => {
@@ -102,16 +103,10 @@ fn parse_line_internal<'a>(
             let (input, (arg1, arg2)) = parse_ifeq(input)?;
 
             if tag == ConditionalType::IfEq {
-                Ok((
-                    input,
-                    Conditional::IfEq(arg1.to_new_block(), arg2.to_new_block()),
-                ))
+                Ok((input, Conditional::IfEq(arg1, arg2)))
             } else {
                 // #SPC-P-Conditional.ifneq
-                Ok((
-                    input,
-                    Conditional::IfNEq(arg1.to_new_block(), arg2.to_new_block()),
-                ))
+                Ok((input, Conditional::IfNEq(arg1, arg2)))
             }
         }
         ConditionalType::Else => {
@@ -134,7 +129,7 @@ fn parse_line_internal<'a>(
 /// #SPC-P-Conditional.ifeq
 fn parse_ifeq<'a>(
     line: BlockSpan<'a>,
-) -> IResult<BlockSpan<'a>, (BlockSpan<'a>, BlockSpan<'a>), ParseErrorKind> {
+) -> IResult<BlockSpan<'a>, (AstNode, AstNode), ParseErrorKind> {
     fn take_till_terminator<'a, 'b>(
         line: BlockSpan<'a>,
         terminator: char,
@@ -199,6 +194,7 @@ fn parse_ifeq<'a>(
     eprintln!("Using arg1 separator {:?}", terminator);
 
     let (line, arg1) = take_till_terminator(line, terminator)?;
+    let (_, arg1) = parse_ast(arg1)?;
     eprintln!("Got arg1 {:?}", arg1);
     let (line, _) = makefile_whitespace(line)?;
     let (line, terminator) = if terminator == ',' {
@@ -214,6 +210,7 @@ fn parse_ifeq<'a>(
         )?
     };
     let (line, arg2) = take_till_terminator(line, terminator)?;
+    let (_, arg2) = parse_ast(arg2)?;
 
     eprintln!("ifeq parse succeeded");
     Ok((line, (arg1, arg2)))

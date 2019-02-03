@@ -209,10 +209,11 @@ pub fn empty() -> AstNode {
 
 /// Create a new constant node
 #[inline]
-pub fn constant(source_location: Location, v: LocatedString) -> AstNode {
+pub fn constant(v: LocatedString) -> AstNode {
+    let location = Marker::from(v.location().clone());
     AstNode {
         children: Box::new(AstChildren::Constant(v)),
-        source_location: source_location.into(),
+        source_location: location,
     }
 }
 

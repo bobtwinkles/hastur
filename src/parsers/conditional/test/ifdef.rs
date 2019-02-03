@@ -1,5 +1,4 @@
 use super::*;
-use crate::source_location::Location;
 
 /// #TST-P-Conditional.ifdef_simple
 #[test]
@@ -9,8 +8,8 @@ fn simple() {
     let parse = assert_ok!(parse_line(test_span));
     assert_complete!(parse.0);
     match parse.1 {
-        Conditional::IfDef(span) => {
-            assert_segments_eq!(span.span(), [("a", Location::test_location(1, 7))])
+        Conditional::IfDef(var) => {
+            assert_eq!(var, ast::constant(LocatedString::test_new(1, 7, "a")))
         }
         v => panic!("Unexpected conditional type {:?}", v),
     }
@@ -24,8 +23,8 @@ fn simple_ndef() {
     let parse = assert_ok!(parse_line(test_span));
     assert_complete!(parse.0);
     match parse.1 {
-        Conditional::IfNDef(span) => {
-            assert_segments_eq!(span.span(), [("a", Location::test_location(1, 8))])
+        Conditional::IfNDef(var) => {
+            assert_eq!(var, ast::constant(LocatedString::test_new(1, 8, "a")))
         }
         v => panic!("Unexpected conditional type {:?}", v),
     }
@@ -38,8 +37,8 @@ fn multiple_whitespace() {
     let parse = assert_ok!(parse_line(test_span.span()));
     assert_complete!(parse.0);
     match parse.1 {
-        Conditional::IfNDef(span) => {
-            assert_segments_eq!(span.span(), [("a", Location::test_location(2, 3))])
+        Conditional::IfNDef(var) => {
+            assert_eq!(var, ast::constant(LocatedString::test_new(2, 3, "a")))
         }
         v => panic!("Unexpected conditional type {:?}", v),
     }

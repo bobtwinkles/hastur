@@ -21,7 +21,9 @@ fn simple_ifdef() {
     assert_complete!(res.0);
     match res.1 {
         Conditional::Else(Some(cond)) => match cond.borrow() {
-            Conditional::IfDef(l) => assert_eq!(&l.into_string(), "a"),
+            Conditional::IfDef(l) => {
+                assert_eq!(l, &ast::constant(LocatedString::test_new(1, 12, "a")))
+            }
             _ => panic!("Detected continuation was not an ifdef"),
         },
         _ => panic!("Failed to detect ifdef {:?}", res.1),

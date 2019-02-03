@@ -33,7 +33,7 @@ pub(crate) fn parse_ast<'a>(
         )?;
 
         for segment in until_dollar.segments() {
-            master_concat_nodes.push(ast::constant(segment.location().clone(), segment.into()));
+            master_concat_nodes.push(ast::constant(segment.into()));
         }
 
         i = new_i;
@@ -68,18 +68,15 @@ fn parse_var_ref<'a>(
             |_| {
                 // Synthesize a magic '$'
                 ast::constant(
-                    location.clone(),
                     crate::source_location::LocatedString::new(location.into(), "$".into())
                 )
             }
         }} |
         fix_error!(ParseErrorKind, tag!("$")) => {{
-            let location = dollar_location.clone();
-
             |l: BlockSpan| {
                 // Simple case: two $$ in a row evaluate to just a $
                 let segment = l.segments().next().unwrap();
-                ast::constant(location, segment.into())
+                ast::constant(segment.into())
             }
         }} |
         // Try the advanced variable references
@@ -90,8 +87,7 @@ fn parse_var_ref<'a>(
         // Finally, just grab a single character and call it good
         fix_error!(ParseErrorKind, take!(1)) => {{
             let location = dollar_location.clone();
-            |l: BlockSpan|
-            ast::variable_reference(location, ast::constant(l.location().unwrap(), l.segments().next().unwrap().into()))
+            |l: BlockSpan| ast::variable_reference(location, ast::constant(l.segments().next().unwrap().into()))
         }}
     )
 }

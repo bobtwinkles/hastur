@@ -10,10 +10,7 @@ fn basic() {
         res.1,
         ast::strip(
             Location::test_location(1, 3),
-            ast::constant(
-                Location::test_location(1, 9),
-                LocatedString::test_new(1, 9, "foo")
-            )
+            ast::constant(LocatedString::test_new(1, 9, "foo"))
         )
     )
 }
