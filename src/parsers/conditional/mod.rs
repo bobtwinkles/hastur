@@ -21,6 +21,13 @@ pub(crate) enum Conditional {
     EndIf,
 }
 
+impl<'a> crate::parsers::ParserState<'a> {
+    /// Handle a conditional that came back from line parsing
+    pub(super) fn handle_conditional(&mut self, conditional: Conditional) {
+        unimplemented!("Handling conditional {:?}", conditional);
+    }
+}
+
 /// Parse a conditional line
 pub(super) fn parse_line<'a>(
     i: BlockSpan<'a>,

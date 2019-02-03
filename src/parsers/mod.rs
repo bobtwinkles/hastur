@@ -177,11 +177,6 @@ impl<'a> ParserState<'a> {
         unimplemented!("parsing after attempting to match variable names");
     }
 
-    /// Handle a conditional that came back from line parsing
-    fn handle_conditional(&mut self, conditional: self::conditional::Conditional) {
-        unimplemented!("Handling conditional {:?}", conditional);
-    }
-
     /// Returns true if there is currently a rule open
     /// That is, if we've seen a target/dep line and nothing has caused us to
     /// dump the rule out to the database yet.
