@@ -7,8 +7,7 @@ use crate::eval::Flavor;
 use crate::eval::VariableParameters;
 use crate::evaluated::BlockSpan;
 use crate::parsers::ast::parse_ast;
-use crate::ParseErrorKind;
-use crate::VariableName;
+use crate::{Engine, ParseErrorKind, VariableName};
 use nom::IResult;
 
 #[cfg(test)]
@@ -29,7 +28,7 @@ pub(crate) enum Action {
     /// (re)define the variable
     Define(VariableParameters),
     /// Append to the specified variable
-    Append,
+    Append(ast::AstNode),
 }
 
 /// Block of modifiers
@@ -48,6 +47,45 @@ pub(crate) struct VariableAction {
     pub name: VariableName,
     pub modifiers: Modifiers,
     pub action: Action,
+}
+
+impl<'a> crate::parsers::ParserState<'a> {
+    pub(crate) fn handle_global_variable_action(
+        &mut self,
+        engine: &mut Engine,
+        action: VariableAction,
+    ) {
+        if action.modifiers.export
+            || action.modifiers.mod_override
+            || action.modifiers.private
+            || action.modifiers.define
+            || action.modifiers.undefine
+        {
+            unimplemented!("Handling of variable with modifiers {:?}", action.modifiers);
+        }
+
+        match action.action {
+            Action::Define(parameters) => {
+                engine.database = engine.database.set_variable(action.name, parameters);
+            }
+            Action::Append(node) => match engine.database.get_variable(action.name) {
+                Some(var) => {
+                    let mut parameters = var.value.clone();
+                    parameters.unexpanded_value = ast::collapsing_concat(
+                        node.location(),
+                        vec![parameters.unexpanded_value, node],
+                    );
+                    engine.database = engine.database.set_variable(action.name, parameters)
+                }
+                None => {
+                    engine.database = engine.database.set_variable(
+                        action.name,
+                        VariableParameters::new(node, Flavor::Recursive, crate::eval::Origin::File),
+                    )
+                }
+            },
+        }
+    }
 }
 
 /// Attempt to parse a variable reference in the context of a given database
@@ -139,7 +177,7 @@ pub(crate) fn parse_line<'a>(
                                         name: variable_name,
                                         modifiers: modifiers,
                                         action: match assignment_type {
-                                            AssignmentType::Append => Action::Append,
+                                            AssignmentType::Append => Action::Append(ast::empty()),
                                             v => Action::Define(VariableParameters::new(
                                                 ast::empty(),
                                                 match v {
@@ -266,7 +304,7 @@ fn parse_variable_assignment<'a>(
                 name: variable_name,
                 modifiers: modifiers,
                 action: match assignment_type {
-                    AssignmentType::Append => Action::Append,
+                    AssignmentType::Append => Action::Append(value_ast),
                     v => Action::Define(VariableParameters::new(
                         value_ast,
                         match v {

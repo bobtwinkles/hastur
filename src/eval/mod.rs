@@ -61,7 +61,7 @@ impl VariableParameters {
 /// These provide some convenience functions for expansion, but don't keep them
 /// around since they tie up exclusive access to the database.
 pub struct Variable<'d> {
-    value: &'d VariableParameters,
+    pub(crate) value: &'d VariableParameters,
     _database: &'d Database,
     target: Option<&'d str>,
 }

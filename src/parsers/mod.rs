@@ -170,7 +170,7 @@ impl<'a> ParserState<'a> {
                 self.close_rule(engine);
 
                 engine.replace_database(database);
-                unimplemented!("Handle variable action {:?}", variable_action);
+                self.handle_global_variable_action(engine, variable_action);
             }
         );
 
