@@ -22,10 +22,85 @@ pub(crate) enum Conditional {
     EndIf,
 }
 
+impl Conditional {
+    fn is_inverted(&self) -> bool {
+        match *self {
+            Conditional::IfNDef(_) => true,
+            Conditional::IfNEq(_, _) => true,
+            _ => false,
+        }
+    }
+}
+
 impl<'a> crate::parsers::ParserState<'a> {
     /// Handle a conditional that came back from line parsing
-    pub(super) fn handle_conditional(&mut self, conditional: Conditional) {
-        unimplemented!("Handling conditional {:?}", conditional);
+    pub(super) fn handle_conditional(
+        &mut self,
+        conditional: Conditional,
+        names: &mut crate::NameCache,
+        engine: &mut crate::Engine,
+    ) -> Result<(), ParseErrorKind> {
+        let conditional_is_inverted = conditional.is_inverted();
+        match conditional {
+            Conditional::IfEq(a, b) | Conditional::IfNEq(a, b) => {
+                let (db, a) = a.eval(names, &engine.database);
+                let (db, b) = b.eval(names, &db);
+
+                engine.database = db;
+
+                let a = a.into_string();
+                let b = b.into_string();
+                let a = a.trim();
+                let b = b.trim();
+
+                let conditional_mode = if a == b {
+                    super::ConditionalInterpretation::Executing
+                } else {
+                    super::ConditionalInterpretation::NotExecuting
+                };
+                let conditional_mode = if conditional_is_inverted {
+                    conditional_mode.invert()
+                } else {
+                    conditional_mode
+                };
+
+                self.conditionals.push(super::ConditionalState {
+                    interpretation: conditional_mode,
+                    seen_else: false,
+                });
+                self.update_ignoring();
+
+                Ok(())
+            }
+            Conditional::Else(followup) => match followup {
+                None => {
+                    if self.conditionals.len() == 0 {
+                        return Err(ParseErrorKind::UnattachedElse);
+                    }
+                    let last_idx = self.conditionals.len() - 1;
+                    let top_conditional = &mut self.conditionals[last_idx];
+                    if top_conditional.seen_else {
+                        return Err(ParseErrorKind::TooManyElses);
+                    }
+                    top_conditional.interpretation = top_conditional.interpretation.invert();
+                    top_conditional.seen_else = true;
+                    self.update_ignoring();
+                    Ok(())
+                }
+                Some(conditional) => {
+                    unimplemented!("Handling `else` with followup {:?}", conditional)
+                }
+            },
+            Conditional::EndIf => {
+                if self.conditionals.len() == 0 {
+                    return Err(ParseErrorKind::UnattachedEndIf);
+                }
+                self.conditionals.pop();
+
+                Ok(())
+            }
+            conditional => unimplemented!("Handling conditional {:?}", conditional),
+        }
     }
 }
 

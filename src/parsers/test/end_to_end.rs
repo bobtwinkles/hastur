@@ -42,12 +42,46 @@ endif
     // ifeq line
     let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
 
+    assert_eq!(
+        parse_state.conditionals,
+        vec![super::ConditionalState {
+            interpretation: super::ConditionalInterpretation::Executing,
+            seen_else: false
+        }]
+    );
+
     // correct assignment
     let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+
+    // else line
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+
+    assert_eq!(
+        parse_state.conditionals,
+        vec![super::ConditionalState {
+            interpretation: super::ConditionalInterpretation::NotExecuting,
+            seen_else: true
+        }]
+    );
 
     // Incorrect assignment
     let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
 
     // endif line
     let (_i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+
+    // At the end of everything, `baz` should be set to `correct`
+    assert_eq!(parse_state.conditionals, vec![]);
+    let variable_name = names
+        .variable_name("baz")
+        .expect("Variable baz should have been interned");
+    assert_eq!(
+        engine
+            .database
+            .get_variable(variable_name)
+            .expect("Variable baz should have been set")
+            .expand(&mut names, &engine.database)
+            .1,
+        "correct"
+    );
 }

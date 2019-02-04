@@ -58,8 +58,13 @@ use string_interner::Sym;
 pub enum ParseErrorKind {
     /// Generated when there are tokens after something we expect to be the end of a line
     ExtraTokensAfter(&'static str),
-    /// Trying to do something like a free-floating "else" without and if, or too many endifs
-    MismatchedBranchCommand,
+
+    /// A free-floating else was encountered
+    UnattachedElse,
+
+    /// A free-floating endif was encountered
+    UnattachedEndIf,
+
     /// Trying to write something like
     /// ```makefile
     /// if

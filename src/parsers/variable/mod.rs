@@ -54,7 +54,7 @@ impl<'a> crate::parsers::ParserState<'a> {
         &mut self,
         engine: &mut Engine,
         action: VariableAction,
-    ) {
+    ) -> Result<(), ParseErrorKind> {
         if action.modifiers.export
             || action.modifiers.mod_override
             || action.modifiers.private
@@ -85,6 +85,8 @@ impl<'a> crate::parsers::ParserState<'a> {
                 }
             },
         }
+
+        Ok(())
     }
 }
 

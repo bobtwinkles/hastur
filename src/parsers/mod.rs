@@ -25,12 +25,21 @@ use self::recipe_line::recipe_line;
 /// the moral equivalent of this enum (the char *ignoring in the conditional code for GNU make)
 /// has 3 possible states, which is why this is an enum instead of just a bool. I don't know why
 /// they need 3 states.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum ConditionalInterpretation {
     /// According to this conditional, lines should be executed
-    AllowExecute,
+    Executing,
     /// We should definitely ignore everything because the conditional evaluated to false
-    DefinitelyIgnore,
+    NotExecuting,
+}
+
+impl ConditionalInterpretation {
+    fn invert(self) -> Self {
+        match self {
+            ConditionalInterpretation::Executing => ConditionalInterpretation::NotExecuting,
+            ConditionalInterpretation::NotExecuting => ConditionalInterpretation::Executing,
+        }
+    }
 }
 
 /// Maintains the state of a conditional (`if{,n}{eq,def}`) while parsing
@@ -129,7 +138,10 @@ impl<'a> ParserState<'a> {
         macro_rules! run_line_parser(
             ($parsed:expr, $cleanup:expr) => {
                 match $parsed {
-                    Ok((_, o)) => {$cleanup(o); return Ok((i, ()))},
+                    Ok((_, o)) => match $cleanup(o) {
+                        Ok(()) => return Ok((i, ())),
+                        Err(e) => return fail_out(line_start, e)
+                    },
                     Err(NErr::Incomplete(_)) => {
                         debug!(
                             "Parser {:?} was incomplete, backtracking",
@@ -155,7 +167,7 @@ impl<'a> ParserState<'a> {
         }
 
         run_line_parser!(conditional::parse_line(line.span()), |conditional| self
-            .handle_conditional(conditional));
+            .handle_conditional(conditional, names, engine));
 
         if self.ignoring {
             // The parse state indicates that we should just ignore this line
@@ -170,11 +182,27 @@ impl<'a> ParserState<'a> {
                 self.close_rule(engine);
 
                 engine.replace_database(database);
-                self.handle_global_variable_action(engine, variable_action);
+                self.handle_global_variable_action(engine, variable_action)
             }
         );
 
         unimplemented!("parsing after attempting to match variable names");
+    }
+
+    /// Update the internal ignoring state based on the conditional state and
+    /// whether or not we are in a define
+    fn update_ignoring(&mut self) {
+        // If any conditional is suppressing interpretation, we must be ignoring
+        for conditional in &self.conditionals {
+            if conditional.interpretation == ConditionalInterpretation::NotExecuting {
+                self.ignoring = true;
+                return;
+            }
+        }
+        // TODO: incorporate the in-define logic here
+
+        // If there's no reason to ignore, we aren't
+        self.ignoring = false;
     }
 
     /// Returns true if there is currently a rule open
