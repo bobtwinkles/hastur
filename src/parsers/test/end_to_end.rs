@@ -3,6 +3,31 @@ use super::create_span;
 use crate::parsers::ParserState;
 use crate::Engine;
 
+macro_rules! variable_set_to (
+    ($names:expr, $engine:expr, $variable_name:expr, $value:expr) => {{
+        let names = &mut $names;
+        let engine = &$engine;
+        let variable_name = $variable_name;
+        let value = $value;
+
+        let variable_name = names
+            .variable_name(variable_name)
+            .expect(&format!(
+                "Variable named {:?} should have been interned",
+                variable_name
+            ));
+
+        assert_eq!(
+            &engine
+                .database
+                .get_variable(variable_name)
+                .expect(&format!("Variable named {:?} should have a value", variable_name))
+                .expand(names, &engine.database).1,
+            value
+        )
+    }}
+);
+
 #[test]
 fn simple_conditional() {
     let block = create_span(
@@ -26,18 +51,7 @@ endif
     // Assignment line
     let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
     // After processing the first line, foo should be interned
-    let variable_name = names
-        .variable_name("foo")
-        .expect("Variable foo should have been interned");
-    assert_eq!(
-        engine
-            .database
-            .get_variable(variable_name)
-            .expect("Variable foo should have been set")
-            .expand(&mut names, &engine.database)
-            .1,
-        "bar"
-    );
+    variable_set_to!(names, engine, "foo", "bar");
 
     // ifeq line
     let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
@@ -71,17 +85,5 @@ endif
     let (_i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
 
     // At the end of everything, `baz` should be set to `correct`
-    assert_eq!(parse_state.conditionals, vec![]);
-    let variable_name = names
-        .variable_name("baz")
-        .expect("Variable baz should have been interned");
-    assert_eq!(
-        engine
-            .database
-            .get_variable(variable_name)
-            .expect("Variable baz should have been set")
-            .expand(&mut names, &engine.database)
-            .1,
-        "correct"
-    );
+    variable_set_to!(names, engine, "baz", "correct");
 }
