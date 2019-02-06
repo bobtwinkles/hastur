@@ -228,9 +228,12 @@ pub fn preevaluated(source_location: Location, v: Arc<Block>) -> AstNode {
 
 /// Create a new concatentation node. This method is slightly smart in that
 /// if there is only a single node in the vector, we just return that node.
-/// This helps maintain a much more concise tree
+/// This helps maintain a much more concise tree.
+/// We also strip out any empties.
 #[inline]
 pub fn collapsing_concat(source_location: Location, mut v: Vec<AstNode>) -> AstNode {
+    // Remove all empties from the concatenation
+    v.retain(|node| node.children.as_ref() != &AstChildren::Empty);
     if v.len() == 1 {
         v.swap_remove(0)
     } else {
