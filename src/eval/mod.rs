@@ -60,6 +60,7 @@ impl VariableParameters {
 /// Represents a view into a make variable.
 /// These provide some convenience functions for expansion, but don't keep them
 /// around since they tie up exclusive access to the database.
+#[derive(Copy, Clone, Debug)]
 pub struct Variable<'d> {
     pub(crate) value: &'d VariableParameters,
     _database: &'d Database,
