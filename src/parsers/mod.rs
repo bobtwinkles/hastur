@@ -1,5 +1,5 @@
 use crate::evaluated::{Block, BlockSpan, ContentReference};
-use crate::{Engine, NameCache, ParseErrorKind};
+use crate::{Engine, NameCache, ParseErrorKind, VariableName};
 use nom::Err as NErr;
 use nom::IResult;
 use std::sync::Arc;
@@ -49,6 +49,15 @@ struct ConditionalState {
     seen_else: bool,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub(crate) struct DefineState {
+    /// The variable name we're currently defining
+    var: VariableName,
+
+    // How deeply nested the defines are
+    nesting: u32,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct ParserState<'a> {
     /// The current file name
@@ -64,6 +73,9 @@ pub(crate) struct ParserState<'a> {
 
     /// The currently open rule specification, if there is one.
     current_rule: Option<crate::Rule>,
+
+    /// Active define
+    current_define: Option<DefineState>,
 }
 
 impl<'a> ParserState<'a> {
@@ -73,6 +85,7 @@ impl<'a> ParserState<'a> {
             conditionals: Vec::new(),
             ignoring: false,
             current_rule: None,
+            current_define: None,
         }
     }
 
@@ -127,6 +140,12 @@ impl<'a> ParserState<'a> {
                 // we're currently processing a rule
                 self.push_command_line(line);
             });
+        } else if self.current_define.is_some() {
+            // If we're currently parsing a line inside a define, handle that
+            run_parser!(variable::parse_define_line(i), |action| {
+                self.handle_define_line(engine, action);
+            });
+            panic!("Parsing a define line should never fail");
         }
 
         // If it's not a recipe line, we can safely collapse all continuations

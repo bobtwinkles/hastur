@@ -7,6 +7,7 @@ use crate::eval::Flavor;
 use crate::eval::VariableParameters;
 use crate::evaluated::BlockSpan;
 use crate::parsers::ast::parse_ast;
+use crate::parsers::DefineState;
 use crate::{Engine, ParseErrorKind, VariableName};
 use nom::IResult;
 
@@ -20,6 +21,28 @@ enum AssignmentType {
     Simple,
     Append,
     Bang,
+}
+
+/// What action to perform from a variable line
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum DefineLineAction {
+    /// Just append to the line
+    Append,
+    /// Increase the nesting level, and append
+    IncreaseNesting,
+    /// Decrease the nesting level, appending if this doesn't terminate the define
+    DecreaseNesting,
+}
+
+/// Structure of a define line
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct DefineLine {
+    /// The content of the line
+    content: ast::AstNode,
+    /// What action to take with the content
+    action: DefineLineAction,
+    /// The location at which this line starts
+    location: crate::source_location::Location,
 }
 
 /// What action to apply to the variable
@@ -58,10 +81,18 @@ impl<'a> crate::parsers::ParserState<'a> {
         if action.modifiers.export
             || action.modifiers.mod_override
             || action.modifiers.private
-            || action.modifiers.define
             || action.modifiers.undefine
         {
             unimplemented!("Handling of variable with modifiers {:?}", action.modifiers);
+        }
+
+        // If this is a define, just put the parser into define mode
+        if action.modifiers.define {
+            assert!(!self.current_define.is_some());
+            self.current_define = Some(DefineState {
+                var: action.name,
+                nesting: 1,
+            });
         }
 
         match action.action {
@@ -77,6 +108,43 @@ impl<'a> crate::parsers::ParserState<'a> {
                 )
             }
         }
+
+        Ok(())
+    }
+
+    /// Handle a line inside of a define
+    pub(crate) fn handle_define_line(
+        &mut self,
+        engine: &mut Engine,
+        action: DefineLine,
+    ) -> Result<(), ParseErrorKind> {
+        let define = self
+            .current_define
+            .as_mut()
+            .expect("handle_define_line called when not defining anything");
+
+        match action.action {
+            DefineLineAction::Append => {
+                // No special handling, we always append anyway.
+            }
+            DefineLineAction::IncreaseNesting => {
+                define.nesting += 1;
+            }
+            DefineLineAction::DecreaseNesting => {
+                define.nesting -= 1;
+                if define.nesting == 0 {
+                    // If we reach 0 nesting, immediately return
+                    return Ok(());
+                }
+            }
+        }
+
+        engine.database = engine.database.append_to_variable(
+            define.var,
+            action.location,
+            VariableParameters::new(action.content, Flavor::Recursive, crate::eval::Origin::File),
+            false
+        );
 
         Ok(())
     }
@@ -314,4 +382,10 @@ fn parse_variable_assignment<'a>(
             },
         ),
     ))
+}
+
+pub(crate) fn parse_define_line<'a>(
+    i: BlockSpan<'a>,
+) -> IResult<BlockSpan<'a>, DefineLine, ParseErrorKind> {
+    unimplemented!("Parsing define line")
 }

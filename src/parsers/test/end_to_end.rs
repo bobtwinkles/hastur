@@ -111,3 +111,32 @@ foo += baz
     let (_i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
     variable_set_to!(names, engine, "foo", "bar baz");
 }
+
+#[test]
+fn simple_multiline_define() {
+    let block = create_span(
+        r#"
+define foo
+  bar \\
+  baz
+endef
+"#,
+    );
+
+    let mut engine: Engine = Default::default();
+    let mut parse_state = ParserState::new("test");
+    let mut names = Default::default();
+
+    // Empty first line
+    let (i, _) = assert_ok!(parse_state.parse_line(block.span(), &mut names, &mut engine));
+    // Define line
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+    // add bar
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+    // add baz
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+
+    // End of define line
+    let (_i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+    variable_set_to!(names, engine, "foo", "  bar \\\\\n  baz");
+}
