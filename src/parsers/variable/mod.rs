@@ -68,22 +68,13 @@ impl<'a> crate::parsers::ParserState<'a> {
             Action::Define(parameters) => {
                 engine.database = engine.database.set_variable(action.name, parameters);
             }
-            Action::Append(node) => match engine.database.get_variable(action.name) {
-                Some(var) => {
-                    let mut parameters = var.value.clone();
-                    parameters.unexpanded_value = ast::collapsing_concat(
-                        node.location(),
-                        vec![parameters.unexpanded_value, node],
-                    );
-                    engine.database = engine.database.set_variable(action.name, parameters)
-                }
-                None => {
-                    engine.database = engine.database.set_variable(
-                        action.name,
-                        VariableParameters::new(node, Flavor::Recursive, crate::eval::Origin::File),
-                    )
-                }
-            },
+            Action::Append(node) => {
+                engine.database = engine.database.append_to_variable(
+                    action.name,
+                    node.location(),
+                    VariableParameters::new(node, Flavor::Recursive, crate::eval::Origin::File),
+                )
+            }
         }
 
         Ok(())

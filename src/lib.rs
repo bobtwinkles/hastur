@@ -46,6 +46,7 @@ pub use crate::eval::{Flavor, Origin, Variable, VariableParameters};
 pub use crate::parsers::ParserCompliance;
 
 use crate::evaluated::Block;
+use crate::source_location::{LocatedString, Location};
 use std::io;
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -235,6 +236,34 @@ impl Database {
     pub fn set_variable(&self, name: VariableName, value: VariableParameters) -> Self {
         let mut tr = self.clone();
         tr.variables.insert(name, value);
+        tr
+    }
+
+    /// Append to a variable at the specified location
+    /// The provided parameters are all used to update the variable state,
+    /// though if the variable was previously defined
+    #[inline]
+    pub fn append_to_variable(
+        &self,
+        name: VariableName,
+        location: Location,
+        content: VariableParameters,
+    ) -> Self {
+        let mut tr = self.clone();
+        // tr.variables.
+        tr.variables = tr.variables.update_with(name, content, |mut old, new| {
+            old.unexpanded_value = ast::collapsing_concat(
+                location,
+                vec![
+                    old.unexpanded_value,
+                    ast::constant(LocatedString::new(Location::Synthetic.into(), " ".into())),
+                    new.unexpanded_value,
+                ],
+            );
+
+            old
+        });
+
         tr
     }
 

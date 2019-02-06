@@ -87,3 +87,27 @@ endif
     // At the end of everything, `baz` should be set to `correct`
     variable_set_to!(names, engine, "baz", "correct");
 }
+
+#[test]
+fn simple_append() {
+    let block = create_span(
+        r#"
+foo := bar
+foo += baz
+"#,
+    );
+
+    let mut engine: Engine = Default::default();
+    let mut parse_state = ParserState::new("test");
+    let mut names = Default::default();
+
+    // Empty first line
+    let (i, _) = assert_ok!(parse_state.parse_line(block.span(), &mut names, &mut engine));
+    // First set
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+    variable_set_to!(names, engine, "foo", "bar");
+
+    // Second set
+    let (_i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+    variable_set_to!(names, engine, "foo", "bar baz");
+}
