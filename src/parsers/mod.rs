@@ -259,6 +259,7 @@ pub enum LineEndReason {
     EOF,
 }
 
+/// Get a line, stopping on a UNIX line break, Windows line break, or the beginning of a comment
 pub fn makefile_grab_line<T>(input: T) -> IResult<T, (T, LineEndReason), ParseErrorKind>
 where
     T: Clone
