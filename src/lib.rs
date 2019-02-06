@@ -241,24 +241,33 @@ impl Database {
 
     /// Append to a variable at the specified location
     /// The provided parameters are all used to update the variable state,
-    /// though if the variable was previously defined
+    /// though if the variable was previously defined.
+    /// If `implicit_space` is true, we add a space between any old and new values.
     #[inline]
     pub fn append_to_variable(
         &self,
         name: VariableName,
         location: Location,
         content: VariableParameters,
+        implicit_space: bool,
     ) -> Self {
         let mut tr = self.clone();
         // tr.variables.
         tr.variables = tr.variables.update_with(name, content, |mut old, new| {
             old.unexpanded_value = ast::collapsing_concat(
                 location,
-                vec![
-                    old.unexpanded_value,
-                    ast::constant(LocatedString::new(Location::Synthetic.into(), " ".into())),
-                    new.unexpanded_value,
-                ],
+                if implicit_space {
+                    vec![
+                        old.unexpanded_value,
+                        ast::constant(LocatedString::new(Location::Synthetic.into(), " ".into())),
+                        new.unexpanded_value,
+                    ]
+                } else {
+                    vec![
+                        old.unexpanded_value,
+                        new.unexpanded_value,
+                    ]
+                },
             );
 
             old

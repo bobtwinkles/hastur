@@ -73,6 +73,7 @@ impl<'a> crate::parsers::ParserState<'a> {
                     action.name,
                     node.location(),
                     VariableParameters::new(node, Flavor::Recursive, crate::eval::Origin::File),
+                    true,
                 )
             }
         }
