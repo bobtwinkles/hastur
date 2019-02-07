@@ -138,5 +138,5 @@ endef
 
     // End of define line
     let (_i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
-    variable_set_to!(names, engine, "foo", "  bar \\\\\n  baz");
+    variable_set_to!(names, engine, "foo", "  bar \\\\\n  baz\n");
 }

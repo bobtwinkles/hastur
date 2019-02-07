@@ -133,7 +133,8 @@ impl<'a> crate::parsers::ParserState<'a> {
             DefineLineAction::DecreaseNesting => {
                 define.nesting -= 1;
                 if define.nesting == 0 {
-                    // If we reach 0 nesting, immediately return
+                    // If we reach 0 nesting, unset the define line and return immediately
+                    self.current_define = None;
                     return Ok(());
                 }
             }
@@ -143,7 +144,7 @@ impl<'a> crate::parsers::ParserState<'a> {
             define.var,
             action.location,
             VariableParameters::new(action.content, Flavor::Recursive, crate::eval::Origin::File),
-            false
+            false,
         );
 
         Ok(())
@@ -384,8 +385,53 @@ fn parse_variable_assignment<'a>(
     ))
 }
 
+/// Parse a line inside a define
 pub(crate) fn parse_define_line<'a>(
     i: BlockSpan<'a>,
 ) -> IResult<BlockSpan<'a>, DefineLine, ParseErrorKind> {
-    unimplemented!("Parsing define line")
+    // This parser operates outside of the context of things that have already grabbed lines
+    // TODO: maybe just grab a whole define in here? Don't bother with trying to
+    // round-trip it through the processing function above
+    // This also uses a specialized version of makefile_grab_line, since we
+    // actually need the line endings to stay intact.
+    let (next_lines, (i)) = fix_error!(
+        i,
+        ParseErrorKind,
+        alt_complete!(
+            take_until!("#") | // Comments
+                recognize!(terminated!(take_until!("\n"), tag!("\n"))) | // UNIX line endings
+                recognize!(terminated!(take_until!("\r\n"), tag!("\r\n"))) | // Windows line endings
+                nom::rest // EOF
+        )
+    )?;
+
+    eprintln!("Parsing define line {:?}", i.into_string());
+    let location = i.location().expect("There should be content on the line");
+    let (_, ast) = parse_ast(i)?;
+
+    let (i, action) = pe_fix!(
+        i,
+        preceded!(
+            makefile_whitespace,
+            pe_fix!(alt!(
+                tag!("define") => { |_|  DefineLineAction::IncreaseNesting} |
+                tag!("endef") => { |_|  DefineLineAction::DecreaseNesting}  |
+                nom::rest => { |_|  DefineLineAction::Append}
+            ))
+        )
+    )?;
+    let (i, _) = pe_fix!(i, take_while!(|c: char| c.is_whitespace()))?;
+
+    if action == DefineLineAction::DecreaseNesting && i.len() != 0 {
+        return super::fail_out(i, ParseErrorKind::ExtraTokensAfter("endef"));
+    }
+
+    Ok((
+        next_lines,
+        DefineLine {
+            action: action,
+            content: ast,
+            location: location,
+        },
+    ))
 }
