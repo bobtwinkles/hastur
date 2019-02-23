@@ -16,6 +16,7 @@ mod comment;
 mod conditional;
 mod error_utils;
 mod recipe_line;
+mod directives;
 pub(crate) mod variable;
 
 use self::error_utils::lift_collapsed_span_error;
@@ -202,6 +203,14 @@ impl<'a> ParserState<'a> {
 
                 engine.replace_database(database);
                 self.handle_global_variable_action(engine, variable_action)
+            }
+        );
+
+        run_line_parser!(
+            directives::parse_line(line.span()),
+            |directive_action| {
+                self.close_rule(engine);
+                self.handle_directive_action(engine, directive_action)
             }
         );
 
