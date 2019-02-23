@@ -7,6 +7,7 @@ use nom::Context as NContext;
 use nom::{Err, ErrorKind};
 
 mod end_to_end;
+mod rule;
 
 /// Create a span for use in testing, usually from a static string
 pub(super) fn create_span(s: &str) -> Arc<Block> {
