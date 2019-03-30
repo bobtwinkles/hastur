@@ -104,6 +104,7 @@ impl Block {
             return;
         }
 
+        // Add all the content
         assert!(span.contents.len() > 0);
         assert!(span.offset < span.contents[0].length);
 
@@ -125,6 +126,17 @@ impl Block {
         assert!(to_push.length >= remaining_length);
         to_push.length = remaining_length;
         self.content.push(to_push);
+
+        // If this span comes from another block, add the sensitivity of that block to this one.
+        // We could probably get away with being less sensitive (e.g. if the
+        // content that caused the other block to be sensitive to a particular
+        // variable isn't actually in the provided span), but for now err on the
+        // side of caution
+        if !std::ptr::eq(self, span.parent) {
+            for v in span.parent.sensitivity.iter() {
+                self.sensitivity.update(*v);
+            }
+        }
     }
 
     /// Iterate over the contents of this block
