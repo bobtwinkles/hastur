@@ -14,9 +14,10 @@ mod macros;
 pub(crate) mod ast;
 mod comment;
 mod conditional;
+mod directives;
 mod error_utils;
 mod recipe_line;
-mod directives;
+mod targets;
 pub(crate) mod variable;
 
 use self::error_utils::lift_collapsed_span_error;
@@ -206,15 +207,29 @@ impl<'a> ParserState<'a> {
             }
         );
 
+        run_line_parser!(directives::parse_line(line.span()), |directive_action| {
+            self.close_rule(engine);
+            self.handle_directive_action(engine, directive_action)
+        });
+
+        if line.span().chars().next() == Some(engine.command_char) {
+            // A tab (command character) at this point is definitely an error.
+            return fail_out(line_start, ParseErrorKind::RecipeExpected);
+        }
+
+        // TODO: find_char_unquote (line, MAP_SEMI|MAP_COMMENT|MAP_VARIABLE)
+
         run_line_parser!(
-            directives::parse_line(line.span()),
-            |directive_action| {
+            targets::parse_line(line.span(), names, &engine.database),
+            |(database, target_action)| {
                 self.close_rule(engine);
-                self.handle_directive_action(engine, directive_action)
+                engine.replace_database(database);
+
+                self.handle_target_action(engine, target_action)
             }
         );
 
-        unimplemented!("parsing after attempting to match variable names");
+        Ok((i, ()))
     }
 
     /// Update the internal ignoring state based on the conditional state and
