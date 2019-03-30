@@ -394,7 +394,7 @@ pub(crate) fn parse_define_line<'a>(
     // round-trip it through the processing function above
     // This also uses a specialized version of makefile_grab_line, since we
     // actually need the line endings to stay intact.
-    let (next_lines, (i)) = fix_error!(
+    let (next_lines, i) = fix_error!(
         i,
         ParseErrorKind,
         alt_complete!(

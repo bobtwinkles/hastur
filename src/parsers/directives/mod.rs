@@ -36,7 +36,7 @@ impl<'a> crate::parsers::ParserState<'a> {
         match action {
             e => unimplemented!("Unimplemented action {:?}", e),
         }
-        Ok(())
+        // Ok(())
     }
 }
 
