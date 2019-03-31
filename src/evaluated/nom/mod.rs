@@ -240,6 +240,7 @@ impl<'a, 'b> FindSubstring<&'b str> for BlockSpan<'a> {
 
 impl<'a> Offset for BlockSpan<'a> {
     fn offset(&self, second: &Self) -> usize {
+        assert!(std::ptr::eq(self.parent, second.parent));
         let fst = self.contents.as_ptr();
         let snd = second.contents.as_ptr();
         assert!(fst <= snd);
