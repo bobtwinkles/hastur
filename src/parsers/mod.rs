@@ -356,7 +356,7 @@ where
 pub fn makefile_take_until_unquote<'a, F>(
     i: BlockSpan<'a>,
     mut stop: F,
-) -> (Option<char>, (Arc<Block>, BlockSpan<'a>))
+) -> (Arc<Block>, Option<(char, BlockSpan<'a>)>)
 where
     F: FnMut(char) -> bool,
 {
@@ -403,25 +403,11 @@ where
     }
 
     Arc::make_mut(&mut tr).simplify();
-    (
-        if (stopchar_index <= i.len()) {
-            Some(stop_character)
-        } else {
-            None
-        },
-        (
-            if stopchar_index > i.len() {
-                i.to_new_block()
-            } else {
-                tr
-            },
-            if stopchar_index < i.len() {
-                i.slice(stopchar_index + 1..)
-            } else {
-                i.slice(i.len()..)
-            },
-        ),
-    )
+    if (stopchar_index < i.len()) {
+        (tr, Some((stop_character, i.slice(stopchar_index + 1..))))
+    } else {
+        (i.to_new_block(), None)
+    }
 }
 
 /// Controls various aspects of the parser, making it conform to either the GNU

@@ -14,10 +14,10 @@ pub(super) fn do_subref(
     replacement: Arc<Block>,
 ) -> Arc<Block> {
     match makefile_take_until_unquote(key.span(), |ch| ch == '%') {
-        (Some(_), (pre_key, post_key)) => {
+        (pre_key, Some((_, post_key))) => {
             match makefile_take_until_unquote(replacement.span(), |ch| ch == '%') {
                 // Both key and replacement had a %
-                (Some(_), (pre_replacement, post_replacement)) => do_replacement(
+                (pre_replacement, Some((_, post_replacement))) => do_replacement(
                     variable_value.span(),
                     sensitivity,
                     &pre_key.into_string(),
@@ -26,7 +26,7 @@ pub(super) fn do_subref(
                     post_replacement,
                 ),
                 // Only key had a %
-                (None, (replacement, _)) => do_replacement(
+                (replacement, None) => do_replacement(
                     variable_value.span(),
                     sensitivity,
                     &pre_key.into_string(),
@@ -36,7 +36,7 @@ pub(super) fn do_subref(
                 ),
             }
         }
-        (None, (key, _)) => do_replacement(
+        (key, None) => do_replacement(
             variable_value.span(),
             sensitivity,
             "",
