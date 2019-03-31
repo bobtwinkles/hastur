@@ -134,7 +134,7 @@ impl Block {
         // side of caution
         if !std::ptr::eq(self, span.parent) {
             for v in span.parent.sensitivity.iter() {
-                self.sensitivity.update(*v);
+                self.sensitivity = self.sensitivity.update(*v);
             }
         }
     }
