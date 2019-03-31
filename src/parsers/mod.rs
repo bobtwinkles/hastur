@@ -343,7 +343,7 @@ where
     )
 }
 
-/// Find a particular character, unquoted by `\`, returning the preceding text
+/// Find a character satisfying a predicate, unquoted by `\`, returning the preceding text
 /// with all quoting '\' removed. Note that this DOES NOT remove `\`s in things
 /// that do not immediately precede the character of interest. For example,
 /// (assuming we're looking for an unquoted `%` character)the string `\\%` will
@@ -353,20 +353,25 @@ where
 ///   - `\\\%` will not match at all, since the `%` is escaped.
 ///   - `%\\%` will match the first `%`, and leave the `\\%` untouched
 ///   - `\\\%.%` will match on the second `%`, returning `\%` as the preceding content.
-pub fn makefile_take_until_unquote<'a>(
+pub fn makefile_take_until_unquote<'a, F>(
     i: BlockSpan<'a>,
-    stop: char,
-) -> IResult<BlockSpan<'a>, Arc<Block>, ParseErrorKind> {
+    mut stop: F,
+) -> (Option<char>, (Arc<Block>, BlockSpan<'a>))
+where
+    F: FnMut(char) -> bool,
+{
     use nom::{InputIter, Slice};
     let mut tr = Block::new(i.parent().raw_sensitivity(), Vec::new());
+    let mut stop_character: char = '\0';
 
     let mut last_nonslash_idx = -1;
     let mut next_push_start = 0;
     let mut stopchar_index = i.len() + 1;
     for (idx, ch) in i.iter_indices() {
-        if ch == stop {
+        if stop(ch) {
             // We found a stopchar. Push the previous span and figure out if it
             // actually matches
+            stop_character = ch;
 
             // slash count examples:
             //  0 1 2 3
@@ -397,20 +402,26 @@ pub fn makefile_take_until_unquote<'a>(
         }
     }
 
-    if stopchar_index <= i.len() {
-        // We found the stopchar. Do one last push and then simplify and return
-        // let slash_count = stopchar_index as isize - last_nonslash_idx - 1;
-        // let end_idx = (stopchar_index as isize - slash_count.checked_div(2).unwrap()) as usize;
-        // Arc::make_mut(&mut tr).push_all_contents(i.slice(next_push_start..end_idx));
-        Arc::make_mut(&mut tr).simplify();
-        Ok((i.slice(stopchar_index + 1..), tr))
-    } else {
-        // We didn't find it. Abandon our work and return an error
-        error_out(
-            i,
-            ParseErrorKind::InternalFailure("failed to find stopchar"),
-        )
-    }
+    Arc::make_mut(&mut tr).simplify();
+    (
+        if (stopchar_index <= i.len()) {
+            Some(stop_character)
+        } else {
+            None
+        },
+        (
+            if stopchar_index > i.len() {
+                i.to_new_block()
+            } else {
+                tr
+            },
+            if stopchar_index < i.len() {
+                i.slice(stopchar_index + 1..)
+            } else {
+                i.slice(i.len()..)
+            },
+        ),
+    )
 }
 
 /// Controls various aspects of the parser, making it conform to either the GNU

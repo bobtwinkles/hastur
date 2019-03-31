@@ -13,28 +13,30 @@ pub(super) fn do_subref(
     key: Arc<Block>,
     replacement: Arc<Block>,
 ) -> Arc<Block> {
-    match makefile_take_until_unquote(key.span(), '%') {
-        Ok((post_key, pre_key)) => match makefile_take_until_unquote(replacement.span(), '%') {
-            // Both key and replacement had a %
-            Ok((post_replacement, pre_replacement)) => do_replacement(
-                variable_value.span(),
-                sensitivity,
-                &pre_key.into_string(),
-                &post_key.into_string(),
-                pre_replacement.span(),
-                post_replacement,
-            ),
-            // Only key had a %
-            Err(_) => do_replacement(
-                variable_value.span(),
-                sensitivity,
-                &pre_key.into_string(),
-                &post_key.into_string(),
-                BlockSpan::empty(),
-                replacement.span(),
-            ),
-        },
-        Err(_) => do_replacement(
+    match makefile_take_until_unquote(key.span(), |ch| ch == '%') {
+        (Some(_), (pre_key, post_key)) => {
+            match makefile_take_until_unquote(replacement.span(), |ch| ch == '%') {
+                // Both key and replacement had a %
+                (Some(_), (pre_replacement, post_replacement)) => do_replacement(
+                    variable_value.span(),
+                    sensitivity,
+                    &pre_key.into_string(),
+                    &post_key.into_string(),
+                    pre_replacement.span(),
+                    post_replacement,
+                ),
+                // Only key had a %
+                (None, (replacement, _)) => do_replacement(
+                    variable_value.span(),
+                    sensitivity,
+                    &pre_key.into_string(),
+                    &post_key.into_string(),
+                    BlockSpan::empty(),
+                    replacement.span(),
+                ),
+            }
+        }
+        (None, (key, _)) => do_replacement(
             variable_value.span(),
             sensitivity,
             "",

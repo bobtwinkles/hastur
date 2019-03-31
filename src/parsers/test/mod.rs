@@ -319,26 +319,32 @@ mod unquote {
     use crate::source_location::Location;
     use crate::ParseErrorKind;
 
+    fn eq_percent(c: char) -> bool {
+        c == '%'
+    }
+
     #[test]
     fn match_at_start() {
         let block = single_block("%a");
-        let (remaining, captured) = assert_ok!(makefile_take_until_unquote(block.span(), '%'));
+        let (ch, (captured, remaining)) = makefile_take_until_unquote(block.span(), eq_percent);
         assert_segments_eq!(remaining, [("a", Location::test_location(1, 2))]);
+        assert_eq!(ch, Some('%'));
         assert_eq!(captured.len(), 0);
     }
 
     #[test]
     fn match_after_content() {
         let block = single_block("ab%");
-        let (remaining, captured) = assert_ok!(makefile_take_until_unquote(block.span(), '%'));
-        assert_complete!(remaining);
+        let (ch, (captured, remaining)) = makefile_take_until_unquote(block.span(), eq_percent);
         assert_segments_eq!(captured.span(), [("ab", Location::test_location(1, 1))]);
+        assert_complete!(remaining);
+        assert_eq!(ch, Some('%'));
     }
 
     #[test]
     fn starts_with_escaped() {
         let block = single_block(r"\\\%%");
-        let (remaining, captured) = assert_ok!(makefile_take_until_unquote(block.span(), '%'));
+        let (ch, (captured, remaining)) = makefile_take_until_unquote(block.span(), eq_percent);
         assert_complete!(remaining);
         assert_segments_eq!(
             captured.span(),
@@ -347,20 +353,22 @@ mod unquote {
                 ("%", Location::test_location(1, 4))
             ]
         );
+        assert_eq!(ch, Some('%'));
     }
 
     #[test]
     fn starts_unescaped() {
         let block = single_block(r"\\\\%");
-        let (remaining, captured) = assert_ok!(makefile_take_until_unquote(block.span(), '%'));
+        let (ch, (captured, remaining)) = makefile_take_until_unquote(block.span(), eq_percent);
         assert_complete!(remaining);
         assert_segments_eq!(captured.span(), [(r"\\", Location::test_location(1, 1))]);
+        assert_eq!(ch, Some('%'));
     }
 
     #[test]
     fn content_then_escaped() {
         let block = single_block(r"ab\\\%%");
-        let (remaining, captured) = assert_ok!(makefile_take_until_unquote(block.span(), '%'));
+        let (ch, (captured, remaining)) = makefile_take_until_unquote(block.span(), eq_percent);
         assert_complete!(remaining);
         assert_segments_eq!(
             captured.span(),
@@ -369,31 +377,33 @@ mod unquote {
                 ("%", Location::test_location(1, 6))
             ]
         );
+        assert_eq!(ch, Some('%'));
     }
 
     #[test]
     fn content_then_unescaped() {
         let block = single_block(r"ab\\\\%");
-        let (remaining, captured) = assert_ok!(makefile_take_until_unquote(block.span(), '%'));
+        let (ch, (captured, remaining)) = makefile_take_until_unquote(block.span(), eq_percent);
         assert_complete!(remaining);
         assert_segments_eq!(captured.span(), [(r"ab\\", Location::test_location(1, 1))]);
+        assert_eq!(ch, Some('%'))
     }
 
     #[test]
     fn no_expand_after_match() {
         let block = single_block(r"ab%\\\\");
-        let (remaining, captured) = assert_ok!(makefile_take_until_unquote(block.span(), '%'));
+        let (ch, (captured, remaining)) = makefile_take_until_unquote(block.span(), eq_percent);
         assert_segments_eq!(remaining, [(r"\\\\", Location::test_location(1, 4))]);
         assert_segments_eq!(captured.span(), [(r"ab", Location::test_location(1, 1))]);
+        assert_eq!(ch, Some('%'))
     }
 
     #[test]
     fn does_error() {
         let block = single_block(r"abc");
-        let err = assert_err!(makefile_take_until_unquote(block.span(), '%'));
-        assert_err_contains!(
-            err,
-            ParseErrorKind::InternalFailure("failed to find stopchar")
-        );
+        let (ch, (pre, rest)) = makefile_take_until_unquote(block.span(), eq_percent);
+        assert_eq!(ch, None);
+        assert_complete!(rest);
+        assert_segments_eq!(pre.span(), [("abc", Location::test_location(1, 1))])
     }
 }
