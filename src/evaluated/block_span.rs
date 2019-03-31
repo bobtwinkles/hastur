@@ -26,6 +26,19 @@ impl<'a> BlockSpan<'a> {
         }
     }
 
+    /// Create an empty block with the provided parent.
+    /// This requires us to also pass an empty array for "contents", so `Offset`
+    /// works correctly.
+    pub(crate) fn empty_with_parent(parent: &'a Block, contents: &'a [ContentReference]) -> BlockSpan<'a> {
+        BlockSpan {
+            parent,
+            contents: contents,
+            offset: 0,
+            length: 0,
+        }
+    }
+
+
     #[inline]
     pub(super) fn revalidate_offset(&mut self) {
         if self.length == 0 {

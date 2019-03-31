@@ -95,7 +95,10 @@ impl<'a> InputTakeAtPosition for BlockSpan<'a> {
                 let snd = self.slice(..i);
                 Ok((fst, snd))
             }
-            None => Ok((BlockSpan::empty(), *self)),
+            None => Ok((
+                BlockSpan::empty_with_parent(self.parent, &self.contents[self.contents.len()..]),
+                *self,
+            )),
         }
     }
 
@@ -110,7 +113,13 @@ impl<'a> InputTakeAtPosition for BlockSpan<'a> {
                 if self.length == 0 {
                     Err(Err::Error(Context::Code(*self, e)))
                 } else {
-                    Ok((BlockSpan::empty(), *self))
+                    Ok((
+                        BlockSpan::empty_with_parent(
+                            self.parent,
+                            &self.contents[self.contents.len()..],
+                        ),
+                        *self,
+                    ))
                 }
             }
         }
