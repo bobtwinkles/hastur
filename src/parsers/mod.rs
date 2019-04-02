@@ -98,15 +98,16 @@ impl<'a> ParserState<'a> {
         names: &mut NameCache,
         engine: &mut Engine,
     ) -> IResult<BlockSpan<'a>, (), ParseErrorKind> {
+        let line_start = i;
         /// A small macro that returns on Err(NErr::Failure) or Ok()
         /// but "backtracks" (ignores the result) on recoverable failures or
         /// incomplete
         macro_rules! run_parser(
             ($parsed:expr, $cleanup:expr) => {
                 match $parsed {
-                    Ok((i, o)) => {
-                        $cleanup(o);
-                        return Ok((i, ()))
+                    Ok((i, o)) => match $cleanup(o) {
+                        Ok(()) => return Ok((i, ())),
+                        Err(e) => return fail_out(line_start, e)
                     },
                     Err(NErr::Incomplete(_)) => {
                         debug!(
@@ -132,6 +133,7 @@ impl<'a> ParserState<'a> {
         // bespoke comment processing sprinkled through every other case)
         run_parser!(comment::parse_comment_following_whitespace(i), |_| {
             // Comment lines don't require any particular action
+            Ok(())
         });
 
         if self.currently_processing_rule() {
@@ -141,18 +143,18 @@ impl<'a> ParserState<'a> {
                 // Push the line. This is safe since we only run this parser if
                 // we're currently processing a rule
                 self.push_command_line(line);
+                Ok(())
             });
         } else if self.current_define.is_some() {
             // If we're currently parsing a line inside a define, handle that
             run_parser!(variable::parse_define_line(i), |action| {
-                self.handle_define_line(engine, action);
+                self.handle_define_line(engine, action)
             });
             panic!("Parsing a define line should never fail");
         }
 
         // If it's not a recipe line, we can safely collapse all continuations
         // TODO: expose the parser compliance knob upstream
-        let line_start = i;
         let (i, line) = makefile_line(i, ParserCompliance::GNU, true)?;
 
         // Convenience macro for running parsers against the line
