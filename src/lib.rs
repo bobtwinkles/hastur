@@ -36,6 +36,7 @@ mod test_macros;
 pub mod ast;
 mod eval;
 pub mod evaluated;
+mod file_sequence;
 mod parsers;
 pub mod pattern;
 pub mod source_location;
