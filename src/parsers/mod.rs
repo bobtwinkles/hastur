@@ -219,8 +219,6 @@ impl<'a> ParserState<'a> {
             return fail_out(line_start, ParseErrorKind::RecipeExpected);
         }
 
-        // TODO: find_char_unquote (line, MAP_SEMI|MAP_COMMENT|MAP_VARIABLE)
-
         run_line_parser!(
             targets::parse_line(line.span(), names, &engine.database),
             |(database, target_action)| {
@@ -405,10 +403,15 @@ where
     }
 
     Arc::make_mut(&mut tr).simplify();
-    if (stopchar_index < i.len()) {
+    if stopchar_index < i.len() {
         (tr, Some((stop_character, i.slice(stopchar_index + 1..))))
     } else {
-        (i.to_new_block(), None)
+        if tr.len() == 0 {
+            (i.to_new_block(), None)
+        } else {
+            Arc::make_mut(&mut tr).push_all_contents(i.slice(next_push_start..));
+            (tr, None)
+        }
     }
 }
 

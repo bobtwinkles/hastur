@@ -157,6 +157,10 @@ impl AstNode {
                     }
                 }
             }
+            AstChildren::Empty => {
+                // Empty children generate no content
+                Vec::new()
+            }
             v => unimplemented!("Node {:?} unimplemented", v),
         };
 

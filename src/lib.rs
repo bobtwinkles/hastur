@@ -79,6 +79,12 @@ pub enum ParseErrorKind {
     /// We expected to find a comment (something starting with #) but found something else
     CommentExpected,
 
+    /// A recipe started without a corresponding rule
+    NoRuleRecipe,
+
+    /// There was a line that didn't match any sort of command or variable assignment, and also wasn't a rule
+    MissingSeparator,
+
     /// We expected a recipe line but didn't find one
     RecipeExpected,
 
@@ -276,10 +282,7 @@ impl Database {
                         new.unexpanded_value,
                     ]
                 } else {
-                    vec![
-                        old.unexpanded_value,
-                        new.unexpanded_value,
-                    ]
+                    vec![old.unexpanded_value, new.unexpanded_value]
                 },
             );
 
@@ -362,7 +365,13 @@ pub struct NameCache {
 impl NameCache {
     /// Intern a the file name for a makefile
     pub fn intern_file_name(&mut self, file_name: String) -> FileName {
-        FileName(self.file_names.get_or_intern(file_name))
+        let trid = self.file_names.get_or_intern(file_name);
+        eprintln!(
+            "Intern filename {:?} as {:?}",
+            self.file_names.resolve(trid),
+            trid
+        );
+        FileName(trid)
     }
 
     /// Try to get a file name that has been interned
