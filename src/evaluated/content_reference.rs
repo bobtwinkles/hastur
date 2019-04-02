@@ -53,6 +53,15 @@ impl ContentReference {
         }
     }
 
+    /// Create a content reference for a synthetically generated semicolon
+    pub fn semicolon() -> Self {
+        ContentReference {
+            offset: 0,
+            length: 1,
+            node: EvaluatedNode::semicolon(),
+        }
+    }
+
     /// Append the contents of this reference to a string
     pub fn append_to_string(&self, buffer: &mut String) {
         buffer.reserve(self.length);

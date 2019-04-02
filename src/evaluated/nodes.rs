@@ -26,6 +26,9 @@ lazy_static::lazy_static!(
     static ref NEWLINE: Arc<EvaluatedNode> = Arc::new(
         EvaluatedNode::Constant(LocatedString::new(Location::Synthetic.into(), "\n".into()))
     );
+    static ref SEMICOLON: Arc<EvaluatedNode> = Arc::new(
+        EvaluatedNode::Constant(LocatedString::new(Location::Synthetic.into(), ";".into()))
+    );
 );
 
 impl EvaluatedNode {
@@ -37,6 +40,11 @@ impl EvaluatedNode {
     /// Get a reference to the newline token
     pub(crate) fn newline() -> Arc<EvaluatedNode> {
         Arc::clone(&NEWLINE)
+    }
+
+    /// Get a new reference to the semicolon token
+    pub(crate) fn semicolon() -> Arc<EvaluatedNode> {
+        Arc::clone(&SEMICOLON)
     }
 
     /// Get the total length of content
