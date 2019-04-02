@@ -1,7 +1,9 @@
 //! Parser for recipe lines
 
-use super::{ends_with_backslash, makefile_grab_line};
-use crate::evaluated::{Block, BlockSpan, ContentReference};
+use super::{ends_with_backslash, lift_collapsed_span_error, makefile_grab_line};
+use crate::ast::AstNode;
+use crate::evaluated::{BlockSpan, ContentReference};
+use crate::parsers::ast::parse_ast;
 use crate::ParseErrorKind;
 use nom::IResult;
 use std::sync::Arc;
@@ -10,7 +12,7 @@ use std::sync::Arc;
 pub(super) fn recipe_line<'a>(
     i: BlockSpan<'a>,
     command_char: char,
-) -> IResult<BlockSpan<'a>, Arc<Block>, ParseErrorKind> {
+) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
     macro_rules! grab_command_line(
         ($i:expr ) => { grab_command_line!($i , ) };
         ($i:expr, ) => {
@@ -27,13 +29,16 @@ pub(super) fn recipe_line<'a>(
         ErrorKind::Custom(ParseErrorKind::RecipeExpected),
         grab_command_line!()
     )?;
-    let mut line = line.to_new_block();
-    eprintln!("{:?}", line.into_string());
+
+    let line_start = line;
 
     // If the line has a comment, stop the line (and processing)
     if end_reason == super::LineEndReason::Comment {
-        return Ok((i, line));
+        let (_, ast) = parse_ast(line)?;
+        return Ok((i, ast));
     }
+
+    let mut line = line.to_new_block();
 
     while ends_with_backslash(line.span()) & 1 == 1 {
         Arc::make_mut(&mut line).push(ContentReference::newline()); // Add back the \n we striped
@@ -45,7 +50,9 @@ pub(super) fn recipe_line<'a>(
 
                 // If the line has a comment, stop the line (and processing)
                 if end_reason == super::LineEndReason::Comment {
-                    return Ok((i, line));
+                    let (_, ast) = parse_ast(line.span())
+                        .map_err(|e| lift_collapsed_span_error(e, line_start))?;
+                    return Ok((i, ast));
                 }
             }
             Err(_) => {
@@ -55,15 +62,18 @@ pub(super) fn recipe_line<'a>(
         }
     }
 
-    Ok((i, line))
+    let (_, ast) = parse_ast(line.span()).map_err(|e| lift_collapsed_span_error(e, line_start))?;
+
+    Ok((i, ast))
 }
 
 #[cfg(test)]
 mod test {
     use super::recipe_line;
+    use crate::ast;
     use crate::parsers::test;
     use crate::parsers::test::create_span;
-    use crate::source_location::Location;
+    use crate::source_location::{LocatedString, Location};
     use crate::ParseErrorKind;
     use nom::{error_to_list, ErrorKind};
 
@@ -73,7 +83,7 @@ mod test {
         let test_span = test_span.span();
         let parse = assert_ok!(recipe_line(test_span, '\t'));
         assert_complete!(parse.0);
-        assert_segments_eq!(parse.1.span(), [("a", Location::test_location(1, 2))])
+        assert_eq!(parse.1, ast::constant(LocatedString::test_new(1, 2, "a")));
     }
 
     #[test]
@@ -82,7 +92,7 @@ mod test {
         let test_span = test_span.span();
         let parse = assert_ok!(recipe_line(test_span, '\t'));
         assert_complete!(parse.0);
-        assert_segments_eq!(parse.1.span(), [("a", Location::test_location(1, 2))]);
+        assert_eq!(parse.1, ast::constant(LocatedString::test_new(1, 2, "a")));
     }
 
     #[test]
@@ -91,13 +101,16 @@ mod test {
         let test_span = test_span.span();
         let parse = assert_ok!(recipe_line(test_span, '\t'));
         assert_complete!(parse.0);
-        assert_segments_eq!(
-            parse.1.span(),
-            [
-                ("a\\", Location::test_location(1, 2)),
-                ("\n", Location::Synthetic),
-                ("b", Location::test_location(2, 2))
-            ]
+        assert_eq!(
+            parse.1,
+            ast::collapsing_concat(
+                Location::test_location(1, 2),
+                vec![
+                    ast::constant(LocatedString::test_new(1, 2, "a\\")),
+                    ast::constant(LocatedString::new(Location::Synthetic.into(), "\n".into())),
+                    ast::constant(LocatedString::test_new(2, 2, "b"))
+                ]
+            )
         );
     }
 
@@ -107,7 +120,7 @@ mod test {
         let test_span = test_span.span();
         let parse = assert_ok!(recipe_line(test_span, '\t'));
         assert_segments_eq!(parse.0, [("\tb", Location::test_location(2, 1))]);
-        assert_segments_eq!(parse.1.span(), [("a", Location::test_location(1, 2))]);
+        assert_eq!(parse.1, ast::constant(LocatedString::test_new(1, 2, "a")));
     }
 
     #[test]
@@ -116,7 +129,7 @@ mod test {
         let test_span = test_span.span();
         let parse = assert_ok!(recipe_line(test_span, '\t'));
         assert_segments_eq!(parse.0, [("\n", Location::test_location(2, 1))]);
-        assert_segments_eq!(parse.1.span(), [("a", Location::test_location(1, 2))]);
+        assert_eq!(parse.1, ast::constant(LocatedString::test_new(1, 2, "a")));
     }
 
     #[test]
@@ -125,7 +138,7 @@ mod test {
         let test_span = test_span.span();
         let parse = assert_ok!(recipe_line(test_span, '\t'));
         assert_segments_eq!(parse.0, [("# \n\n", Location::test_location(1, 4))]);
-        assert_segments_eq!(parse.1.span(), [("a ", Location::test_location(1, 2))]);
+        assert_eq!(parse.1, ast::constant(LocatedString::test_new(1, 2, "a ")));
     }
 
     #[test]

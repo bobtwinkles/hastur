@@ -45,6 +45,7 @@ mod types;
 pub use crate::eval::{Flavor, Origin, Variable, VariableParameters};
 pub use crate::parsers::ParserCompliance;
 
+use crate::ast::AstNode;
 use crate::evaluated::Block;
 use crate::source_location::{LocatedString, Location};
 use std::io;
@@ -169,7 +170,16 @@ impl<T> OwnedFragment<T> {
 /// for more details
 #[derive(Clone, Debug, PartialEq)]
 pub struct Command {
-    unexpanded_command: Arc<Block>,
+    unexpanded_command: AstNode,
+}
+
+/// Represents what type of rule this is (standard, double colon, static pattern, etc.)
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum RuleType {
+    /// A plain-jane `a: b c` type of rule
+    Standard,
+    /// This is a double colon rule
+    DoubleColon,
 }
 
 /// A "rule" describes how to bring a set of "targets" up to date from a set of
@@ -177,11 +187,13 @@ pub struct Command {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Rule {
     /// The targets that this rule builds
-    targets: Vec<String>,
+    targets: Vec<FileName>,
     /// The inputs for the recipe
-    deps: Vec<String>,
+    deps: Vec<FileName>,
     /// The recipe to turn `deps` into `targets`
     recipe: Vec<Command>,
+    /// Extra information about the rule
+    rule_type: RuleType,
 }
 
 // TODO: move this impl into rule.rs
@@ -193,7 +205,7 @@ impl Rule {
     }
 
     /// Push a new line into the rule
-    fn push_command_line(&mut self, line: Arc<Block>) {
+    fn push_command_line(&mut self, line: AstNode) {
         self.recipe.push(Command {
             unexpanded_command: line,
         })

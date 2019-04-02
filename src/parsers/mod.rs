@@ -258,7 +258,7 @@ impl<'a> ParserState<'a> {
     /// Push a new command line into the currently processing rule
     /// # Panics
     /// Panics if there no rule is currently active
-    fn push_command_line(&mut self, line: Arc<Block>) {
+    fn push_command_line(&mut self, line: crate::ast::AstNode) {
         self.current_rule
             .as_mut()
             .expect("cannot push command lines while not processing rules")
