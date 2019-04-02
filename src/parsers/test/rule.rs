@@ -9,7 +9,7 @@ fn simple_rule() {
         r#"
 a: b
 	echo bar
-"#
+"#,
     );
 
     let mut engine: Engine = Default::default();

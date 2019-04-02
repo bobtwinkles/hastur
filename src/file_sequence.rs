@@ -31,10 +31,7 @@ impl Default for FileSeqParseOptions {
     }
 }
 
-pub(crate) fn parse_file_seq<'a>(
-    i: BlockSpan<'a>,
-    options: FileSeqParseOptions,
-) -> Vec<String> {
+pub(crate) fn parse_file_seq<'a>(i: BlockSpan<'a>, options: FileSeqParseOptions) -> Vec<String> {
     use nom::Slice;
     // Implementation follows parse_file_seq in read.c from GNU Make 4.2.1
     assert!(!options.check_ar);
