@@ -9,10 +9,14 @@ use crate::types::Set;
 use crate::{Database, NameCache, VariableName};
 use std::sync::Arc;
 
+pub mod visit;
+
 mod text_functions;
 
 #[cfg(test)]
 mod test;
+#[cfg(test)]
+pub mod proptest;
 
 /// A node in a syntax tree representing evaluations
 #[derive(Clone, Debug, PartialEq)]
@@ -30,6 +34,11 @@ impl AstNode {
     /// Get the children of this node. This also tells you the type of node
     pub fn children(&self) -> &AstChildren {
         &self.children
+    }
+
+    /// Get the children of this node. This also tells you the type of node
+    pub fn children_mut(&mut self) -> &mut AstChildren {
+        &mut self.children
     }
 
     /// Evaluate this AST, in the context of the provided database. The provided

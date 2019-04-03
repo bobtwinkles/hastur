@@ -214,8 +214,8 @@ impl Location {}
 /// string slice) that has a location.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Located<T> {
-    location: Marker,
-    contents: T,
+    pub(crate) location: Marker,
+    pub(crate) contents: T,
 }
 
 impl<T: PartialEq> PartialOrd for Located<T> {

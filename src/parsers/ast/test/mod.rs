@@ -8,6 +8,7 @@ mod arguments;
 mod strip;
 mod word;
 mod words;
+mod proptest;
 
 #[test]
 fn simple() {

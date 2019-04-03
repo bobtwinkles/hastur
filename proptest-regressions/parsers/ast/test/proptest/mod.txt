@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc fab451d53a6685e0f1c819329f7dabc54725893529e4d58d4521fdc892ae55ba # shrinks to (ast, flat) = (AstNode { source_location: Marker { inner: TestLocation { line: 1, character: 1 } }, children: Concat([]) }, "")

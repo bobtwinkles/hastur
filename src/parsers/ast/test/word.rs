@@ -1,6 +1,7 @@
 //! tests for the word function
 
 use super::*;
+use pretty_assertions::assert_eq;
 
 #[test]
 fn basic() {
@@ -10,7 +11,7 @@ fn basic() {
     assert_eq!(
         res.1,
         ast::word(
-            Location::test_location(1, 3),
+            Location::test_location(1, 1),
             ast::constant(LocatedString::test_new(1, 8, "1")),
             ast::constant(LocatedString::test_new(1, 10, "foo"))
         )

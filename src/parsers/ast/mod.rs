@@ -122,7 +122,7 @@ fn advanced_var<'a>(
     let (i, name_node) = i.take_split(split_idx + 1);
     let name_node = name_node.slice(..name_node.len() - 1);
 
-    match function_call(name_node) {
+    match function_call(name_node, dollar_location.clone()) {
         Ok(v) => Ok(v),
         Err(Err::Failure(context)) => {
             if context.clone().into_error_kind()
@@ -143,7 +143,10 @@ fn advanced_var<'a>(
     }
 }
 
-fn function_call<'a>(i: BlockSpan<'a>) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
+fn function_call<'a>(
+    i: BlockSpan<'a>,
+    dollar_location: Location,
+) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
     fn no_such_function<'a>(i: BlockSpan<'a>) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
         Err(Err::Failure(nom::Context::Code(
             i,
@@ -158,7 +161,7 @@ fn function_call<'a>(i: BlockSpan<'a>) -> IResult<BlockSpan<'a>, AstNode, ParseE
                 do_parse!(
                     func_name: pe_fix!(tag!($t))
                         >> many1!(makefile_whitespace)
-                        >> parsed: apply!($f, func_name.location().unwrap())
+                        >> parsed: apply!($f, dollar_location.clone())
                         >> (parsed)
                 )
             )
