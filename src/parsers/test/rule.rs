@@ -27,4 +27,6 @@ a: b
 
     // last line
     let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+
+    assert_complete!(i);
 }

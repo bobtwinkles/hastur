@@ -317,7 +317,6 @@ mod unquote {
     use crate::evaluated::test::single_block;
     use crate::parsers::makefile_take_until_unquote;
     use crate::source_location::Location;
-    use crate::ParseErrorKind;
 
     fn eq_percent(c: char) -> bool {
         c == '%'

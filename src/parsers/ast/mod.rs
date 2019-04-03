@@ -159,7 +159,7 @@ fn function_call<'a>(
             pe_complete!(
                 $i,
                 do_parse!(
-                    func_name: pe_fix!(tag!($t))
+                    pe_fix!(tag!($t))
                         >> many1!(makefile_whitespace)
                         >> parsed: apply!($f, dollar_location.clone())
                         >> (parsed)
