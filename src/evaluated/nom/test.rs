@@ -238,3 +238,32 @@ mod input_iter {
         assert_eq!(iter.next(), Some('b'));
     }
 }
+
+mod offset {
+    use super::*;
+    use proptest::prelude::*;
+
+    prop_compose!(
+        fn rand_len_str_with_offset(max_len: usize)
+            (str_len in 1 .. max_len)
+            (str_len in Just(str_len), index in 0 .. str_len) -> (String, usize)
+        {
+            ((0 .. str_len).map(|_| 'a').collect(), index)
+        }
+    );
+
+    proptest!(
+        #[test]
+        fn test_eq_str((s, idx) in rand_len_str_with_offset(10)) {
+            crate::test::setup();
+
+            let block = single_block(&s);
+            let complete_str = nom::types::CompleteStr(&s);
+
+            let (bb, ba) = block.span().take_split(idx);
+            let (sb, sa) = complete_str.take_split(idx);
+
+            prop_assert_eq!(ba.offset(&bb), sa.offset(&sb));
+        }
+    );
+}
