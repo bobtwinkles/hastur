@@ -156,6 +156,7 @@ fn command_dcolon() {
 
 #[test]
 fn escaped_colon_target() {
+    crate::test::setup();
     let block = create_span("\\: :: a");
     let mut name_cache = NameCache::default();
     let t = name_cache.intern_file_name(":".into());

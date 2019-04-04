@@ -178,7 +178,7 @@ pub(crate) fn parse_line<'a>(
     let mut modifiers: Modifiers = Default::default();
     loop {
         // If parsing as a variable definition succeeds, we're done
-        eprintln!("Parsing iteration {:?}", i.into_string());
+        debug!("Parsing iteration {:?}", i.into_string());
         match parse_variable_assignment(i, modifiers, names, db) {
             Ok(v) => return Ok(v),
             Err(e) => {
@@ -210,7 +210,7 @@ pub(crate) fn parse_line<'a>(
                 return error_out(i, ParseErrorKind::InternalFailure("not an assignment"));
             }
         };
-        eprintln!(
+        debug!(
             "Advancing from {:?} to {:?}",
             i.into_string(),
             new_i.into_string()
@@ -305,7 +305,7 @@ fn parse_assignment_operator<'a>(
         Err(_) => return error_out(i, ParseErrorKind::InternalFailure("name not captured")),
     };
 
-    eprintln!(
+    debug!(
         "Captured variable name {:?}, {:?} left to parse",
         variable_name.into_string(),
         i.into_string()
@@ -405,7 +405,7 @@ pub(crate) fn parse_define_line<'a>(
         )
     )?;
 
-    eprintln!("Parsing define line {:?}", i.into_string());
+    debug!("Parsing define line {:?}", i.into_string());
     let location = i.location().expect("There should be content on the line");
     let (_, ast) = parse_ast(i)?;
 

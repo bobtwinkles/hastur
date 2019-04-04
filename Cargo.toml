@@ -23,3 +23,4 @@ features = ["verbose-errors"]
 [dev-dependencies]
 proptest = "0.9.2"
 pretty_assertions = "0.6.1"
+env_logger = "0.6"

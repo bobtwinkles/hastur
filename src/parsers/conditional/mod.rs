@@ -154,8 +154,8 @@ fn parse_line_internal<'a>(
         )
     )?;
 
-    eprintln!("Tag is {:?}", tag);
-    eprintln!("Rest is {:?}", input.into_string());
+    debug!("Tag is {:?}", tag);
+    debug!("Rest is {:?}", input.into_string());
 
     match tag {
         ConditionalType::IfDef | ConditionalType::IfNDef => {
@@ -239,7 +239,7 @@ fn parse_ifeq<'a>(
 
             Ok((line, res))
         } else {
-            eprintln!("Taking until terminator {:?}", terminator);
+            debug!("Taking until terminator {:?}", terminator);
             let res = fix_error!(
                 line,
                 ParseErrorKind,
@@ -248,12 +248,12 @@ fn parse_ifeq<'a>(
                     char!(terminator)
                 ))
             );
-            eprintln!("we got {:?}", res);
+            debug!("we got {:?}", res);
             res
         }
     }
 
-    eprintln!("Parsing ifeq line: {:?}", line);
+    debug!("Parsing ifeq line: {:?}", line);
 
     let (line, terminator) = fix_error!(
         line,
@@ -266,11 +266,11 @@ fn parse_ifeq<'a>(
             char!('\'') => {|_| ('\'')}
         ))
     )?;
-    eprintln!("Using arg1 separator {:?}", terminator);
+    debug!("Using arg1 separator {:?}", terminator);
 
     let (line, arg1) = take_till_terminator(line, terminator)?;
     let (_, arg1) = parse_ast(arg1)?;
-    eprintln!("Got arg1 {:?}", arg1);
+    debug!("Got arg1 {:?}", arg1);
     let (line, _) = makefile_whitespace(line)?;
     let (line, terminator) = if terminator == ',' {
         (line, ')')
@@ -287,7 +287,7 @@ fn parse_ifeq<'a>(
     let (line, arg2) = take_till_terminator(line, terminator)?;
     let (_, arg2) = parse_ast(arg2)?;
 
-    eprintln!("ifeq parse succeeded");
+    debug!("ifeq parse succeeded");
     Ok((line, (arg1, arg2)))
 }
 

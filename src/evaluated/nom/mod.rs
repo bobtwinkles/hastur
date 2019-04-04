@@ -217,7 +217,7 @@ impl<'a, 'b> FindSubstring<&'b str> for BlockSpan<'a> {
         }
 
         for (i, c) in self_iter {
-            // eprintln!(
+            // debug!(
             //     "Inspecting {:?} for match with {:?} {:?}",
             //     c,
             //     substr.as_bytes(),
@@ -238,7 +238,7 @@ impl<'a, 'b> FindSubstring<&'b str> for BlockSpan<'a> {
                 }
             }
             if all_match {
-                eprintln!("Match found at {:?}", i - substr.len());
+                debug!("Match found at {:?}", i - substr.len());
                 return Some(i - substr.len() + 1);
             }
         }

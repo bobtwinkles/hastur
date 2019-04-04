@@ -184,7 +184,7 @@ impl<'a> ParserState<'a> {
             }
         );
 
-        eprintln!("Parsing in collapsed line {:?}", line.into_string());
+        debug!("Parsing in collapsed line {:?}", line.into_string());
         // If the line is empty, just succeed immediately
         if line.len() == 0 {
             return Ok((i, ()));

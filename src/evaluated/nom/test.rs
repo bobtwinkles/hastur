@@ -39,24 +39,26 @@ mod slice {
 
     #[test]
     fn skip_then_rest() {
+        crate::test::setup();
         let block = single_block("a\\\nbc\\\nd");
         let span = block.span();
         let under_test = makefile_line(span, ParserCompliance::GNU, false).unwrap().1;
         let under_test = under_test.span();
-        eprintln!("{:?}", under_test.contents);
+        info!("under test: {:?}", under_test.contents);
         let res = under_test.slice(3..);
-        eprintln!("{:?}", res.contents);
+        info!("res: {:?}", res.contents);
 
         assert_eq!(res.into_string(), String::from("c d"));
     }
 
     #[test]
     fn skip_then_rest_offset() {
+        crate::test::setup();
         let block = single_block("ab\\\nbc\\\nd");
         let span = block.span();
         let under_test = makefile_line(span, ParserCompliance::GNU, false).unwrap().1;
         let mut under_test = under_test.span();
-        eprintln!("{:?}", under_test.into_string());
+        info!("under test: {:?}", under_test.into_string());
         under_test.offset += 1;
         under_test.revalidate_offset();
         let res = under_test.slice(3..);
@@ -202,11 +204,12 @@ mod input_iter {
 
     #[test]
     fn elements_iter() {
+        crate::test::setup();
         let block = single_block("a\\\nbc\\\nd");
         let span = block.span();
         let under_test = makefile_line(span, ParserCompliance::GNU, false).unwrap().1;
         let under_test = under_test.span();
-        eprintln!("{:?}", under_test.into_string());
+        info!("{:?}", under_test.into_string());
         let mut iter = under_test.iter_elements();
 
         assert_eq!(iter.next(), Some('a'));
@@ -219,12 +222,13 @@ mod input_iter {
 
     #[test]
     fn elments_iter_offset() {
+        crate::test::setup();
         let block = single_block("ab\\\nb");
         let under_test = makefile_line(block.span(), ParserCompliance::GNU, false)
             .unwrap()
             .1;
         let mut under_test = under_test.span();
-        eprintln!("Span under test is {:?}", under_test.into_string());
+        info!("Span under test is {:?}", under_test.into_string());
         under_test.offset += 1;
         under_test.revalidate_offset();
         let mut iter = under_test.iter_elements();

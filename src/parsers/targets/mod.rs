@@ -161,10 +161,10 @@ pub(crate) fn parse_line<'a>(
     let mut after_colon = None;
 
     loop {
-        eprintln!("Handling mword {:?}", mw.into_string());
+        debug!("Handling mword {:?}", mw.into_string());
         // This is the content to be pushed to expanded_buffer after we finish unquoting it
         let mut new_content = expand_segment!(mw);
-        eprintln!("New content is {:?}", new_content);
+        debug!("New content is {:?}", new_content);
 
         if post_semi_content.is_none() {
             match makefile_take_until_unquote(new_content.span(), |c| c == ';') {
@@ -188,11 +188,11 @@ pub(crate) fn parse_line<'a>(
                     // Since there may have been some amount of rewriting from
                     // stripping the escapes, update the expansion buffer
                     new_content = pre;
-                    eprintln!("No semicolon match");
+                    debug!("No semicolon match");
                 }
             }
         }
-        eprintln!("After semicolon search, content is {:?}", new_content);
+        debug!("After semicolon search, content is {:?}", new_content);
 
         match makefile_take_until_unquote(new_content.span(), |c| c == ':') {
             (pre, Some((_, post))) => {
@@ -234,7 +234,7 @@ pub(crate) fn parse_line<'a>(
         Arc::make_mut(&mut expanded_buffer).push_all_contents(new_content.span());
     }
 
-    eprintln!("pre-colon match: {:?}", expanded_buffer.into_string());
+    debug!("pre-colon match: {:?}", expanded_buffer.into_string());
 
     if mwt == MWordEnd::EOL {
         let (after_space, _) = makefile_whitespace(expanded_buffer.span()).unwrap();
@@ -254,7 +254,7 @@ pub(crate) fn parse_line<'a>(
         expanded_buffer.span().slice(..(expanded_buffer.len() - 1)),
         Default::default(),
     );
-    eprintln!("Got file sequence {:?}", targets);
+    debug!("Got file sequence {:?}", targets);
 
     // Everything after the colon gets shoved into one big buffer
     let (post_targets_buffer, pre_semi_len) = {
@@ -377,7 +377,7 @@ pub(crate) fn parse_line<'a>(
         unimplemented!("Static pattern rules");
     }
 
-    eprintln!("Parsing deps from {:?}", pre_semi_slice.into_string());
+    debug!("Parsing deps from {:?}", pre_semi_slice.into_string());
     let deps = crate::parsers::file_sequence::parse_file_seq(pre_semi_slice, Default::default());
 
     Ok((
@@ -443,7 +443,7 @@ fn next_mword<'a>(
 
         if chr == ':' {
             if char_iter.peek() == Some(&(idx + 1, '\\')) && prev_char.is_alphabetic() {
-                eprintln!("Skipping DOS path {:?}", idx);
+                debug!("Skipping DOS path {:?}", idx);
                 continue;
             }
             stop_index = idx;

@@ -365,7 +365,7 @@ impl NameCache {
     /// Intern a the file name for a makefile
     pub fn intern_file_name(&mut self, file_name: String) -> FileName {
         let trid = self.file_names.get_or_intern(file_name);
-        eprintln!(
+        info!(
             "Intern filename {:?} as {:?}",
             self.file_names.resolve(trid),
             trid
@@ -380,7 +380,7 @@ impl NameCache {
 
     /// Intern a variable name
     pub fn intern_variable_name(&mut self, variable_name: String) -> VariableName {
-        eprintln!("Intern variable {:?}", variable_name);
+        info!("Intern variable {:?}", variable_name);
         VariableName(self.variable_names.get_or_intern(variable_name))
     }
 
@@ -502,10 +502,15 @@ impl Engine {
 
 #[cfg(test)]
 mod test {
+    //! Test utilities
     use super::Database;
 
     pub(crate) fn empty_database() -> Database {
         Default::default()
+    }
+
+    pub(crate) fn setup() {
+        let _ = env_logger::builder().is_test(true).try_init();
     }
 
     /*

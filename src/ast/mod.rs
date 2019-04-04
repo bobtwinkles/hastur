@@ -126,7 +126,7 @@ impl AstNode {
             AstChildren::VariableReference(name) => {
                 // Compute the variable name, and then try to evaluate it
                 let name = eval_subexpr!(name);
-                eprintln!("Name is {:?}", name.into_string());
+                debug!("Variable name is {:?}", name.into_string());
                 let colon_find = pair!(
                     name.span(),
                     recognize!(many1!(take_until_and_consume!(":"))),

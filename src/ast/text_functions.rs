@@ -70,11 +70,11 @@ fn do_replacement<'a>(
             first = false;
         }
 
-        eprintln!("processing token {:?}", token.into_string());
+        debug!("processing token {:?}", token.into_string());
 
         if token.len() < total_key_length {
             // The token is too short to match the key, just push all its contents unmodified
-            eprintln!("Skipping because too short");
+            debug!("Skipping because too short");
             Arc::make_mut(&mut output).push_all_contents(token);
             continue;
         }
@@ -89,7 +89,7 @@ fn do_replacement<'a>(
             Err(_) => {
                 // A failure to match here indicates we couldn't find the key,
                 // so just push everything and move on
-                eprintln!("Skipping because capture failed");
+                debug!("Skipping because capture failed");
                 Arc::make_mut(&mut output).push_all_contents(token);
                 continue;
             }
@@ -97,7 +97,7 @@ fn do_replacement<'a>(
         if token_remaining.len() != 0 {
             // We didn't make it to the end of the line when matching for the post key,
             // so the key doesn't match. Push and continue
-            eprintln!(
+            debug!(
                 "Skipping because capture was not completed {:?}",
                 token_remaining.into_string()
             );

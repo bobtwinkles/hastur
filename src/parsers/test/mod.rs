@@ -90,11 +90,12 @@ mod makefile_line {
 
     #[test]
     fn simple() {
+        crate::test::setup();
         let test_span = create_span("just a line");
         let test_span = test_span.span();
         for mode in &[ParserCompliance::GNU, ParserCompliance::POSIX] {
             for strip_whitespace in &[false, true] {
-                eprintln!("Testing mode {:?} {:?}", mode, strip_whitespace);
+                info!("Testing mode {:?} {:?}", mode, strip_whitespace);
                 let parse = assert_ok!(makefile_line(test_span, *mode, *strip_whitespace));
 
                 assert_complete!(parse.0);

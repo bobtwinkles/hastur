@@ -15,6 +15,8 @@ mod mf_else;
 
 #[test]
 fn rejects_non_keywords() {
+    crate::test::setup();
+
     let test_span = create_span("this is not a conditional");
     let test_span = test_span.span();
     let parse = parse_line(test_span);
@@ -29,7 +31,7 @@ fn rejects_non_keywords() {
     assert!(context.is_some());
     let context = context.unwrap();
     let errors = error_to_list(&context);
-    eprintln!("{:?}", errors);
+    info!("{:?}", errors);
     assert!(error_list_contains(
         &errors,
         ErrorKind::Custom(ParseErrorKind::ConditionalExpected)

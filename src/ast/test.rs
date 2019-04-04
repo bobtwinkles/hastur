@@ -94,6 +94,7 @@ fn var_ref_simple() {
 
 #[test]
 fn var_ref_substitution() {
+    crate::test::setup();
     let block = single_block("$(foo:.c=.o)");
     let ast = ast_parse!(block);
 
@@ -107,7 +108,7 @@ fn var_ref_substitution() {
     let expected_sensitivity = mk_sensitivity(&[variable]);
 
     let (_database, val) = ast.eval(&mut names, &database);
-    eprintln!("{:?}", val.into_string());
+    info!("Evaluation of AST: {:?}", val.into_string());
     assert_eq!(
         val,
         Block::new(

@@ -46,7 +46,7 @@ pub(crate) fn parse_file_seq<'a>(i: BlockSpan<'a>, options: FileSeqParseOptions)
     let (mut remaining_content, _) =
         makefile_whitespace(i).expect("whitespace search should never fail");;
 
-    eprintln!("Parsing file sequence from {:?}", i.into_string());
+    debug!("Parsing file sequence from {:?}", i.into_string());
 
     while remaining_content.len() > 0 {
         match crate::parsers::makefile_take_until_unquote(remaining_content, |c| {
@@ -71,7 +71,7 @@ pub(crate) fn parse_file_seq<'a>(i: BlockSpan<'a>, options: FileSeqParseOptions)
 }
 
 fn clean_match<'a>(mut i: BlockSpan<'a>, options: &FileSeqParseOptions) -> String {
-    eprintln!("Cleaning file name match {:?}", i.into_string());
+    debug!("Cleaning file name match {:?}", i.into_string());
     if options.strip_leading_dotslash {
         i = match tag!(i, "./") {
             Ok((new_i, _)) => new_i,
