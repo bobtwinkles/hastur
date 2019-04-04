@@ -17,6 +17,8 @@ pub(crate) struct FileSeqParseOptions {
     pub exist_only: bool,
     /// Which directory to treat as CWD
     pub cwd: PathBuf,
+    /// What extra characters to stop on
+    pub extra_stopchars: &'static str,
 }
 
 impl Default for FileSeqParseOptions {
@@ -28,6 +30,7 @@ impl Default for FileSeqParseOptions {
             do_glob: false,
             exist_only: false,
             cwd: std::env::current_dir().expect("Failed to get current directory"),
+            extra_stopchars: ""
         }
     }
 }
@@ -44,13 +47,13 @@ pub(crate) fn parse_file_seq<'a>(i: BlockSpan<'a>, options: FileSeqParseOptions)
     // TODO: finish implementing this properly. Right now it only handles
     // space-separated file names, not globs or archives
     let (mut remaining_content, _) =
-        makefile_whitespace(i).expect("whitespace search should never fail");;
+        makefile_whitespace(i).expect("whitespace search should never fail");
 
-    debug!("Parsing file sequence from {:?}", i.into_string());
+    debug!("Parsing file sequence from {:?}", remaining_content.into_string());
 
     while remaining_content.len() > 0 {
         match crate::parsers::makefile_take_until_unquote(remaining_content, |c| {
-            c.is_whitespace() || c == '\0'
+            c.is_whitespace() || c == '\0' || options.extra_stopchars.find(c).is_some()
         }) {
             (pre, Some((_, post))) => {
                 if pre.len() > 0 {

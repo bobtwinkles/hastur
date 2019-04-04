@@ -33,10 +33,11 @@ macro_rules! test_leaving(
 
 #[test]
 fn tricky_colon_escapes() {
-    let block = create_span("\\\\:\\:");
+    crate::test::setup();
+    let block = create_span(r"\\:\:");
     let mut name_cache = NameCache::default();
-    let t1 = name_cache.intern_file_name("\\".into());
-    let d1 = name_cache.intern_file_name("\\:".into());
+    let t1 = name_cache.intern_file_name(r"\".into());
+    let d1 = name_cache.intern_file_name(":".into());
     let database = Default::default();
 
     let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
@@ -75,7 +76,9 @@ fn backslash_in_target() {
 
 #[test]
 fn backslash_at_end_of_input() {
-    let block = create_span("\\\\ : \\\\");
+    crate::test::setup();
+
+    let block = create_span(r"\\ : \\");
     let mut name_cache = NameCache::default();
     let v = name_cache.intern_file_name("\\".into());
     let database = Default::default();
@@ -171,6 +174,28 @@ fn escaped_colon_target() {
             targets: vec![t],
             deps: vec![d],
             double_colon: true,
+            initial_command: None,
+        }
+    )
+}
+
+#[test]
+fn escaped_semicolon_target() {
+    crate::test::setup();
+    let block = create_span("\\\\\\; : a");
+    let mut name_cache = NameCache::default();
+    let t = name_cache.intern_file_name(";".into());
+    let d = name_cache.intern_file_name("a".into());
+    let database = Default::default();
+
+    let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
+
+    assert_eq!(
+        action,
+        Action::NewRule {
+            targets: vec![t],
+            deps: vec![d],
+            double_colon: false,
             initial_command: None,
         }
     )

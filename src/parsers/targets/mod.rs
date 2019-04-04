@@ -115,18 +115,26 @@ pub(crate) fn parse_line<'a>(
     //
     // line is the storage backing "line_next" which is our model for lb_next
     // post_semi_content is essentially cmdleft
-    let (line, semip) =
+    let (mut line, semip) =
         match makefile_take_until_unquote(line.span(), |c| (c == ';' || c == '#' || c == '$')) {
             (pre, Some((stopchar, post))) => {
-                if stopchar == '#' {
+                if stopchar.iter_elements().next() == Some('#') {
                     (pre, None)
                 } else {
+                    debug!(
+                        "Found unescaped semicolon. Post content {:?}",
+                        post.into_string()
+                    );
                     (pre, Some(post))
                 }
             }
             (pre, None) => (pre, None),
         };
     let mut post_semi_content = semip.map(|x| x.to_new_block());
+    debug!(
+        "Content after initial semicolon search: {:?}",
+        line.into_string()
+    );
 
     macro_rules! expand_segment {
         ($seg:expr) => {{
@@ -157,14 +165,18 @@ pub(crate) fn parse_line<'a>(
 
     // Buffer containing all the expansions we've done so far. This is roughly
     // equivalent to `p2` in the original GNU Make code
-    let mut expanded_buffer = Block::empty();
+    let mut pre_colon_buffer = Block::empty();
     let mut after_colon = None;
 
     loop {
-        debug!("Handling mword {:?}", mw.into_string());
-        // This is the content to be pushed to expanded_buffer after we finish unquoting it
+        debug!(
+            "Handling mword {:?} (rest: {:?})",
+            mw.into_string(),
+            line_next.into_string()
+        );
+        // This is the content to be pushed to pre_colon_buffer after we finish unquoting it
         let mut new_content = expand_segment!(mw);
-        debug!("New content is {:?}", new_content);
+        debug!("New content is {:?}", new_content.into_string());
 
         if post_semi_content.is_none() {
             match makefile_take_until_unquote(new_content.span(), |c| c == ';') {
@@ -192,28 +204,33 @@ pub(crate) fn parse_line<'a>(
                 }
             }
         }
-        debug!("After semicolon search, content is {:?}", new_content);
+        debug!(
+            "After semicolon search, content is {:?}",
+            new_content.into_string()
+        );
 
-        match makefile_take_until_unquote(new_content.span(), |c| c == ':') {
-            (pre, Some((_, post))) => {
-                // TODO: handle windows drive-specs
-                if post.iter_elements().next() == Some('\\') {
-                    unimplemented!(
-                        "This might be a path with a drive spec, which we don't handle right now"
-                    )
-                }
+        match find_non_drivespec_colon(new_content.span()) {
+            DrivespecSearchResult::FoundColon {
+                pre_colon: pre,
+                post_colon: post,
+            } => {
                 after_colon = Some(post.to_new_block());
                 new_content = pre;
 
-                if expanded_buffer.len() > 0 {
-                    Arc::make_mut(&mut expanded_buffer).push(ContentReference::space());
+                debug!(
+                    "Found match, adding prior content {:?} to expanded content",
+                    new_content.into_string()
+                );
+                if pre_colon_buffer.len() > 0 {
+                    Arc::make_mut(&mut pre_colon_buffer).push(ContentReference::space());
                 }
-                Arc::make_mut(&mut expanded_buffer).push_all_contents(new_content.span());
+                Arc::make_mut(&mut pre_colon_buffer).push_all_contents(new_content.span());
 
                 break;
             }
-            (pre, None) => {
+            DrivespecSearchResult::NoColon(pre) => {
                 // No match, but we still need to push the content
+                debug!("No match for colon search");
                 new_content = pre;
             }
         }
@@ -228,16 +245,19 @@ pub(crate) fn parse_line<'a>(
         }
 
         // Push synthetic spaces between spaces
-        if expanded_buffer.len() > 0 {
-            Arc::make_mut(&mut expanded_buffer).push(ContentReference::space());
+        debug!("Adding {:?} to expanded content", new_content.into_string());
+        if pre_colon_buffer.len() > 0 {
+            Arc::make_mut(&mut pre_colon_buffer).push(ContentReference::space());
         }
-        Arc::make_mut(&mut expanded_buffer).push_all_contents(new_content.span());
+        Arc::make_mut(&mut pre_colon_buffer).push_all_contents(new_content.span());
     }
 
-    debug!("pre-colon match: {:?}", expanded_buffer.into_string());
+    debug!("Line split into {:?} and:", pre_colon_buffer.into_string(),);
+    debug!("after colon: {:?}", after_colon);
+    debug!("after that: {:?}", line_next);
 
     if mwt == MWordEnd::EOL {
-        let (after_space, _) = makefile_whitespace(expanded_buffer.span()).unwrap();
+        let (after_space, _) = makefile_whitespace(pre_colon_buffer.span()).unwrap();
         if after_space.len() == 0 {
             // There was only whitespace on the line
             return Ok((rest, (database, Action::NoAction)));
@@ -250,10 +270,8 @@ pub(crate) fn parse_line<'a>(
     // Reconstruct the line in different segments
 
     // Everything before the colon is the list of targets
-    let targets = crate::parsers::file_sequence::parse_file_seq(
-        expanded_buffer.span().slice(..(expanded_buffer.len() - 1)),
-        Default::default(),
-    );
+    let targets =
+        crate::parsers::file_sequence::parse_file_seq(pre_colon_buffer.span(), Default::default());
     debug!("Got file sequence {:?}", targets);
 
     // Everything after the colon gets shoved into one big buffer
@@ -343,6 +361,10 @@ pub(crate) fn parse_line<'a>(
 
     // See if we can find another escaped colon in the expanded targets. That would indicate this is a
     // static pattern rule. We don't makefile_take_until_unquote since any : should already be escaped
+    debug!(
+        "Checking for second colon index in {:?}",
+        pre_semi_slice.into_string()
+    );
     let second_colon_idx = {
         let mut colon_idx = pre_semi_slice.len();
         let mut backslash_count = 0;
@@ -350,16 +372,11 @@ pub(crate) fn parse_line<'a>(
             if chr == '\\' {
                 backslash_count += 1;
             } else if chr == ':' {
-                if backslash_count > 0 {
-                    if backslash_count % 2 == 0 {
-                        colon_idx = idx;
-                        break;
-                    } else {
-                        backslash_count = 0;
-                    }
-                } else {
+                if backslash_count % 2 == 0 {
                     colon_idx = idx;
                     break;
+                } else {
+                    backslash_count = 0;
                 }
             } else {
                 backslash_count = 0;
@@ -378,7 +395,13 @@ pub(crate) fn parse_line<'a>(
     }
 
     debug!("Parsing deps from {:?}", pre_semi_slice.into_string());
-    let deps = crate::parsers::file_sequence::parse_file_seq(pre_semi_slice, Default::default());
+    let deps = crate::parsers::file_sequence::parse_file_seq(
+        pre_semi_slice,
+        crate::parsers::file_sequence::FileSeqParseOptions {
+            extra_stopchars: ":",
+            ..Default::default()
+        },
+    );
 
     Ok((
         rest,
@@ -406,7 +429,6 @@ fn next_mword<'a>(
     use nom::{InputIter, InputTake, Offset, Slice};
     // Skip any leading whitespace
     let (i, _) = makefile_whitespace(i)?;
-    let start_i = i;
 
     // Early out on simple cases
     if let Ok((i, (cap, end_reason))) = pe_fix!(
@@ -433,6 +455,7 @@ fn next_mword<'a>(
     let mut prev_char = '\0';
 
     while let Some((idx, chr)) = char_iter.next() {
+        debug!("inspect {:?} at {:?}", chr, idx);
         stop_index = idx + 1;
 
         if chr == ' ' || chr == '\t' || chr == '=' {
@@ -446,7 +469,7 @@ fn next_mword<'a>(
                 debug!("Skipping DOS path {:?}", idx);
                 continue;
             }
-            stop_index = idx;
+            stop_index = idx + 1;
             break;
         }
 
@@ -494,6 +517,7 @@ fn next_mword<'a>(
         }
 
         if chr == '\\' {
+            prev_char = chr;
             if let Some((_, chr)) = char_iter.peek() {
                 let chr = *chr;
                 if chr == ':' || chr == ';' || chr == '=' || chr == '\\' {
@@ -502,7 +526,6 @@ fn next_mword<'a>(
                     char_iter.next();
                 }
             }
-            prev_char = chr;
             continue;
         }
 
@@ -520,7 +543,100 @@ fn next_mword<'a>(
         prev_char = chr;
     }
 
-    let (i, _) = i.take_split(stop_index);
+    let (i, cap) = i.take_split(stop_index);
+    debug!("Captured content {:?}", cap.into_string());
 
-    Ok((i, (start_i.slice(..(start_i.offset(&i))), end_reason)))
+    Ok((i, (cap, end_reason)))
+}
+
+enum DrivespecSearchResult<'a> {
+    NoColon(Arc<Block>),
+    FoundColon {
+        pre_colon: Arc<Block>,
+        post_colon: BlockSpan<'a>,
+    },
+}
+
+/// This whole function implements lines 1087 to 1094 in read.c, make version
+/// 4.2.1. Our life is harder because we want to actually track origins of text
+/// blocks and can't just do cowboy pointer arithmetic, but in general it should
+/// do the same thing (run take_until_unquote until we find an unquoted : that
+/// isn't a drive spec)
+/// We consider something to be a drivespec if the following conditions hold:
+///  1. The character before the colon is an alphabetic character
+///  2. The character before that is (a) whitespace, or an open paren, or (b) the beginning of the line
+///  3. The character after the colon is `\` or `/`.
+fn find_non_drivespec_colon<'a>(mut i: BlockSpan<'a>) -> DrivespecSearchResult<'a> {
+    use nom::{InputIter, Slice};
+
+    let mut content = Block::empty();
+    loop {
+        match makefile_take_until_unquote(i, |c| c == ':') {
+            (pre, Some((colon, post))) => {
+                // We definitely are going to want the pre-content to be pushed into the output content
+                Arc::make_mut(&mut content).push_all_contents(pre.span());
+
+                // Now check to see if this is a drivespec. If any of the conditions fail, immediately return
+                if let Some(ch) = post.iter_elements().next() {
+                    if ch != '/' && ch != '\\' {
+                        // condition (3) doesn't hold, this isn't a drivespec
+                        return DrivespecSearchResult::FoundColon {
+                            pre_colon: content,
+                            post_colon: post,
+                        };
+                    }
+                } else {
+                    // Post was empty, this can't be a drivespec (failed (3))
+                    return DrivespecSearchResult::FoundColon {
+                        pre_colon: content,
+                        post_colon: post,
+                    };
+                }
+                // Checking condition (1) and (2) requires slicing
+                if pre.len() == 0 {
+                    // Condition 2 fails automatically since there was no prior content
+                    return DrivespecSearchResult::FoundColon {
+                        pre_colon: content,
+                        post_colon: post,
+                    };
+                } else if pre.len() == 1 {
+                    // Condition 2b holds, check condition 1
+                    let ch = pre.span().iter_elements().next().unwrap();
+                    if !ch.is_alphabetic() {
+                        return DrivespecSearchResult::FoundColon {
+                            pre_colon: content,
+                            post_colon: post,
+                        };
+                    }
+                } else {
+                    // There were at least 2 prior characters, grab them
+                    let pre_slice = pre.span().slice(pre.len() - 2..);
+                    assert!(pre_slice.len() == 2);
+                    let (ch1, ch2) = {
+                        let mut iter = pre_slice.iter_elements();
+                        (iter.next().unwrap(), iter.next().unwrap())
+                    };
+                    // Check condition 1 and 2
+                    if !ch1.is_alphabetic() || !(ch2.is_whitespace() || ch2 == '(') {
+                        // Condition 1 or 2 failed, not a drive spec
+                        return DrivespecSearchResult::FoundColon {
+                            pre_colon: content,
+                            post_colon: post,
+                        };
+                    }
+                }
+
+                // This colon passed all checks and is thus a drivespecc. Push
+                // the colon itself into content and continue searching
+                Arc::make_mut(&mut content).push_all_contents(colon);
+
+                i = post;
+            }
+            (pre, None) => {
+                // Colon was not found at all, immediate return
+                Arc::make_mut(&mut content).push_all_contents(pre.span());
+                return DrivespecSearchResult::NoColon(content);
+            }
+        };
+    }
 }

@@ -329,8 +329,8 @@ mod unquote {
         let (modified, capture) = makefile_take_until_unquote(block.span(), eq_percent);
         assert_eq!(modified.len(), 0);
         let capture = capture.unwrap();
+        assert_segments_eq!(capture.0, [("%", Location::test_location(1, 1))]);
         assert_segments_eq!(capture.1, [("a", Location::test_location(1, 2))]);
-        assert_eq!(capture.0, '%');
     }
 
     #[test]
@@ -339,8 +339,8 @@ mod unquote {
         let (remaining, capture) = makefile_take_until_unquote(block.span(), eq_percent);
         assert_segments_eq!(remaining.span(), [("ab", Location::test_location(1, 1))]);
         let capture = capture.unwrap();
+        assert_segments_eq!(capture.0, [("%", Location::test_location(1, 3))]);
         assert_complete!(capture.1);
-        assert_eq!(capture.0, '%');
     }
 
     #[test]
@@ -355,8 +355,22 @@ mod unquote {
             ]
         );
         let capture = capture.unwrap();
+        assert_segments_eq!(capture.0, [("%", Location::test_location(1, 5))]);
         assert_complete!(capture.1);
-        assert_eq!(capture.0, '%');
+    }
+
+    #[test]
+    fn starts_wiht_escaped_no_match() {
+        let block = single_block(r"\\\%");
+        let (remaining, capture) = makefile_take_until_unquote(block.span(), eq_percent);
+        assert_segments_eq!(
+            remaining.span(),
+            [
+                (r"\", Location::test_location(1, 1)),
+                ("%", Location::test_location(1, 4))
+            ]
+        );
+        assert_eq!(capture, None);
     }
 
     #[test]
@@ -365,8 +379,8 @@ mod unquote {
         let (remaining, capture) = makefile_take_until_unquote(block.span(), eq_percent);
         assert_segments_eq!(remaining.span(), [(r"\\", Location::test_location(1, 1))]);
         let capture = capture.unwrap();
+        assert_segments_eq!(capture.0, [("%", Location::test_location(1, 5))]);
         assert_complete!(capture.1);
-        assert_eq!(capture.0, '%');
     }
 
     #[test]
@@ -381,8 +395,8 @@ mod unquote {
             ]
         );
         let capture = capture.unwrap();
+        assert_segments_eq!(capture.0, [("%", Location::test_location(1, 7))]);
         assert_complete!(capture.1);
-        assert_eq!(capture.0, '%');
     }
 
     #[test]
@@ -391,8 +405,8 @@ mod unquote {
         let (remaining, capture) = makefile_take_until_unquote(block.span(), eq_percent);
         assert_segments_eq!(remaining.span(), [(r"ab\\", Location::test_location(1, 1))]);
         let capture = capture.unwrap();
+        assert_segments_eq!(capture.0, [("%", Location::test_location(1, 7))]);
         assert_complete!(capture.1);
-        assert_eq!(capture.0, '%')
     }
 
     #[test]
@@ -401,8 +415,8 @@ mod unquote {
         let (remaining, capture) = makefile_take_until_unquote(block.span(), eq_percent);
         assert_segments_eq!(remaining.span(), [(r"ab", Location::test_location(1, 1))]);
         let capture = capture.unwrap();
+        assert_segments_eq!(capture.0, [("%", Location::test_location(1, 3))]);
         assert_segments_eq!(capture.1, [(r"\\\\", Location::test_location(1, 4))]);
-        assert_eq!(capture.0, '%')
     }
 
     #[test]
