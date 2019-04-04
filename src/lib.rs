@@ -36,7 +36,6 @@ mod test_macros;
 pub mod ast;
 mod eval;
 pub mod evaluated;
-mod file_sequence;
 mod parsers;
 pub mod pattern;
 pub mod source_location;
@@ -354,7 +353,7 @@ impl<'a> From<ParseError<'a>> for MakefileError {
 /// Cache of all the different kinds of name we can encounter in a makefile.
 /// There should probably only be one of these, so this intentionally doesn't
 /// implement `Clone`
-#[derive(Default)]
+#[derive(Default,Debug,Clone)]
 pub struct NameCache {
     /// All the file names
     file_names: StringInterner,

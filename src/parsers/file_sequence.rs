@@ -2,6 +2,7 @@
 //! This includes the implementation of `parse_file_seq` and supporting
 //! functionality, including glob expansion
 use crate::evaluated::BlockSpan;
+use crate::parsers::makefile_whitespace;
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -42,11 +43,15 @@ pub(crate) fn parse_file_seq<'a>(i: BlockSpan<'a>, options: FileSeqParseOptions)
 
     // TODO: finish implementing this properly. Right now it only handles
     // space-separated file names, not globs or archives
-    let mut remaining_content = i;
+    let (mut remaining_content, _) =
+        makefile_whitespace(i).expect("whitespace search should never fail");;
+
+    eprintln!("Parsing file sequence from {:?}", i.into_string());
 
     while remaining_content.len() > 0 {
-        match crate::parsers::makefile_take_until_unquote(remaining_content, |c| c.is_whitespace())
-        {
+        match crate::parsers::makefile_take_until_unquote(remaining_content, |c| {
+            c.is_whitespace() || c == '\0'
+        }) {
             (pre, Some((_, post))) => {
                 if pre.len() > 0 {
                     output_names.push(clean_match(pre.span(), &options));
@@ -66,6 +71,7 @@ pub(crate) fn parse_file_seq<'a>(i: BlockSpan<'a>, options: FileSeqParseOptions)
 }
 
 fn clean_match<'a>(mut i: BlockSpan<'a>, options: &FileSeqParseOptions) -> String {
+    eprintln!("Cleaning file name match {:?}", i.into_string());
     if options.strip_leading_dotslash {
         i = match tag!(i, "./") {
             Ok((new_i, _)) => new_i,

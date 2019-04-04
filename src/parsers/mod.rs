@@ -16,6 +16,7 @@ mod comment;
 mod conditional;
 mod directives;
 mod error_utils;
+mod file_sequence;
 mod recipe_line;
 mod targets;
 pub(crate) mod variable;
@@ -402,14 +403,40 @@ where
         }
     }
 
-    Arc::make_mut(&mut tr).simplify();
+    // Special case: matching of "null" characters at the end of input
+    if stop('\0') && stopchar_index > i.len() {
+        let idx = i.len();
+        let slash_count = idx as isize - last_nonslash_idx - 1;
+
+        let end_idx = (idx as isize - slash_count.checked_div(2).unwrap()) as usize;
+
+        if slash_count % 2 == 1 {
+            // Odd number of slashes. Continue on since this means that the
+            // stopchar is escaped. Leave next_push_start setup to push the
+            // '%' and extra backslashes for us.
+            Arc::make_mut(&mut tr).push_all_contents(i.slice(next_push_start..end_idx - 1));
+            next_push_start = idx;
+        } else {
+            // Even number of slashes. Push half of them, indicate that we
+            // found the stopchar, and then break out
+            Arc::make_mut(&mut tr).push_all_contents(i.slice(next_push_start..end_idx));
+            stopchar_index = idx - 1;
+        }
+    }
+
     if stopchar_index < i.len() {
+        Arc::make_mut(&mut tr).simplify();
         (tr, Some((stop_character, i.slice(stopchar_index + 1..))))
+    } else if stopchar_index == i.len() {
+        Arc::make_mut(&mut tr).simplify();
+        (tr, Some((stop_character, i.slice(stopchar_index..))))
     } else {
         if tr.len() == 0 {
             (i.to_new_block(), None)
         } else {
             Arc::make_mut(&mut tr).push_all_contents(i.slice(next_push_start..));
+            Arc::make_mut(&mut tr).simplify();
+
             (tr, None)
         }
     }

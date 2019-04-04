@@ -16,7 +16,7 @@ use std::sync::Arc;
 mod test;
 
 /// What action to take in response to this line
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Action {
     /// Turns out there was nothing here
     NoAction,
@@ -204,6 +204,12 @@ pub(crate) fn parse_line<'a>(
                 }
                 after_colon = Some(post.to_new_block());
                 new_content = pre;
+
+                if expanded_buffer.len() > 0 {
+                    Arc::make_mut(&mut expanded_buffer).push(ContentReference::space());
+                }
+                Arc::make_mut(&mut expanded_buffer).push_all_contents(new_content.span());
+
                 break;
             }
             (pre, None) => {
@@ -244,7 +250,10 @@ pub(crate) fn parse_line<'a>(
     // Reconstruct the line in different segments
 
     // Everything before the colon is the list of targets
-    let targets = crate::file_sequence::parse_file_seq(expanded_buffer.span(), Default::default());
+    let targets = crate::parsers::file_sequence::parse_file_seq(
+        expanded_buffer.span().slice(..(expanded_buffer.len() - 1)),
+        Default::default(),
+    );
     eprintln!("Got file sequence {:?}", targets);
 
     // Everything after the colon gets shoved into one big buffer
@@ -269,11 +278,11 @@ pub(crate) fn parse_line<'a>(
 
         (block, pre_semi_len)
     };
-    let (post_targets_slice, double_colon) = {
+    let (post_targets_slice, double_colon, pre_semi_len) = {
         let slice = post_targets_buffer.span();
         match tag!(slice, ":") {
-            Ok((i, _)) => (i, true),
-            Err(_) => (slice, false),
+            Ok((i, _)) => (i, true, pre_semi_len - 1),
+            Err(_) => (slice, false, pre_semi_len),
         }
     };
 
@@ -369,7 +378,7 @@ pub(crate) fn parse_line<'a>(
     }
 
     eprintln!("Parsing deps from {:?}", pre_semi_slice.into_string());
-    let deps = crate::file_sequence::parse_file_seq(pre_semi_slice, Default::default());
+    let deps = crate::parsers::file_sequence::parse_file_seq(pre_semi_slice, Default::default());
 
     Ok((
         rest,
@@ -421,6 +430,7 @@ fn next_mword<'a>(
     let mut char_iter = i.iter_indices().peekable();
     let mut stop_index = 0;
     let mut end_reason = MWordEnd::Static;
+    let mut prev_char = '\0';
 
     while let Some((idx, chr)) = char_iter.next() {
         stop_index = idx + 1;
@@ -432,8 +442,9 @@ fn next_mword<'a>(
         }
 
         if chr == ':' {
-            if char_iter.peek() == Some(&(idx + 1, '\\')) {
-                unimplemented!("DOS path handling");
+            if char_iter.peek() == Some(&(idx + 1, '\\')) && prev_char.is_alphabetic() {
+                eprintln!("Skipping DOS path {:?}", idx);
+                continue;
             }
             stop_index = idx;
             break;
@@ -446,6 +457,7 @@ fn next_mword<'a>(
                 if chr == '$' {
                     // Consume the character
                     // This is just a double '$', does not end the word
+                    prev_char = chr;
                     continue;
                 }
                 end_reason = MWordEnd::Variable;
@@ -457,6 +469,7 @@ fn next_mword<'a>(
                     '}'
                 } else {
                     // Single character variable reference
+                    prev_char = chr;
                     continue;
                 };
 
@@ -472,6 +485,7 @@ fn next_mword<'a>(
                         break;
                     }
                 }
+                prev_char = brace_end;
                 continue;
             } else {
                 end_reason = MWordEnd::Static;
@@ -484,9 +498,11 @@ fn next_mword<'a>(
                 let chr = *chr;
                 if chr == ':' || chr == ';' || chr == '=' || chr == '\\' {
                     // This is escaping something, skip forward
+                    prev_char = chr;
                     char_iter.next();
                 }
             }
+            prev_char = chr;
             continue;
         }
 
@@ -501,6 +517,7 @@ fn next_mword<'a>(
                 }
             }
         }
+        prev_char = chr;
     }
 
     let (i, _) = i.take_split(stop_index);
