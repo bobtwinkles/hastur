@@ -199,7 +199,7 @@ pub(crate) fn parse_line<'a>(
                 (pre, None) => {
                     // Since there may have been some amount of rewriting from
                     // stripping the escapes, update the expansion buffer
-                    new_content = pre;
+                    // new_content = pre;
                     debug!("No semicolon match");
                 }
             }
@@ -208,6 +208,10 @@ pub(crate) fn parse_line<'a>(
             "After semicolon search, content is {:?}",
             new_content.into_string()
         );
+        if new_content.len() == 0 {
+            // Make seems to implicitly consume the whole line in this situation
+            return Ok((rest, (database, Action::NoAction)));
+        }
 
         match find_non_drivespec_colon(new_content.span()) {
             DrivespecSearchResult::FoundColon {

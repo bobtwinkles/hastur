@@ -118,6 +118,76 @@ fn two_backslash_targets() {
 }
 
 #[test]
+fn semicolon_as_target_with_command() {
+    crate::test::setup();
+
+    let block = create_span(r"\\\; : a;b");
+    let mut name_cache = NameCache::default();
+    let t = name_cache.intern_file_name(r"\;".into());
+    let d = name_cache.intern_file_name("a".into());
+    let database = Default::default();
+
+    let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
+
+    assert_eq!(
+        action,
+        Action::NewRule {
+            targets: vec![t],
+            deps: vec![d],
+            double_colon: false,
+            initial_command: Some(ast::constant(LocatedString::test_new(1, 10, "b"))),
+        }
+    )
+}
+
+#[test]
+fn colon_as_target_with_command() {
+    crate::test::setup();
+
+    let block = create_span(r"\: : \\\;;b");
+    let mut name_cache = NameCache::default();
+    let t = name_cache.intern_file_name(":".into());
+    let d = name_cache.intern_file_name(r"\;".into());
+    let database = Default::default();
+
+    let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
+
+    assert_eq!(
+        action,
+        Action::NewRule {
+            targets: vec![t],
+            deps: vec![d],
+            double_colon: false,
+            initial_command: Some(ast::constant(LocatedString::test_new(1, 11, "b"))),
+        }
+    )
+}
+
+#[test]
+fn mixed_semicolon_target() {
+    crate::test::setup();
+
+    let block = create_span(r"\\\; a :: a");
+    let mut name_cache = NameCache::default();
+    let t1 = name_cache.intern_file_name(r"\;".into());
+    let t2 = name_cache.intern_file_name("a".into());
+    let d = name_cache.intern_file_name("a".into());
+    let database = Default::default();
+
+    let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
+
+    assert_eq!(
+        action,
+        Action::NewRule {
+            targets: vec![t1, t2],
+            deps: vec![d],
+            double_colon: true,
+            initial_command: None,
+        }
+    )
+}
+
+#[test]
 fn command_simple() {
     let block = create_span("a : a;b");
     let mut name_cache = NameCache::default();
@@ -182,9 +252,9 @@ fn escaped_colon_target() {
 #[test]
 fn escaped_semicolon_target() {
     crate::test::setup();
-    let block = create_span("\\\\\\; : a");
+    let block = create_span(r"\\\; : a");
     let mut name_cache = NameCache::default();
-    let t = name_cache.intern_file_name(";".into());
+    let t = name_cache.intern_file_name("\\;".into());
     let d = name_cache.intern_file_name("a".into());
     let database = Default::default();
 
