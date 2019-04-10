@@ -115,7 +115,8 @@ fn arb_action() -> impl Strategy<Value = (Action, String, NameCache)> {
 
 proptest![
 
-    // #[test]
+    #[test]
+    #[ignore]
     fn roundtrip_action((action, input, mut names) in arb_action()) {
         let block = create_span(&input);
         let database = Default::default();

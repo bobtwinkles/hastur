@@ -115,7 +115,7 @@ pub(crate) fn parse_line<'a>(
     //
     // line is the storage backing "line_next" which is our model for lb_next
     // post_semi_content is essentially cmdleft
-    let (mut line, semip) =
+    let (line, semip) =
         match makefile_take_until_unquote(line.span(), |c| (c == ';' || c == '#' || c == '$')) {
             (pre, Some((stopchar, post))) => {
                 if stopchar.iter_elements().next() == Some('#') {
@@ -196,7 +196,7 @@ pub(crate) fn parse_line<'a>(
                     // The content block is everything before the semicolon
                     new_content = pre;
                 }
-                (pre, None) => {
+                (_pre, None) => {
                     // Since there may have been some amount of rewriting from
                     // stripping the escapes, update the expansion buffer
                     // new_content = pre;
@@ -430,7 +430,7 @@ pub(crate) fn parse_line<'a>(
 fn next_mword<'a>(
     i: BlockSpan<'a>,
 ) -> IResult<BlockSpan<'a>, (BlockSpan<'a>, MWordEnd), ParseErrorKind> {
-    use nom::{InputIter, InputTake, Offset, Slice};
+    use nom::{InputIter, InputTake};
     // Skip any leading whitespace
     let (i, _) = makefile_whitespace(i)?;
 

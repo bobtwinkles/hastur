@@ -46,7 +46,6 @@ pub use crate::eval::{Flavor, Origin, Variable, VariableParameters};
 pub use crate::parsers::ParserCompliance;
 
 use crate::ast::AstNode;
-use crate::evaluated::Block;
 use crate::source_location::{LocatedString, Location};
 use std::io;
 use std::io::prelude::*;
