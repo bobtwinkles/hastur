@@ -140,3 +140,50 @@ endef
     let (_i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
     variable_set_to!(names, engine, "foo", "  bar \\\\\n  baz\n");
 }
+
+#[test]
+fn ignored_define() {
+    let block = create_span(
+        r#"
+ifeq "a" "a"
+ bar := qux
+else
+ define bar
+  ifeq "c" "d"
+   foo : baz
+ endef
+endif
+"#,);
+
+    let mut engine: Engine = Default::default();
+    let mut parse_state = ParserState::new("test");
+    let mut names = Default::default();
+
+    // Empty first line
+    let (i, _) = assert_ok!(parse_state.parse_line(block.span(), &mut names, &mut engine));
+    // first if line
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+    // ignored efinition lines
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+
+    // else line
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+
+    // good assign line
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+
+    // endif line
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+    // empty last line
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+
+    // End of define line
+    let (_i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+
+    // assertions
+    variable_set_to!(names, engine, "bar", "qux");
+}
