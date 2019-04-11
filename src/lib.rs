@@ -467,8 +467,19 @@ pub struct Engine {
     pub patterned_vpaths: pattern::PatternEngine<Vec<PathBuf>>,
 }
 
+impl Default for Engine {
+    fn default() -> Engine {
+        Engine {
+            database: Default::default(),
+            command_char: '\t',
+            vpaths: Default::default(),
+            patterned_vpaths: Default::default(),
+        }
+    }
+}
+
 impl Engine {
-    /// Gets the actual path for a file, given a file name
+    // Gets the actual path for a file, given a file name
     /// This is used for both prereq and target name searches
     /// See [the GNU make manual](https://www.gnu.org/software/make/manual/make.html#Directory-Search)
     /// for details
@@ -487,20 +498,7 @@ impl Engine {
     fn from_protorule(&mut self, rule: parsers::ProtoRule) {
         self.database = self.database.from_protorule(rule);
     }
-}
 
-impl Default for Engine {
-    fn default() -> Engine {
-        Engine {
-            database: Default::default(),
-            command_char: '\t',
-            vpaths: Default::default(),
-            patterned_vpaths: Default::default(),
-        }
-    }
-}
-
-impl Engine {
     /// Parses a makefile
     pub fn read_makefile<F: BufRead>(
         &mut self,
