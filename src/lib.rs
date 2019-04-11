@@ -110,6 +110,12 @@ pub enum ParseErrorKind {
     /// A function was invoked with too many arguments.
     ExtraArguments(&'static str),
 
+    /// Failed to include a file
+    /// TODO: this should really be an std::io::Error instead of an ErrorKind,
+    /// but writing the PartialEq/Clone implementations by hand for this enum
+    /// is a pain
+    IncludeFailure(std::io::ErrorKind, String),
+
     /// This variant should never surface in library consumer code in practice,
     /// but we need it to make nom types work out
     NomError(u32),
@@ -436,6 +442,11 @@ impl NameCache {
         self.file_names.get(file_name).map(FileName)
     }
 
+    /// Get a file name
+    pub fn resolve_file_name(&self, f: FileName) -> Option<&str> {
+        self.file_names.resolve(f.0)
+    }
+
     /// Intern a variable name
     pub fn intern_variable_name(&mut self, variable_name: String) -> VariableName {
         info!("Intern variable {:?}", variable_name);
@@ -465,6 +476,9 @@ pub struct Engine {
     /// vpath patterns.
     /// These are vpaths that only apply to files matching particular patterns
     pub patterned_vpaths: pattern::PatternEngine<Vec<PathBuf>>,
+
+    /// The current working directory
+    pub working_directory: PathBuf,
 }
 
 impl Default for Engine {
@@ -474,6 +488,8 @@ impl Default for Engine {
             command_char: '\t',
             vpaths: Default::default(),
             patterned_vpaths: Default::default(),
+            working_directory: std::env::current_dir()
+                .expect("Failed to get current working directory"),
         }
     }
 }
@@ -506,6 +522,7 @@ impl Engine {
         input: &mut F,
         input_filename: &str,
     ) -> Result<(), MakefileError> {
+        info!("Begin reading makefile {:?}", input_filename);
         let mut parser_state = parsers::ParserState::new(input_filename);
 
         let mut i = String::new();
@@ -550,6 +567,8 @@ impl Engine {
 
             i = new_i;
         }
+
+        info!("Complete read of makefile {:?}", input_filename);
 
         Ok(())
     }

@@ -237,7 +237,7 @@ impl<'a> ParserState<'a> {
 
         run_line_parser!(directives::parse_line(line.span()), |directive_action| {
             self.close_rule(engine);
-            self.handle_directive_action(engine, directive_action)
+            self.handle_directive_action(names, engine, directive_action)
         });
 
         if line.span().chars().next() == Some(engine.command_char) {

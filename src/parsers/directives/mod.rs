@@ -2,8 +2,7 @@
 use crate::ast::AstNode;
 use crate::evaluated::BlockSpan;
 use crate::parsers::ast::parse_ast;
-use crate::Engine;
-use crate::ParseErrorKind;
+use crate::{Engine, NameCache, ParseErrorKind};
 use nom::IResult;
 
 /// The parsed action
@@ -30,13 +29,64 @@ pub(crate) enum Action {
 impl<'a> crate::parsers::ParserState<'a> {
     pub(crate) fn handle_directive_action(
         &mut self,
+        names: &mut NameCache,
         engine: &mut Engine,
         action: Action,
     ) -> Result<(), ParseErrorKind> {
         match action {
+            Action::Include(ast) => self.handle_include(ast, names, engine, false),
+            Action::SoftInclude(ast) => self.handle_include(ast, names, engine, true),
             e => unimplemented!("Unimplemented action {:?}", e),
         }
-        // Ok(())
+    }
+
+    fn handle_include(
+        &mut self,
+        ast: AstNode,
+        names: &mut NameCache,
+        engine: &mut Engine,
+        soft: bool,
+    ) -> Result<(), ParseErrorKind> {
+        use crate::MakefileError;
+        use std::fs::File;
+
+        use crate::parsers::file_sequence::{FileSeqParseOptions, parse_file_seq};
+
+        let (newdb, contents) = ast.eval(names, &engine.database);
+        engine.replace_database(newdb);
+
+        let mut seq_parse_options = FileSeqParseOptions::new(engine.working_directory.clone());
+        seq_parse_options.check_ar = false;
+
+        let files = parse_file_seq(contents.span(), seq_parse_options);
+
+        for file in files {
+            let mut path = engine.working_directory.clone();
+            path.push(&file);
+
+            let f = match File::open(&path) {
+                Ok(f) => {
+                    f
+                }
+                Err(e) => {
+                    if soft {
+                        // TODO: Route this through a warnings system
+                        warn!("Failed to include file {:?}", &file);
+                        continue;
+                    } else {
+                        return Err(ParseErrorKind::IncludeFailure(e.kind(), file));
+                    }
+                }
+            };
+            let mut br = std::io::BufReader::new(f);
+
+            engine.read_makefile(names, &mut br, &file).map_err(|e| match e {
+                MakefileError::IOError(e) => ParseErrorKind::IncludeFailure(e.kind(), file),
+                MakefileError::ParseError(p) => p
+            })?;
+        }
+
+        Ok(())
     }
 }
 

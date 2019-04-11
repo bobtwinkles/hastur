@@ -24,12 +24,18 @@ pub(crate) struct FileSeqParseOptions {
 impl Default for FileSeqParseOptions {
     fn default() -> Self {
         // XXX: we should default strip_leading_dotslash, check_ar, and do_glob to true
+        Self::new(std::env::current_dir().expect("Failed to get current directory"))
+    }
+}
+
+impl FileSeqParseOptions {
+    pub fn new(cwd: PathBuf) -> Self {
         Self {
             strip_leading_dotslash: false,
             check_ar: false,
             do_glob: false,
             exist_only: false,
-            cwd: std::env::current_dir().expect("Failed to get current directory"),
+            cwd,
             extra_stopchars: "",
         }
     }
