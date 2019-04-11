@@ -6,7 +6,7 @@ use crate::parsers::ast::parse_ast;
 use crate::parsers::variable::parse_line as parse_variable_line;
 use crate::parsers::{
     fail_out, lift_collapsed_span_error, makefile_line, makefile_take_until_unquote,
-    makefile_whitespace,
+    makefile_whitespace, ProtoRule,
 };
 use crate::{Database, Engine, FileName, NameCache, ParseErrorKind};
 use nom::IResult;
@@ -39,11 +39,9 @@ pub(crate) enum Action {
 impl<'a> crate::parsers::ParserState<'a> {
     pub(crate) fn handle_target_action(
         &mut self,
-        engine: &mut Engine,
+        _engine: &mut Engine,
         action: Action,
     ) -> Result<(), ParseErrorKind> {
-        self.close_rule(engine);
-
         match action {
             Action::NoAction => {
                 // Nothing to do
@@ -54,10 +52,10 @@ impl<'a> crate::parsers::ParserState<'a> {
                 double_colon,
                 initial_command,
             } => {
-                self.current_rule = Some(crate::Rule {
+                self.current_rule = Some(ProtoRule {
                     targets,
                     deps,
-                    recipe: Default::default(),
+                    recipe: crate::Recipe(Vec::new()),
                     rule_type: if double_colon {
                         crate::RuleType::DoubleColon
                     } else {

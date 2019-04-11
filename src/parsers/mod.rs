@@ -1,5 +1,6 @@
+use crate::ast::AstNode;
 use crate::evaluated::{Block, BlockSpan, ContentReference};
-use crate::{Engine, NameCache, ParseErrorKind, VariableName};
+use crate::{Engine, FileName, NameCache, ParseErrorKind, Recipe, VariableName};
 use nom::Err as NErr;
 use nom::IResult;
 use std::sync::Arc;
@@ -18,7 +19,7 @@ mod directives;
 mod error_utils;
 mod file_sequence;
 mod recipe_line;
-mod targets;
+pub(crate) mod targets;
 pub(crate) mod variable;
 
 use self::error_utils::lift_collapsed_span_error;
@@ -61,6 +62,30 @@ pub(crate) struct DefineState {
     nesting: u32,
 }
 
+/// Contains the information that may come out of a rule line. Note that this is
+/// not precisely the same as a `hastur::Rule`, since it can contain multiple
+/// targets and thus result in the production of multiple rules.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct ProtoRule {
+    /// The targets that this rule builds
+    pub targets: Vec<FileName>,
+    /// The inputs for the recipe
+    pub deps: Vec<FileName>,
+    /// The recipe to turn `deps` into `targets`
+    pub recipe: Recipe,
+    /// Extra information about the rule
+    pub rule_type: crate::RuleType,
+}
+
+impl ProtoRule {
+    /// Push a new line into the rule
+    pub(super) fn push_command_line(&mut self, line: AstNode) {
+        self.recipe.0.push(crate::Command {
+            unexpanded_command: line,
+        })
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct ParserState<'a> {
     /// The current file name
@@ -75,7 +100,7 @@ pub(crate) struct ParserState<'a> {
     ignoring: bool,
 
     /// The currently open rule specification, if there is one.
-    current_rule: Option<crate::Rule>,
+    current_rule: Option<ProtoRule>,
 
     /// Active define
     current_define: Option<DefineState>,
@@ -223,8 +248,8 @@ impl<'a> ParserState<'a> {
         run_line_parser!(
             targets::parse_line(line.span(), names, &engine.database),
             |(database, target_action)| {
-                self.close_rule(engine);
                 engine.replace_database(database);
+                self.close_rule(engine);
 
                 self.handle_target_action(engine, target_action)
             }
@@ -268,9 +293,10 @@ impl<'a> ParserState<'a> {
 
     /// Close out the currently open rule, if there is one
     fn close_rule(&mut self, engine: &mut Engine) {
+        debug!("Closing rule {:?}", self.current_rule);
         let current_rule = std::mem::replace(&mut self.current_rule, None);
         match current_rule {
-            Some(rule) => engine.add_rule(rule),
+            Some(rule) => engine.from_protorule(rule),
             None => {}
         }
     }

@@ -187,16 +187,20 @@ pub enum RuleType {
     DoubleColon,
 }
 
+/// The type of a recipe
+#[derive(Clone, Debug, PartialEq)]
+pub struct Recipe(Vec<Command>);
+
 /// A "rule" describes how to bring a set of "targets" up to date from a set of
 /// "dependencies", using a "recipe".
 #[derive(Clone, Debug, PartialEq)]
 pub struct Rule {
-    /// The targets that this rule builds
-    targets: Vec<FileName>,
+    /// The target that this rule builds
+    target: FileName,
     /// The inputs for the recipe
-    deps: Vec<FileName>,
+    deps: fxhash::FxHashSet<FileName>,
     /// The recipe to turn `deps` into `targets`
-    recipe: Vec<Command>,
+    recipe: Arc<Recipe>,
     /// Extra information about the rule
     rule_type: RuleType,
 }
@@ -207,13 +211,6 @@ impl Rule {
     /// TODO: change the return type of this to an actual iterator type
     pub fn dependencies(&self) -> &[evaluated::Block] {
         unimplemented!()
-    }
-
-    /// Push a new line into the rule
-    fn push_command_line(&mut self, line: AstNode) {
-        self.recipe.push(Command {
-            unexpanded_command: line,
-        })
     }
 }
 
@@ -237,14 +234,71 @@ pub struct Database {
     /// Target variables, mapped from target name to variable name to value
     target_variables: types::Map<FileName, types::Map<VariableName, VariableParameters>>,
     /// All known rules
-    rules: im::Vector<Rule>,
+    rules: types::Map<FileName, Rule>,
 }
 
 impl Database {
     /// Add a rule into the database
     pub fn add_rule(&self, rule: Rule) -> Self {
         let mut tr = self.clone();
-        tr.rules.push_back(rule);
+        tr.rules.insert(rule.target, rule);
+        tr
+    }
+
+    /// Create a rule from the a protorule
+    fn from_protorule(&self, rule: crate::parsers::ProtoRule) -> Self {
+        let mut tr = self.clone();
+        let has_no_commands = rule.recipe.0.len() == 0;
+        let recipe = Arc::new(rule.recipe);
+        let deps = &rule.deps;
+        let rule_type = rule.rule_type;
+
+        // Empty recipes are special: these rules may append to the dep list, while
+        // other rules may not (and instead must overwrite the previous rule)
+        if has_no_commands {
+            debug!("protorule for targets {:?} had no commands", rule.targets);
+            for target in rule.targets.into_iter() {
+                tr.rules
+                    .entry(target)
+                    .and_modify(|existing_rule| {
+                        for dep in deps {
+                            existing_rule.deps.insert(*dep);
+                        }
+                    })
+                    .or_insert_with(|| Rule {
+                        target,
+                        deps: deps.iter().map(|x| *x).collect(),
+                        recipe: Arc::clone(&recipe),
+                        rule_type,
+                    });
+            }
+        } else {
+            use im::hashmap::Entry;
+            debug!(
+                "protorule for targets {:?} had commands {:?}",
+                rule.targets, recipe
+            );
+
+            for target in rule.targets.into_iter() {
+                let new_rule = Rule {
+                    target,
+                    deps: rule.deps.iter().map(|x| *x).collect(),
+                    recipe: Arc::clone(&recipe),
+                    rule_type: rule.rule_type,
+                };
+                match tr.rules.entry(target) {
+                    Entry::Occupied(mut o) => {
+                        // TODO: bubble this up in a structured manner instead of just printing nonsense
+                        warn!("Overwriting existing rule for target {:?}", target);
+                        o.insert(new_rule);
+                    }
+                    Entry::Vacant(v) => {
+                        v.insert(new_rule);
+                    }
+                }
+            }
+        }
+
         tr
     }
 
@@ -324,6 +378,11 @@ impl Database {
             .get(&name)
             .map(|val| Variable::new(self, val))
     }
+
+    /// Get a rule for a specific target
+    pub fn get_rule(&self, target: FileName) -> Option<&Rule> {
+        self.rules.get(&target)
+    }
 }
 
 /// Represents all the things that can go wrong while parsing an evaluating
@@ -352,7 +411,7 @@ impl<'a> From<ParseError<'a>> for MakefileError {
 /// Cache of all the different kinds of name we can encounter in a makefile.
 /// There should probably only be one of these, so this intentionally doesn't
 /// implement `Clone`
-#[derive(Default,Debug,Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct NameCache {
     /// All the file names
     file_names: StringInterner,
@@ -425,8 +484,8 @@ impl Engine {
     }
 
     /// Add a rule to the database
-    fn add_rule(&mut self, rule: Rule) {
-        self.database = self.database.add_rule(rule);
+    fn from_protorule(&mut self, rule: parsers::ProtoRule) {
+        self.database = self.database.from_protorule(rule);
     }
 }
 
