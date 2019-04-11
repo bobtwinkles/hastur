@@ -1,5 +1,5 @@
 //! AST walkers
-//! TODO: more in-depth documentation 
+//! TODO: more in-depth documentation
 
 use std::sync::Arc;
 

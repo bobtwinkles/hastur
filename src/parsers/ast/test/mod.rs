@@ -5,10 +5,10 @@ use crate::parsers::test::create_span;
 use crate::source_location::{LocatedString, Location};
 
 mod arguments;
+mod proptest;
 mod strip;
 mod word;
 mod words;
-mod proptest;
 
 #[test]
 fn simple() {

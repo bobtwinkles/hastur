@@ -14,9 +14,9 @@ pub mod visit;
 mod text_functions;
 
 #[cfg(test)]
-mod test;
-#[cfg(test)]
 pub mod proptest;
+#[cfg(test)]
+mod test;
 
 /// A node in a syntax tree representing evaluations
 #[derive(Clone, Debug, PartialEq)]

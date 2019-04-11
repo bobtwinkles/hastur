@@ -24,7 +24,8 @@ pub fn arb_ast(tree_breadth: u32) -> impl Strategy<Value = AstNode> {
             //     .prop_map(AstChildren::Concat),
             inner.clone().prop_map(AstChildren::VariableReference),
             inner.clone().prop_map(AstChildren::Strip),
-            (inner.clone(), inner.clone()).prop_map(|(a, b)| AstChildren::Word { index: a, words: b }),
+            (inner.clone(), inner.clone())
+                .prop_map(|(a, b)| AstChildren::Word { index: a, words: b }),
             inner.clone().prop_map(AstChildren::Words),
         ]
     });
@@ -38,8 +39,8 @@ pub fn arb_ast(tree_breadth: u32) -> impl Strategy<Value = AstNode> {
 }
 
 pub fn arb_flat_ast(ast_breadth: u32) -> impl Strategy<Value = (AstNode, String)> {
-    use std::sync::Arc;
     use crate::evaluated::Block;
+    use std::sync::Arc;
 
     struct FlattenWalker<'a> {
         current_char: usize,
@@ -123,7 +124,10 @@ pub fn arb_flat_ast(ast_breadth: u32) -> impl Strategy<Value = (AstNode, String)
     ast.prop_map(|mut ast| {
         use crate::ast::visit::MutVisitor;
 
-        let mut walker = FlattenWalker { current_char: 1, strings: Vec::new() };
+        let mut walker = FlattenWalker {
+            current_char: 1,
+            strings: Vec::new(),
+        };
         walker.visit_ast(&mut ast);
 
         let mut flat = String::with_capacity(walker.current_char);

@@ -153,7 +153,8 @@ else
    foo : baz
  endef
 endif
-"#,);
+"#,
+    );
 
     let mut engine: Engine = Default::default();
     let mut parse_state = ParserState::new("test");

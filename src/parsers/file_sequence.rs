@@ -30,7 +30,7 @@ impl Default for FileSeqParseOptions {
             do_glob: false,
             exist_only: false,
             cwd: std::env::current_dir().expect("Failed to get current directory"),
-            extra_stopchars: ""
+            extra_stopchars: "",
         }
     }
 }
@@ -49,7 +49,10 @@ pub(crate) fn parse_file_seq<'a>(i: BlockSpan<'a>, options: FileSeqParseOptions)
     let (mut remaining_content, _) =
         makefile_whitespace(i).expect("whitespace search should never fail");
 
-    debug!("Parsing file sequence from {:?}", remaining_content.into_string());
+    debug!(
+        "Parsing file sequence from {:?}",
+        remaining_content.into_string()
+    );
 
     while remaining_content.len() > 0 {
         match crate::parsers::makefile_take_until_unquote(remaining_content, |c| {
