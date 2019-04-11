@@ -538,10 +538,9 @@ impl Engine {
             }
         };
 
-        use nom::AtEof;
         use nom::Err as NErr;
 
-        while !i.at_eof() {
+        while i.len() > 0 {
             let (new_i, _) = match parser_state.parse_line(i, names, self) {
                 Ok(v) => v,
                 Err(NErr::Failure(_)) => unimplemented!("Unrecoverable line parsing failure"),
