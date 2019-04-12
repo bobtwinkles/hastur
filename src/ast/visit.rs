@@ -47,6 +47,11 @@ macro_rules! make_ast_visitor {
                 self.super_variable_reference(name);
             }
 
+            /// Visit a `Eval` node
+            fn visit_eval(&mut self, content: &'node $($mutability)? AstNode) {
+                self.super_eval(content);
+            }
+
             /// Visit a `Strip` node
             fn visit_strip(&mut self, content: &'node $($mutability)? AstNode) {
                 self.super_strip(content);
@@ -87,6 +92,11 @@ macro_rules! make_ast_visitor {
                 self.visit_ast(name);
             }
 
+            /// Super a `Eval` node
+            fn super_eval(&mut self, content: &'node $($mutability)? AstNode) {
+                self.visit_ast(content);
+            }
+
             /// Recursion implementation for `Strip` nodes
             fn super_strip(&mut self, content: &'node $($mutability)? AstNode) {
                 self.visit_ast(content);
@@ -124,6 +134,9 @@ macro_rules! make_ast_visitor {
                     }
                     AstChildren::VariableReference(node) => {
                         self.visit_variable_reference(node);
+                    }
+                    AstChildren::Eval(child) => {
+                        self.visit_eval(child);
                     }
                     AstChildren::Strip(child) => {
                         self.visit_strip(child);

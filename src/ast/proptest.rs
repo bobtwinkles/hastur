@@ -23,6 +23,7 @@ pub fn arb_ast(tree_breadth: u32) -> impl Strategy<Value = AstNode> {
             // prop::collection::vec(inner.clone(), 2..(tree_breadth as usize))
             //     .prop_map(AstChildren::Concat),
             inner.clone().prop_map(AstChildren::VariableReference),
+            inner.clone().prop_map(AstChildren::Eval),
             inner.clone().prop_map(AstChildren::Strip),
             (inner.clone(), inner.clone())
                 .prop_map(|(a, b)| AstChildren::Word { index: a, words: b }),
@@ -94,6 +95,12 @@ pub fn arb_flat_ast(ast_breadth: u32) -> impl Strategy<Value = (AstNode, String)
             self.super_variable_reference(name);
 
             self.push_string(")");
+        }
+
+        fn visit_eval(&mut self, content: &'a mut AstNode) {
+            self.visit_function_pre("eval");
+            self.super_eval(content);
+            self.visit_function_post();
         }
 
         fn visit_strip(&mut self, content: &'a mut AstNode) {

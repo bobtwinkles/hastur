@@ -195,6 +195,10 @@ pub enum AstChildren {
     /// Reference to a variable
     // #SPC-V-AST.variable_reference
     VariableReference(AstNode),
+    /// Reference to an `eval` node
+    // #SPC-V-AST.eval
+    Eval(AstNode),
+
     /// The `strip` make function
     // #SPC-V-AST.strip
     Strip(AstNode),
@@ -262,6 +266,15 @@ pub fn collapsing_concat(source_location: Location, mut v: Vec<AstNode>) -> AstN
 pub fn variable_reference(source_location: Location, name: AstNode) -> AstNode {
     AstNode {
         children: Box::new(AstChildren::VariableReference(name)),
+        source_location: source_location.into(),
+    }
+}
+
+/// An eval node
+#[inline]
+pub fn eval(source_location: Location, args: AstNode) -> AstNode {
+    AstNode {
+        children: Box::new(AstChildren::Eval(args)),
         source_location: source_location.into(),
     }
 }

@@ -147,6 +147,7 @@ fn function_call<'a>(
     i: BlockSpan<'a>,
     dollar_location: Location,
 ) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
+    debug!("Attempting to match function call {:?}", i.into_string());
     fn no_such_function<'a>(i: BlockSpan<'a>) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
         Err(Err::Failure(nom::Context::Code(
             i,
@@ -170,7 +171,8 @@ fn function_call<'a>(
 
     alt!(
         i,
-        func_entry!("strip", strip)
+        func_entry!("eval", eval)
+            | func_entry!("strip", strip)
             | func_entry!("words", words)
             | func_entry!("word", word)
             | pe_complete!(no_such_function)
@@ -219,6 +221,15 @@ fn function_argument<'a>(
     }
 
     Ok(i.take_split(i.len()))
+}
+
+fn eval<'a>(
+    i: BlockSpan<'a>,
+    start_location: Location
+) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
+    let (i, args) = parse_ast(i)?;
+
+    Ok((i, ast::eval(start_location, args)))
 }
 
 fn strip<'a>(
