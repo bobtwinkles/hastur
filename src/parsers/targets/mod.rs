@@ -107,14 +107,15 @@ pub(crate) fn parse_line<'a>(
     let (rest, line) = makefile_line(i, super::ParserCompliance::GNU, false)?;
     let mut database = database.clone();
 
-    // The behavior here is really weird. Why does it consider '$' characters to
-    // be semicolons? I'm pretty sure that's the behavior of the implementation
-    // in GNU Make (~line 1000 in read.c from version 4.2.1).
+    // The behavior here in GNU Make is really weird. Why does it consider '$'
+    // characters to be semicolons? I'm pretty sure that's the behavior of the
+    // implementation in GNU Make but we don't replicate it here because it Causes Problems
+    // (~line 1000 in read.c from version 4.2.1).
     //
     // line is the storage backing "line_next" which is our model for lb_next
     // post_semi_content is essentially cmdleft
     let (line, semip) =
-        match makefile_take_until_unquote(line.span(), |c| (c == ';' || c == '#' || c == '$')) {
+        match makefile_take_until_unquote(line.span(), |c| (c == ';' || c == '#')) {
             (pre, Some((stopchar, post))) => {
                 if stopchar.iter_elements().next() == Some('#') {
                     (pre, None)
