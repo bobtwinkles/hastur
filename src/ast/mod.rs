@@ -163,6 +163,22 @@ impl AstNode {
                     }
                 }
             }
+            AstChildren::Eval(content) => {
+                let content = eval_subexpr!(content);
+                let contentref = ContentReference::new_from_node(Arc::new(
+                    EvaluatedNode::Evaluated(enodes::Evaluated::new(content)),
+                ));
+
+                let block = Block::new(sensitivity.clone(), vec![contentref.clone()]);
+
+                debug!("Processing block from eval content");
+                context
+                    .process_block(names, &block)
+                    .ok()
+                    .expect("TODO: error routing for this parse");
+
+                vec![contentref]
+            }
             AstChildren::Empty => {
                 // Empty children generate no content
                 Vec::new()

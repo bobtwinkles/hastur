@@ -17,6 +17,8 @@ pub enum EvaluatedNode {
     VariableReference(Box<VariableReference>),
     /// A reference to a variable that applies some substitution
     SubstitutionReference(Box<SubstitutionReference>),
+    /// A reference to content produced by an eval function call
+    Evaluated(Box<Evaluated>),
 }
 
 lazy_static::lazy_static!(
@@ -54,6 +56,7 @@ impl EvaluatedNode {
             EvaluatedNode::Concat(v) => v.len(),
             EvaluatedNode::VariableReference(v) => v.value.len(),
             EvaluatedNode::SubstitutionReference(v) => v.value.len(),
+            EvaluatedNode::Evaluated(v) => v.value.len(),
         }
     }
 
@@ -68,6 +71,7 @@ impl EvaluatedNode {
             EvaluatedNode::SubstitutionReference(val) => {
                 Chars(CharsInternal::BlockSpan(val.value.span().chars()))
             }
+            EvaluatedNode::Evaluated(v) => Chars(CharsInternal::BlockSpan(v.value.span().chars())),
         }
     }
 
@@ -82,6 +86,7 @@ impl EvaluatedNode {
             EvaluatedNode::SubstitutionReference(v) => {
                 SegmentsInternal::BlockSpan(v.value.span().segments())
             }
+            EvaluatedNode::Evaluated(v) => SegmentsInternal::BlockSpan(v.value.span().segments()),
         })
     }
 }
@@ -208,6 +213,25 @@ impl SubstitutionReference {
     }
 
     /// Get the value produced when this reference was evaluated.
+    pub fn value(&self) -> &Block {
+        &self.value
+    }
+}
+
+/// Content that came out of an eval block
+#[derive(Clone, Debug, PartialEq)]
+pub struct Evaluated {
+    value: Arc<Block>,
+}
+
+impl Evaluated {
+    /// Create a new Evaluated node
+    /// TODO: should this take a Database as context?
+    pub fn new(value: Arc<Block>) -> Box<Self> {
+        Box::new(Self { value })
+    }
+
+    /// Get the value produced
     pub fn value(&self) -> &Block {
         &self.value
     }

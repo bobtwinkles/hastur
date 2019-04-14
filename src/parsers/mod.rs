@@ -222,6 +222,7 @@ impl ParserState {
         run_line_parser!(
             variable::parse_line(line.span(), names, engine),
             |variable_action| {
+                debug!("Matched variable action {:?}", variable_action);
                 // Successful variable assignments close the current rule
                 self.close_rule(engine);
 
