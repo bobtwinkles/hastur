@@ -216,7 +216,7 @@ pub(crate) fn parse_line<'a>(
             new_i.into_string()
         );
         i = new_i;
-        match std::dbg!(modifier) {
+        match modifier {
             Modifier::Export => modifiers.export = true,
             Modifier::Override => modifiers.mod_override = true,
             Modifier::Private => modifiers.private = true,
