@@ -87,10 +87,7 @@ impl ProtoRule {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct ParserState<'a> {
-    /// The current file name
-    file_name: &'a str,
-
+pub(crate) struct ParserState {
     /// Stack of conditionals
     conditionals: Vec<ConditionalState>,
 
@@ -106,10 +103,9 @@ pub(crate) struct ParserState<'a> {
     current_define: Option<DefineState>,
 }
 
-impl<'a> ParserState<'a> {
-    pub(crate) fn new(file_name: &'a str) -> ParserState {
+impl ParserState {
+    pub(crate) fn new() -> ParserState {
         ParserState {
-            file_name,
             conditionals: Vec::new(),
             ignoring: false,
             current_rule: None,
@@ -118,7 +114,7 @@ impl<'a> ParserState<'a> {
     }
 
     /// Feed a line into the parser
-    pub(crate) fn parse_line(
+    pub(crate) fn parse_line<'a>(
         &mut self,
         i: BlockSpan<'a>,
         names: &mut NameCache,

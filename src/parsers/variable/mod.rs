@@ -72,7 +72,7 @@ pub(crate) struct VariableAction {
     pub action: Action,
 }
 
-impl<'a> crate::parsers::ParserState<'a> {
+impl crate::parsers::ParserState {
     pub(crate) fn handle_global_variable_action(
         &mut self,
         engine: &mut Engine,

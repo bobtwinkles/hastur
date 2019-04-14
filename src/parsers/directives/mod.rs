@@ -26,7 +26,7 @@ pub(crate) enum Action {
     SoftLoad(AstNode),
 }
 
-impl<'a> crate::parsers::ParserState<'a> {
+impl crate::parsers::ParserState {
     pub(crate) fn handle_directive_action(
         &mut self,
         names: &mut NameCache,

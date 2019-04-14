@@ -523,7 +523,6 @@ impl Engine {
         input_filename: &str,
     ) -> Result<(), MakefileError> {
         info!("Begin reading makefile {:?}", input_filename);
-        let mut parser_state = parsers::ParserState::new(input_filename);
 
         let mut i = String::new();
         input.read_to_string(&mut i)?;
@@ -541,7 +540,24 @@ impl Engine {
                 )),
             ))],
         );
-        let mut i = input_block.span();
+
+        self.process_block(names, &input_block)?;
+
+        info!("Complete read of makefile {:?}", input_filename);
+
+        Ok(())
+    }
+
+    /// Process a block of makefile text
+    pub fn process_block(
+        &mut self,
+        names: &mut NameCache,
+        block: &crate::evaluated::Block,
+    ) -> Result<(), MakefileError> {
+        use nom::Err as NErr;
+        let mut parser_state = parsers::ParserState::new();
+
+        let mut i = block.span();
 
         i = match opt!(i, char!('\u{feff}')) {
             Ok((i, _)) => i,
@@ -555,8 +571,6 @@ impl Engine {
             }
         };
 
-        use nom::Err as NErr;
-
         while i.len() > 0 {
             let (new_i, _) = match parser_state.parse_line(i, names, self) {
                 Ok(v) => v,
@@ -567,8 +581,6 @@ impl Engine {
 
             i = new_i;
         }
-
-        info!("Complete read of makefile {:?}", input_filename);
 
         Ok(())
     }

@@ -42,7 +42,7 @@ endif
     );
 
     let mut engine: Engine = Default::default();
-    let mut parse_state = ParserState::new("test");
+    let mut parse_state = ParserState::new();
     let mut names = Default::default();
 
     // Empty first line
@@ -98,7 +98,7 @@ foo += baz
     );
 
     let mut engine: Engine = Default::default();
-    let mut parse_state = ParserState::new("test");
+    let mut parse_state = ParserState::new();
     let mut names = Default::default();
 
     // Empty first line
@@ -124,7 +124,7 @@ endef
     );
 
     let mut engine: Engine = Default::default();
-    let mut parse_state = ParserState::new("test");
+    let mut parse_state = ParserState::new();
     let mut names = Default::default();
 
     // Empty first line
@@ -157,7 +157,7 @@ endif
     );
 
     let mut engine: Engine = Default::default();
-    let mut parse_state = ParserState::new("test");
+    let mut parse_state = ParserState::new();
     let mut names = Default::default();
 
     // Empty first line

@@ -32,7 +32,7 @@ impl Conditional {
     }
 }
 
-impl<'a> crate::parsers::ParserState<'a> {
+impl crate::parsers::ParserState {
     /// Handle a conditional that came back from line parsing
     pub(super) fn handle_conditional(
         &mut self,

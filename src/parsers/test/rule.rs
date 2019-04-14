@@ -15,7 +15,7 @@ a: b
     );
 
     let mut engine: Engine = Default::default();
-    let mut parse_state = ParserState::new("test");
+    let mut parse_state = ParserState::new();
     let mut names = Default::default();
 
     // Empty first line
@@ -57,7 +57,7 @@ a: c
     );
 
     let mut engine: Engine = Default::default();
-    let mut parse_state = ParserState::new("test");
+    let mut parse_state = ParserState::new();
     let mut names = crate::NameCache::default();
 
     let target_name = names.intern_file_name("a".into());

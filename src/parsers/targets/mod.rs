@@ -36,7 +36,7 @@ pub(crate) enum Action {
     },
 }
 
-impl<'a> crate::parsers::ParserState<'a> {
+impl crate::parsers::ParserState {
     pub(crate) fn handle_target_action(
         &mut self,
         _engine: &mut Engine,
