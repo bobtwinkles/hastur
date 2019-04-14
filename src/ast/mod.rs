@@ -6,7 +6,7 @@ use crate::evaluated::nodes as enodes;
 use crate::evaluated::{Block, ContentReference, EvaluatedNode};
 use crate::source_location::{LocatedString, Location, Marker};
 use crate::types::Set;
-use crate::{Database, Engine, NameCache, VariableName};
+use crate::{Engine, NameCache, VariableName};
 use std::sync::Arc;
 
 pub mod visit;
