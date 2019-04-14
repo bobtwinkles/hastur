@@ -311,6 +311,7 @@ impl Database {
     /// Set the value of a variable
     #[inline]
     pub fn set_variable(&self, name: VariableName, value: VariableParameters) -> Self {
+        info!("Setting variable {:?} to {:?}", name, value);
         let mut tr = self.clone();
         tr.variables.insert(name, value);
         tr

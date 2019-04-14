@@ -177,7 +177,8 @@ impl AstNode {
                     .ok()
                     .expect("TODO: error routing for this parse");
 
-                vec![contentref]
+                // The eval already consumed the content, don't try to keep parsing it
+                vec![]
             }
             AstChildren::Empty => {
                 // Empty children generate no content

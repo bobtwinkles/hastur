@@ -26,5 +26,5 @@ fn simple_eval() {
 
     engine.read_makefile(&mut names, &mut bufreader, "eval0.mk");
 
-    variable_set_to!(names, engine, "foo", "");
+    variable_set_to!(names, engine, "foo", "bar");
 }
