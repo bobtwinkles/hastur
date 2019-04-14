@@ -4,9 +4,10 @@ use crate::parsers::ParserState;
 use crate::Engine;
 
 macro_rules! variable_set_to (
-    ($names:expr, $engine:expr, $variable_name:expr, $value:expr) => {{
+    ($names:expr, $engine:ident, $variable_name:expr, $value:expr) => {{
         let names = &mut $names;
-        let engine = &$engine;
+        let database = $engine.database.clone();
+        let engine = &mut $engine;
         let variable_name = $variable_name;
         let value = $value;
 
@@ -18,11 +19,10 @@ macro_rules! variable_set_to (
             ));
 
         assert_eq!(
-            &engine
-                .database
+            database
                 .get_variable(variable_name)
                 .expect(&format!("Variable named {:?} should have a value", variable_name))
-                .expand(names, &engine.database).1,
+                .expand(names, engine),
             value
         )
     }}

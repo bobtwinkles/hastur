@@ -1,7 +1,7 @@
 //! Utilities for evaluating makefile expressions
 
 use crate::ast::AstNode;
-use crate::{Database, NameCache};
+use crate::{Database, Engine, NameCache};
 
 #[cfg(test)]
 mod test;
@@ -88,12 +88,12 @@ impl<'d> Variable<'d> {
 
     /// Expand this variable in the environment provided by a database.
     /// Shorthand for [`self.ast().eval(environment).into_string()`](struct.Variable.html#method.ast)
-    pub fn expand(&self, names: &mut NameCache, environment: &Database) -> (Database, String) {
+    pub fn expand(&self, names: &mut NameCache, environment: &mut Engine) -> (String) {
         match self.target {
             Some(_) => unimplemented!("Expansion in target context"),
             None => {
-                let (db, content) = self.ast().eval(names, environment);
-                (db, content.into_string())
+                let content = self.ast().eval(names, environment);
+                content.into_string()
             }
         }
     }

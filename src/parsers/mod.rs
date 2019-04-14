@@ -225,12 +225,11 @@ impl<'a> ParserState<'a> {
         }
 
         run_line_parser!(
-            variable::parse_line(line.span(), names, &engine.database),
-            |(database, variable_action)| {
+            variable::parse_line(line.span(), names, engine),
+            |variable_action| {
                 // Successful variable assignments close the current rule
                 self.close_rule(engine);
 
-                engine.replace_database(database);
                 self.handle_global_variable_action(engine, variable_action)
             }
         );
@@ -246,9 +245,8 @@ impl<'a> ParserState<'a> {
         }
 
         run_line_parser!(
-            targets::parse_line(line.span(), names, &engine.database),
-            |(database, target_action)| {
-                engine.replace_database(database);
+            targets::parse_line(line.span(), names, engine),
+            |target_action| {
                 self.close_rule(engine);
 
                 self.handle_target_action(engine, target_action)

@@ -38,9 +38,9 @@ fn tricky_colon_escapes() {
     let mut name_cache = NameCache::default();
     let t1 = name_cache.intern_file_name(r"\".into());
     let d1 = name_cache.intern_file_name(":".into());
-    let database = Default::default();
+    let mut engine = Default::default();
 
-    let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
+    let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
 
     assert_eq!(
         action,
@@ -59,9 +59,9 @@ fn backslash_in_target() {
     let mut name_cache = NameCache::default();
     let t1 = name_cache.intern_file_name("\\".into());
     let d1 = name_cache.intern_file_name(";".into());
-    let database = Default::default();
+    let mut engine = Default::default();
 
-    let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
+    let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
 
     assert_eq!(
         action,
@@ -81,9 +81,9 @@ fn backslash_at_end_of_input() {
     let block = create_span(r"\\ : \\");
     let mut name_cache = NameCache::default();
     let v = name_cache.intern_file_name("\\".into());
-    let database = Default::default();
+    let mut engine = Default::default();
 
-    let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
+    let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
 
     assert_eq!(
         action,
@@ -102,9 +102,9 @@ fn two_backslash_targets() {
     let mut name_cache = NameCache::default();
     let t = name_cache.intern_file_name("\\".into());
     let d = name_cache.intern_file_name(";".into());
-    let database = Default::default();
+    let mut engine = Default::default();
 
-    let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
+    let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
 
     assert_eq!(
         action,
@@ -125,9 +125,9 @@ fn semicolon_as_target_with_command() {
     let mut name_cache = NameCache::default();
     let t = name_cache.intern_file_name(r"\;".into());
     let d = name_cache.intern_file_name("a".into());
-    let database = Default::default();
+    let mut engine = Default::default();
 
-    let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
+    let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
 
     assert_eq!(
         action,
@@ -148,9 +148,9 @@ fn colon_as_target_with_command() {
     let mut name_cache = NameCache::default();
     let t = name_cache.intern_file_name(":".into());
     let d = name_cache.intern_file_name(r"\;".into());
-    let database = Default::default();
+    let mut engine = Default::default();
 
-    let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
+    let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
 
     assert_eq!(
         action,
@@ -172,9 +172,9 @@ fn mixed_semicolon_target() {
     let t1 = name_cache.intern_file_name(r"\;".into());
     let t2 = name_cache.intern_file_name("a".into());
     let d = name_cache.intern_file_name("a".into());
-    let database = Default::default();
+    let mut engine = Default::default();
 
-    let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
+    let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
 
     assert_eq!(
         action,
@@ -192,9 +192,9 @@ fn command_simple() {
     let block = create_span("a : a;b");
     let mut name_cache = NameCache::default();
     let t = name_cache.intern_file_name("a".into());
-    let database = Default::default();
+    let mut engine = Default::default();
 
-    let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
+    let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
 
     assert_eq!(
         action,
@@ -212,9 +212,9 @@ fn command_dcolon() {
     let block = create_span("a :: a;b");
     let mut name_cache = NameCache::default();
     let t = name_cache.intern_file_name("a".into());
-    let database = Default::default();
+    let mut engine = Default::default();
 
-    let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
+    let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
 
     assert_eq!(
         action,
@@ -234,9 +234,9 @@ fn escaped_colon_target() {
     let mut name_cache = NameCache::default();
     let t = name_cache.intern_file_name(":".into());
     let d = name_cache.intern_file_name("a".into());
-    let database = Default::default();
+    let mut engine = Default::default();
 
-    let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
+    let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
 
     assert_eq!(
         action,
@@ -256,9 +256,9 @@ fn escaped_semicolon_target() {
     let mut name_cache = NameCache::default();
     let t = name_cache.intern_file_name("\\;".into());
     let d = name_cache.intern_file_name("a".into());
-    let database = Default::default();
+    let mut engine = Default::default();
 
-    let (_, (_db, action)) = assert_ok!(parse_line(block.span(), &mut name_cache, &database));
+    let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
 
     assert_eq!(
         action,

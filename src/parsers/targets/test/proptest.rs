@@ -119,9 +119,9 @@ proptest![
     #[ignore]
     fn roundtrip_action((action, input, mut names) in arb_action()) {
         let block = create_span(&input);
-        let database = Default::default();
-        match parse_line(block.span(), &mut names, &database) {
-            Ok((_, (_db, action_prime))) => {
+        let mut engine = Default::default();
+        match parse_line(block.span(), &mut names, &mut engine) {
+            Ok((_, action_prime)) => {
                 prop_assert_eq!(action_prime, action);
             }
             Err(e) => {

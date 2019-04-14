@@ -3,11 +3,11 @@ use super::*;
 
 macro_rules! simple_test {
     ($line:expr, $flavor:expr, $name:expr) => {{
-        let database = Default::default();
+        let mut engine = Default::default();
         let mut names = Default::default();
         let block = create_span($line);
-        let (remaining, (_database, variable_action)) =
-            assert_ok!(parse_line(block.span(), &mut names, &database));
+        let (remaining, variable_action) =
+            assert_ok!(parse_line(block.span(), &mut names, &mut engine));
         assert_complete!(remaining);
 
         match variable_action.action {

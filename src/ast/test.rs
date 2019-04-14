@@ -7,8 +7,7 @@ use crate::evaluated::test::single_block;
 use crate::parsers::ast::parse_ast;
 use crate::parsers::variable::parse_line as parse_variable_line;
 use crate::source_location::LocatedString;
-use crate::test::empty_database;
-use crate::{Database, NameCache};
+use crate::NameCache;
 
 macro_rules! ast_parse {
     ($block:expr) => {{
@@ -26,20 +25,20 @@ fn block_from_reference(c: ContentReference) -> std::sync::Arc<evaluated::Block>
 
 fn insert_variable_from_line(
     names: &mut NameCache,
-    db: &mut Database,
+    context: &mut Engine,
     variable: LocatedString,
 ) -> VariableName {
     use crate::parsers::variable::Action;
 
     let block = block_from_reference(evaluated::constant(variable));
-    let (remaining, (new_db, variable_op)) =
-        assert_ok!(parse_variable_line(block.span(), names, db));
-    *db = new_db;
+    let (remaining, variable_op) = assert_ok!(parse_variable_line(block.span(), names, context));
     assert_complete!(remaining);
 
     match variable_op.action {
         Action::Define(params) => match params.flavor {
-            Flavor::Recursive | Flavor::Simple => *db = db.set_variable(variable_op.name, params),
+            Flavor::Recursive | Flavor::Simple => {
+                context.replace_database(context.database.set_variable(variable_op.name, params))
+            }
             v => unimplemented!("{:?}", v),
         },
         v => unimplemented!("{:?}", v),
@@ -56,11 +55,11 @@ fn mk_sensitivity(expected: &[VariableName]) -> crate::types::Set<VariableName> 
 fn const_sanity() {
     let block = single_block("foo");
     let ast = ast_parse!(block);
-    let database = empty_database();
+    let mut database = Default::default();
     let mut names = Default::default();
-    let evaluated = ast.eval(&mut names, &database);
+    let evaluated = ast.eval(&mut names, &mut database);
     assert_eq!(
-        evaluated.1,
+        evaluated,
         block_from_reference(evaluated::constant(LocatedString::test_new(1, 1, "foo")))
     )
 }
@@ -70,16 +69,16 @@ fn var_ref_simple() {
     let block = single_block("$(foo)");
     let ast = ast_parse!(block);
 
-    let mut database = empty_database();
+    let mut engine = Default::default();
     let mut names = Default::default();
     let variable = insert_variable_from_line(
         &mut names,
-        &mut database,
+        &mut engine,
         LocatedString::test_new(2, 1, "foo := bar"),
     );
     let expected_sensitivity = mk_sensitivity(&[variable]);
 
-    let (_database, val) = ast.eval(&mut names, &database);
+    let val = ast.eval(&mut names, &mut engine);
     assert_eq!(
         val,
         Block::new(
@@ -98,16 +97,16 @@ fn var_ref_substitution() {
     let block = single_block("$(foo:.c=.o)");
     let ast = ast_parse!(block);
 
-    let mut database = empty_database();
+    let mut engine = Default::default();
     let mut names = Default::default();
     let variable = insert_variable_from_line(
         &mut names,
-        &mut database,
+        &mut engine,
         LocatedString::test_new(2, 1, "foo := a.c"),
     );
     let expected_sensitivity = mk_sensitivity(&[variable]);
 
-    let (_database, val) = ast.eval(&mut names, &database);
+    let val = ast.eval(&mut names, &mut engine);
     info!("Evaluation of AST: {:?}", val.into_string());
     assert_eq!(
         val,
@@ -134,16 +133,16 @@ fn var_ref_substitution_extra_equals() {
     let block = single_block("$(foo:.c==.o)");
     let ast = ast_parse!(block);
 
-    let mut database = empty_database();
+    let mut engine = Default::default();
     let mut names = Default::default();
     let variable = insert_variable_from_line(
         &mut names,
-        &mut database,
+        &mut engine,
         LocatedString::test_new(2, 1, "foo := a.c="),
     );
     let expected_sensitivity = mk_sensitivity(&[variable]);
 
-    let (_database, val) = ast.eval(&mut names, &database);
+    let val = ast.eval(&mut names, &mut engine);
     assert_eq!(
         val,
         Block::new(
@@ -169,16 +168,16 @@ fn var_ref_substitution_pre_key() {
     let block = single_block("$(foo:a%c=%)");
     let ast = ast_parse!(block);
 
-    let mut database = empty_database();
+    let mut engine = Default::default();
     let mut names = Default::default();
     let variable = insert_variable_from_line(
         &mut names,
-        &mut database,
+        &mut engine,
         LocatedString::test_new(2, 1, "foo := abc"),
     );
     let expected_sensitivity = mk_sensitivity(&[variable]);
 
-    let (_database, val) = ast.eval(&mut names, &database);
+    let val = ast.eval(&mut names, &mut engine);
     assert_eq!(
         val,
         Block::new(
@@ -201,16 +200,16 @@ fn var_ref_substitution_pre_both() {
     let block = single_block("$(foo:a%c=d%f)");
     let ast = ast_parse!(block);
 
-    let mut database = empty_database();
+    let mut engine = Default::default();
     let mut names = Default::default();
     let variable = insert_variable_from_line(
         &mut names,
-        &mut database,
+        &mut engine,
         LocatedString::test_new(2, 1, "foo := abc"),
     );
     let expected_sensitivity = mk_sensitivity(&[variable]);
 
-    let (_database, val) = ast.eval(&mut names, &database);
+    let val = ast.eval(&mut names, &mut engine);
     assert_eq!(
         val,
         Block::new(
@@ -237,16 +236,16 @@ fn var_ref_substitution_multiple() {
     let block = single_block("$(foo:.c=.o)");
     let ast = ast_parse!(block);
 
-    let mut database = empty_database();
+    let mut engine = Default::default();
     let mut names = Default::default();
     let variable = insert_variable_from_line(
         &mut names,
-        &mut database,
+        &mut engine,
         LocatedString::test_new(2, 1, "foo := 1.c 2.c"),
     );
     let expected_sensitivity = mk_sensitivity(&[variable]);
 
-    let (_database, val) = ast.eval(&mut names, &database);
+    let val = ast.eval(&mut names, &mut engine);
     assert_eq!(
         val,
         Block::new(
@@ -275,23 +274,23 @@ fn var_ref_recursive() {
     let block = single_block("$($(foo))");
     let ast = ast_parse!(block);
 
-    let mut database = empty_database();
+    let mut engine = Default::default();
     let mut names = Default::default();
     let foo = insert_variable_from_line(
         &mut names,
-        &mut database,
+        &mut engine,
         LocatedString::test_new(2, 1, "foo := bar"),
     );
     let bar = insert_variable_from_line(
         &mut names,
-        &mut database,
+        &mut engine,
         LocatedString::test_new(3, 1, "bar := baz"),
     );
 
     let foo_senstivity = mk_sensitivity(&[foo]);
     let overall_sensitivity = mk_sensitivity(&[foo, bar]);
 
-    let (_database, val) = ast.eval(&mut names, &database);
+    let val = ast.eval(&mut names, &mut engine);
 
     assert_eq!(
         val,

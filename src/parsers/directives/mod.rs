@@ -50,10 +50,9 @@ impl<'a> crate::parsers::ParserState<'a> {
         use crate::MakefileError;
         use std::fs::File;
 
-        use crate::parsers::file_sequence::{FileSeqParseOptions, parse_file_seq};
+        use crate::parsers::file_sequence::{parse_file_seq, FileSeqParseOptions};
 
-        let (newdb, contents) = ast.eval(names, &engine.database);
-        engine.replace_database(newdb);
+        let contents = ast.eval(names, engine);
 
         let mut seq_parse_options = FileSeqParseOptions::new(engine.working_directory.clone());
         seq_parse_options.check_ar = false;
@@ -65,9 +64,7 @@ impl<'a> crate::parsers::ParserState<'a> {
             path.push(&file);
 
             let f = match File::open(&path) {
-                Ok(f) => {
-                    f
-                }
+                Ok(f) => f,
                 Err(e) => {
                     if soft {
                         // TODO: Route this through a warnings system
@@ -80,10 +77,12 @@ impl<'a> crate::parsers::ParserState<'a> {
             };
             let mut br = std::io::BufReader::new(f);
 
-            engine.read_makefile(names, &mut br, &file).map_err(|e| match e {
-                MakefileError::IOError(e) => ParseErrorKind::IncludeFailure(e.kind(), file),
-                MakefileError::ParseError(p) => p
-            })?;
+            engine
+                .read_makefile(names, &mut br, &file)
+                .map_err(|e| match e {
+                    MakefileError::IOError(e) => ParseErrorKind::IncludeFailure(e.kind(), file),
+                    MakefileError::ParseError(p) => p,
+                })?;
         }
 
         Ok(())

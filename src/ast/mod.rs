@@ -6,7 +6,7 @@ use crate::evaluated::nodes as enodes;
 use crate::evaluated::{Block, ContentReference, EvaluatedNode};
 use crate::source_location::{LocatedString, Location, Marker};
 use crate::types::Set;
-use crate::{Database, NameCache, VariableName};
+use crate::{Database, Engine, NameCache, VariableName};
 use std::sync::Arc;
 
 pub mod visit;
@@ -45,23 +45,21 @@ impl AstNode {
     /// database *is not* updated. To fully commit the changes of this
     /// evaluation, one must use `Engine::replace_database` with the returned
     /// database.
-    pub fn eval(&self, names: &mut NameCache, context: &Database) -> (Database, Arc<Block>) {
-        let (database, sensitivity, content) = self.eval_internal(names, context);
+    pub fn eval(&self, names: &mut NameCache, context: &mut Engine) -> Arc<Block> {
+        let (sensitivity, content) = self.eval_internal(names, context);
 
-        (database, Block::new(sensitivity, content))
+        Block::new(sensitivity, content)
     }
 
     /// Internal evaluation function
     fn eval_internal(
         &self,
         names: &mut NameCache,
-        context: &Database,
-    ) -> (Database, Set<VariableName>, Vec<ContentReference>) {
+        context: &mut Engine,
+    ) -> (Set<VariableName>, Vec<ContentReference>) {
         let mut sensitivity: Set<VariableName> = Default::default();
         // This is technically a little inefficient (we don't always need to do
         // this), but cloning databases should be pretty cheap
-        let mut database = context.clone();
-
         macro_rules! merge_sensitivity {
             ($new_sens:expr) => {
                 let new_sens = $new_sens;
@@ -76,8 +74,7 @@ impl AstNode {
         macro_rules! eval_child {
             ($child:expr) => {{
                 let child = $child;
-                let (new_db, new_sens, child_content) = child.eval_internal(names, context);
-                database = new_db;
+                let (new_sens, child_content) = child.eval_internal(names, context);
                 merge_sensitivity!(new_sens);
 
                 child_content
@@ -86,8 +83,7 @@ impl AstNode {
 
         macro_rules! eval_subexpr {
             ($e: expr) => {{
-                let (new_db, block) = ($e).eval(names, context);
-                database = new_db;
+                let block = ($e).eval(names, context);
                 merge_sensitivity!(block.raw_sensitivity());
 
                 block
@@ -97,7 +93,8 @@ impl AstNode {
         macro_rules! deref_variable {
             ($name:expr) => {{
                 let interned_variable_name = names.intern_variable_name($name);
-                let value = if let Some(var) = context.get_variable(interned_variable_name) {
+                let value = if let Some(var) = context.database.get_variable(interned_variable_name)
+                {
                     let var_ast = var.ast().clone();
                     eval_subexpr!(var_ast)
                 } else {
@@ -173,7 +170,7 @@ impl AstNode {
             v => unimplemented!("Node {:?} unimplemented", v),
         };
 
-        (database, sensitivity, content)
+        (sensitivity, content)
     }
 }
 

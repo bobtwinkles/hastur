@@ -43,10 +43,8 @@ impl<'a> crate::parsers::ParserState<'a> {
         let conditional_is_inverted = conditional.is_inverted();
         match conditional {
             Conditional::IfEq(a, b) | Conditional::IfNEq(a, b) => {
-                let (db, a) = a.eval(names, &engine.database);
-                let (db, b) = b.eval(names, &db);
-
-                engine.database = db;
+                let a = a.eval(names, engine);
+                let b = b.eval(names, engine);
 
                 let a = a.into_string();
                 let b = b.into_string();

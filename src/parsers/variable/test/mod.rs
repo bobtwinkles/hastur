@@ -9,10 +9,10 @@ mod define_keyword;
 
 macro_rules! define_test (
     ($span:expr, $flavor:expr, $name:expr) => {{
-        let database = Default::default();
+        let mut engine = Default::default();
         let mut names = Default::default();
         let block = create_span($span);
-        let (remaining, (_database, variable_action)) = assert_ok!(parse_line(block.span(), &mut names, &database));
+        let (remaining, variable_action) = assert_ok!(parse_line(block.span(), &mut names, &mut engine));
         assert_complete!(remaining);
 
         match variable_action.action {
@@ -71,11 +71,11 @@ fn recursive_no_space() {
 
 #[test]
 fn simple_modifiers() {
-    let database = Default::default();
+    let mut engine = Default::default();
     let mut names = Default::default();
     let block = create_span("export a = b");
-    let (remaining, (_database, variable_action)) =
-        assert_ok!(parse_line(block.span(), &mut names, &database));
+    let (remaining, variable_action) =
+        assert_ok!(parse_line(block.span(), &mut names, &mut engine));
     assert_complete!(remaining);
 
     match variable_action.action {
@@ -94,10 +94,10 @@ fn simple_modifiers() {
 
 #[test]
 fn modifers_with_no_var() {
-    let database = Default::default();
+    let mut engine = Default::default();
     let mut names = Default::default();
     let block = create_span("export private");
-    let err = assert_err!(parse_line(block.span(), &mut names, &database));
+    let err = assert_err!(parse_line(block.span(), &mut names, &mut engine));
 
     assert_err_contains!(err, ParseErrorKind::InternalFailure("not an assignment"));
 }

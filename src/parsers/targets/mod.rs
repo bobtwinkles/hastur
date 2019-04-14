@@ -8,7 +8,7 @@ use crate::parsers::{
     fail_out, lift_collapsed_span_error, makefile_line, makefile_take_until_unquote,
     makefile_whitespace, ProtoRule,
 };
-use crate::{Database, Engine, FileName, NameCache, ParseErrorKind};
+use crate::{Engine, FileName, NameCache, ParseErrorKind};
 use nom::IResult;
 use std::sync::Arc;
 
@@ -98,14 +98,13 @@ enum MWordEnd {
 pub(crate) fn parse_line<'a>(
     i: BlockSpan<'a>,
     names: &mut NameCache,
-    database: &Database,
-) -> IResult<BlockSpan<'a>, (Database, Action), ParseErrorKind> {
+    engine: &mut Engine,
+) -> IResult<BlockSpan<'a>, Action, ParseErrorKind> {
     use nom::{InputIter, Slice};
 
     let line_start = i;
     // TODO: separate line collapse from line acquisition
     let (rest, line) = makefile_line(i, super::ParserCompliance::GNU, false)?;
-    let mut database = database.clone();
 
     // The behavior here in GNU Make is really weird. Why does it consider '$'
     // characters to be semicolons? I'm pretty sure that's the behavior of the
@@ -138,8 +137,7 @@ pub(crate) fn parse_line<'a>(
     macro_rules! expand_segment {
         ($seg:expr) => {{
             let (_, ast) = parse_ast($seg).map_err(|e| lift_collapsed_span_error(e, line_start))?;
-            let (newdb, v) = ast.eval(names, &database);
-            database = newdb;
+            let v = ast.eval(names, engine);
             v
         }};
     }
@@ -153,11 +151,11 @@ pub(crate) fn parse_line<'a>(
                 return fail_out(line_start, ParseErrorKind::NoRuleRecipe);
             }
             // There was nothing on the line
-            return Ok((rest, (database, Action::NoAction)));
+            return Ok((rest, Action::NoAction));
         }
         MWordEnd::Colon | MWordEnd::DColon => {
             // No targets for this rule, just return immediately
-            return Ok((rest, (database, Action::NoAction)));
+            return Ok((rest, Action::NoAction));
         }
         _ => {}
     }
@@ -209,7 +207,7 @@ pub(crate) fn parse_line<'a>(
         );
         if new_content.len() == 0 {
             // Make seems to implicitly consume the whole line in this situation
-            return Ok((rest, (database, Action::NoAction)));
+            return Ok((rest, Action::NoAction));
         }
 
         match find_non_drivespec_colon(new_content.span()) {
@@ -263,7 +261,7 @@ pub(crate) fn parse_line<'a>(
         let (after_space, _) = makefile_whitespace(pre_colon_buffer.span()).unwrap();
         if after_space.len() == 0 {
             // There was only whitespace on the line
-            return Ok((rest, (database, Action::NoAction)));
+            return Ok((rest, Action::NoAction));
         }
 
         // There was something on the line, but it wasn't what we expected
@@ -308,18 +306,15 @@ pub(crate) fn parse_line<'a>(
     };
 
     // Try to match against a variable assignment operation
-    match parse_variable_line(post_targets_slice, names, &database) {
-        Ok((_, (db, action))) => {
+    match parse_variable_line(post_targets_slice, names, engine) {
+        Ok((_, action)) => {
             return Ok((
                 rest,
-                (
-                    db,
-                    Action::TargetVariable {
-                        targets,
-                        variable_action: action,
-                    },
-                ),
-            ))
+                Action::TargetVariable {
+                    targets,
+                    variable_action: action,
+                },
+            ));
         }
         Err(_) => {}
     }
@@ -408,21 +403,18 @@ pub(crate) fn parse_line<'a>(
 
     Ok((
         rest,
-        (
-            database,
-            Action::NewRule {
-                targets: targets
-                    .into_iter()
-                    .map(|v| names.intern_file_name(v))
-                    .collect(),
-                deps: deps
-                    .into_iter()
-                    .map(|v| names.intern_file_name(v))
-                    .collect(),
-                double_colon,
-                initial_command: command,
-            },
-        ),
+        Action::NewRule {
+            targets: targets
+                .into_iter()
+                .map(|v| names.intern_file_name(v))
+                .collect(),
+            deps: deps
+                .into_iter()
+                .map(|v| names.intern_file_name(v))
+                .collect(),
+            double_colon,
+            initial_command: command,
+        },
     ))
 }
 
