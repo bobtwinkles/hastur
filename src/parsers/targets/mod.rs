@@ -113,21 +113,20 @@ pub(crate) fn parse_line<'a>(
     //
     // line is the storage backing "line_next" which is our model for lb_next
     // post_semi_content is essentially cmdleft
-    let (line, semip) =
-        match makefile_take_until_unquote(line.span(), |c| (c == ';' || c == '#')) {
-            (pre, Some((stopchar, post))) => {
-                if stopchar.iter_elements().next() == Some('#') {
-                    (pre, None)
-                } else {
-                    debug!(
-                        "Found unescaped semicolon. Post content {:?}",
-                        post.into_string()
-                    );
-                    (pre, Some(post))
-                }
+    let (line, semip) = match makefile_take_until_unquote(line.span(), |c| (c == ';' || c == '#')) {
+        (pre, Some((stopchar, post))) => {
+            if stopchar.iter_elements().next() == Some('#') {
+                (pre, None)
+            } else {
+                debug!(
+                    "Found unescaped semicolon. Post content {:?}",
+                    post.into_string()
+                );
+                (pre, Some(post))
             }
-            (pre, None) => (pre, None),
-        };
+        }
+        (pre, None) => (pre, None),
+    };
     let mut post_semi_content = semip.map(|x| x.to_new_block());
     debug!(
         "Content after initial semicolon search: {:?}",

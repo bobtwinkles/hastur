@@ -225,7 +225,7 @@ fn function_argument<'a>(
 
 fn eval<'a>(
     i: BlockSpan<'a>,
-    start_location: Location
+    start_location: Location,
 ) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
     let (i, args) = parse_ast(i)?;
 

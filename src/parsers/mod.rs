@@ -173,9 +173,8 @@ impl<'a> ParserState<'a> {
             });
         } else if self.current_define.is_some() {
             // If we're currently parsing a line inside a define, handle that
-            run_parser!(variable::parse_define_line(i), |action| {
-                self.handle_define_line(engine, action)
-            });
+            run_parser!(variable::parse_define_line(i), |action| self
+                .handle_define_line(engine, action));
             panic!("Parsing a define line should never fail");
         }
 
