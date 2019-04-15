@@ -33,6 +33,28 @@ pub(super) fn leftover_span(fragment: &str, character: u32, line: u32) -> Arc<Bl
     tr
 }
 
+/// Construct a block out of several disjoint spans, specified by (line, character, content) tuples
+pub(super) fn separated_spans(fragments: &[(u32, u32, &str)]) -> Arc<Block> {
+    Block::new(
+        Default::default(),
+        fragments
+            .iter()
+            .map(|(line, character, fragment)| {
+                crate::evaluated::ContentReference::new_from_node(Arc::new(
+                    EvaluatedNode::Constant(crate::source_location::LocatedString::new(
+                        crate::source_location::Location::TestLocation {
+                            line: *line,
+                            character: *character,
+                        }
+                        .into(),
+                        (*fragment).into(),
+                    )),
+                ))
+            })
+            .collect(),
+    )
+}
+
 pub(super) fn simple_line(s: &str) -> Arc<Block> {
     super::makefile_line(create_span(s).span(), super::ParserCompliance::GNU, false)
         .unwrap()

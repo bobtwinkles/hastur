@@ -61,6 +61,8 @@ impl crate::parsers::ParserState {
 
         for file in files {
             let mut path = engine.working_directory.clone();
+            // TODO: we should surface the full Block form of this somewhere
+            let file = file.into_string();
             path.push(&file);
 
             let f = match File::open(&path) {

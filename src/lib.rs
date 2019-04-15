@@ -46,6 +46,7 @@ pub use crate::eval::{Flavor, Origin, Variable, VariableParameters};
 pub use crate::parsers::ParserCompliance;
 
 use crate::ast::AstNode;
+use crate::evaluated::Block;
 use crate::source_location::{LocatedString, Location};
 use std::io;
 use std::io::prelude::*;
@@ -160,9 +161,13 @@ pub struct Recipe(Vec<Command>);
 #[derive(Clone, Debug, PartialEq)]
 pub struct Rule {
     /// The target that this rule builds
-    target: FileName,
+    target: Arc<Block>,
+    /// The target, as an interned string
+    target_fname: FileName,
     /// The inputs for the recipe
-    deps: fxhash::FxHashSet<FileName>,
+    deps: Vec<Arc<Block>>,
+    /// File names, cached as interned strings
+    dep_names: fxhash::FxHashSet<FileName>,
     /// The recipe to turn `deps` into `targets`
     recipe: Arc<Recipe>,
     /// Extra information about the rule
@@ -173,7 +178,7 @@ pub struct Rule {
 impl Rule {
     /// Iterate over the dependencies of this rule
     /// TODO: change the return type of this to an actual iterator type
-    pub fn dependencies(&self) -> &[evaluated::Block] {
+    pub fn dependencies(&self) -> &[Block] {
         unimplemented!()
     }
 }
@@ -205,16 +210,22 @@ impl Database {
     /// Add a rule into the database
     pub fn add_rule(&self, rule: Rule) -> Self {
         let mut tr = self.clone();
-        tr.rules.insert(rule.target, rule);
+        tr.rules.insert(rule.target_fname, rule);
         tr
     }
 
     /// Create a rule from the a protorule
-    fn from_protorule(&self, rule: crate::parsers::ProtoRule) -> Self {
+    fn from_protorule(&self, names: &mut NameCache, rule: crate::parsers::ProtoRule) -> Self {
         let mut tr = self.clone();
         let has_no_commands = rule.recipe.0.len() == 0;
         let recipe = Arc::new(rule.recipe);
         let deps = &rule.deps;
+        debug!("Intern dep names {:?}", deps);
+        let deps_as_fnames: fxhash::FxHashSet<FileName> = deps
+            .iter()
+            .map(|dep| names.intern_file_name(dep.into_string()))
+            .collect();
+        let deps_as_fnames = &deps_as_fnames;
         let rule_type = rule.rule_type;
 
         // Empty recipes are special: these rules may append to the dep list, while
@@ -222,16 +233,22 @@ impl Database {
         if has_no_commands {
             debug!("protorule for targets {:?} had no commands", rule.targets);
             for target in rule.targets.into_iter() {
+                let target_as_fname = names.intern_file_name(target.into_string());
                 tr.rules
-                    .entry(target)
+                    .entry(target_as_fname)
                     .and_modify(|existing_rule| {
                         for dep in deps {
-                            existing_rule.deps.insert(*dep);
+                            existing_rule.deps.push(Arc::clone(dep));
+                        }
+                        for dep in deps_as_fnames {
+                            existing_rule.dep_names.insert(*dep);
                         }
                     })
                     .or_insert_with(|| Rule {
                         target,
-                        deps: deps.iter().map(|x| *x).collect(),
+                        target_fname: target_as_fname,
+                        deps: deps.iter().map(|x| Arc::clone(x)).collect(),
+                        dep_names: deps_as_fnames.clone(),
                         recipe: Arc::clone(&recipe),
                         rule_type,
                     });
@@ -244,16 +261,19 @@ impl Database {
             );
 
             for target in rule.targets.into_iter() {
+                let target_as_fname = names.intern_file_name(target.into_string());
                 let new_rule = Rule {
                     target,
-                    deps: rule.deps.iter().map(|x| *x).collect(),
+                    target_fname: target_as_fname,
+                    deps: rule.deps.iter().map(|x| Arc::clone(x)).collect(),
+                    dep_names: deps_as_fnames.clone(),
                     recipe: Arc::clone(&recipe),
                     rule_type: rule.rule_type,
                 };
-                match tr.rules.entry(target) {
+                match tr.rules.entry(target_as_fname) {
                     Entry::Occupied(mut o) => {
                         // TODO: bubble this up in a structured manner instead of just printing nonsense
-                        warn!("Overwriting existing rule for target {:?}", target);
+                        warn!("Overwriting existing rule for target {:?}", target_as_fname);
                         o.insert(new_rule);
                     }
                     Entry::Vacant(v) => {
@@ -470,8 +490,8 @@ impl Engine {
     }
 
     /// Add a rule to the database
-    fn from_protorule(&mut self, rule: parsers::ProtoRule) {
-        self.database = self.database.from_protorule(rule);
+    fn from_protorule(&mut self, names: &mut NameCache, rule: parsers::ProtoRule) {
+        self.database = self.database.from_protorule(names, rule);
     }
 
     /// Parses a makefile
@@ -485,7 +505,7 @@ impl Engine {
 
         let mut i = String::new();
         input.read_to_string(&mut i)?;
-        let input_block = evaluated::Block::new(
+        let input_block = Block::new(
             Default::default(),
             vec![evaluated::ContentReference::new_from_node(Arc::new(
                 evaluated::nodes::EvaluatedNode::Constant(source_location::LocatedString::new(
@@ -511,7 +531,7 @@ impl Engine {
     pub fn process_block(
         &mut self,
         names: &mut NameCache,
-        block: &crate::evaluated::Block,
+        block: &Block,
     ) -> Result<(), MakefileError> {
         use nom::Err as NErr;
         let mut parser_state = parsers::ParserState::new();

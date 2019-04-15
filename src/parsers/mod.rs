@@ -1,6 +1,6 @@
 use crate::ast::AstNode;
 use crate::evaluated::{Block, BlockSpan, ContentReference};
-use crate::{Engine, FileName, NameCache, ParseErrorKind, Recipe, VariableName};
+use crate::{Engine, NameCache, ParseErrorKind, Recipe, VariableName};
 use nom::Err as NErr;
 use nom::IResult;
 use std::sync::Arc;
@@ -68,9 +68,9 @@ pub(crate) struct DefineState {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct ProtoRule {
     /// The targets that this rule builds
-    pub targets: Vec<FileName>,
+    pub targets: Vec<Arc<Block>>,
     /// The inputs for the recipe
-    pub deps: Vec<FileName>,
+    pub deps: Vec<Arc<Block>>,
     /// The recipe to turn `deps` into `targets`
     pub recipe: Recipe,
     /// Extra information about the rule
@@ -224,14 +224,14 @@ impl ParserState {
             |variable_action| {
                 debug!("Matched variable action {:?}", variable_action);
                 // Successful variable assignments close the current rule
-                self.close_rule(engine);
+                self.close_rule(names, engine);
 
                 self.handle_global_variable_action(engine, variable_action)
             }
         );
 
         run_line_parser!(directives::parse_line(line.span()), |directive_action| {
-            self.close_rule(engine);
+            self.close_rule(names, engine);
             self.handle_directive_action(names, engine, directive_action)
         });
 
@@ -243,7 +243,7 @@ impl ParserState {
         run_line_parser!(
             targets::parse_line(line.span(), names, engine),
             |target_action| {
-                self.close_rule(engine);
+                self.close_rule(names, engine);
 
                 self.handle_target_action(engine, target_action)
             }
@@ -286,11 +286,11 @@ impl ParserState {
     }
 
     /// Close out the currently open rule, if there is one
-    fn close_rule(&mut self, engine: &mut Engine) {
+    fn close_rule(&mut self, names: &mut NameCache, engine: &mut Engine) {
         debug!("Closing rule {:?}", self.current_rule);
         let current_rule = std::mem::replace(&mut self.current_rule, None);
         match current_rule {
-            Some(rule) => engine.from_protorule(rule),
+            Some(rule) => engine.from_protorule(names, rule),
             None => {}
         }
     }

@@ -60,7 +60,7 @@ fn arb_action() -> impl Strategy<Value = (Action, String, NameCache)> {
                 Just(NameCache::default()),
             )
         })
-        .prop_map(|(targets, deps, dcolon, initial_command, mut name_cache)| {
+        .prop_map(|(targets, deps, dcolon, initial_command, name_cache)| {
             let mut output_buffer = String::new();
             for target in targets.iter() {
                 output_buffer.push_str(&target.1);
@@ -93,11 +93,11 @@ fn arb_action() -> impl Strategy<Value = (Action, String, NameCache)> {
 
             let targets = targets
                 .into_iter()
-                .map(|v| name_cache.intern_file_name(v.0.into()))
+                .map(|v| create_span(&v.0))
                 .collect();
             let deps = deps
                 .into_iter()
-                .map(|v| name_cache.intern_file_name(v.0.into()))
+                .map(|v| create_span(&v.0))
                 .collect();
 
             (
@@ -115,6 +115,14 @@ fn arb_action() -> impl Strategy<Value = (Action, String, NameCache)> {
 
 proptest![
 
+    /// This test is currently broken for a lot of reasons
+    ///   - We can't reliably generate valid inputs -- proptest gravitates to
+    ///   nightmarishly complex escaping situations that we don't really care
+    ///   about (and don't pass, since it's probably not even generating the
+    ///   escaped content correctly)
+    ///   - The flattening of targets into Arc<Blocks> is super lazy and doesn't
+    ///   offset location correctly, resulting in failures related to location
+    ///   bookkeeping
     #[test]
     #[ignore]
     fn roundtrip_action((action, input, mut names) in arb_action()) {

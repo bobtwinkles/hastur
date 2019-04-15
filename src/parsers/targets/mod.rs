@@ -8,7 +8,7 @@ use crate::parsers::{
     fail_out, lift_collapsed_span_error, makefile_line, makefile_take_until_unquote,
     makefile_whitespace, ProtoRule,
 };
-use crate::{Engine, FileName, NameCache, ParseErrorKind};
+use crate::{Engine, NameCache, ParseErrorKind};
 use nom::IResult;
 use std::sync::Arc;
 
@@ -22,8 +22,8 @@ pub(crate) enum Action {
     NoAction,
     /// The start of a new rule
     NewRule {
-        targets: Vec<FileName>,
-        deps: Vec<FileName>,
+        targets: Vec<Arc<Block>>,
+        deps: Vec<Arc<Block>>,
         double_colon: bool,
         initial_command: Option<AstNode>,
     },
@@ -31,7 +31,7 @@ pub(crate) enum Action {
     /// A target specific variable
     TargetVariable {
         /// TODO: replace the string with a block
-        targets: Vec<String>,
+        targets: Vec<Arc<Block>>,
         variable_action: VariableAction,
     },
 }
@@ -403,14 +403,8 @@ pub(crate) fn parse_line<'a>(
     Ok((
         rest,
         Action::NewRule {
-            targets: targets
-                .into_iter()
-                .map(|v| names.intern_file_name(v))
-                .collect(),
-            deps: deps
-                .into_iter()
-                .map(|v| names.intern_file_name(v))
-                .collect(),
+            targets,
+            deps,
             double_colon,
             initial_command: command,
         },

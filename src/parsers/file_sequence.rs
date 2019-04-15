@@ -1,9 +1,10 @@
 //! Implementation of parsing file sequences.
 //! This includes the implementation of `parse_file_seq` and supporting
 //! functionality, including glob expansion
-use crate::evaluated::BlockSpan;
+use crate::evaluated::{Block, BlockSpan};
 use crate::parsers::makefile_whitespace;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct FileSeqParseOptions {
@@ -41,7 +42,10 @@ impl FileSeqParseOptions {
     }
 }
 
-pub(crate) fn parse_file_seq<'a>(i: BlockSpan<'a>, options: FileSeqParseOptions) -> Vec<String> {
+pub(crate) fn parse_file_seq<'a>(
+    i: BlockSpan<'a>,
+    options: FileSeqParseOptions,
+) -> Vec<Arc<Block>> {
     use nom::Slice;
     // Implementation follows parse_file_seq in read.c from GNU Make 4.2.1
     assert!(!options.check_ar);
@@ -82,7 +86,7 @@ pub(crate) fn parse_file_seq<'a>(i: BlockSpan<'a>, options: FileSeqParseOptions)
     output_names
 }
 
-fn clean_match<'a>(mut i: BlockSpan<'a>, options: &FileSeqParseOptions) -> String {
+fn clean_match<'a>(mut i: BlockSpan<'a>, options: &FileSeqParseOptions) -> Arc<Block> {
     debug!("Cleaning file name match {:?}", i.into_string());
     if options.strip_leading_dotslash {
         i = match tag!(i, "./") {
@@ -91,5 +95,5 @@ fn clean_match<'a>(mut i: BlockSpan<'a>, options: &FileSeqParseOptions) -> Strin
         }
     }
 
-    i.into_string()
+    i.to_new_block()
 }

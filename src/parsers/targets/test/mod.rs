@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::ast;
-use crate::parsers::test::create_span;
+use crate::parsers::test::{create_span, leftover_span, separated_spans};
 use crate::source_location::{LocatedString, Location};
 use crate::NameCache;
 use pretty_assertions::assert_eq;
@@ -36,8 +36,8 @@ fn tricky_colon_escapes() {
     crate::test::setup();
     let block = create_span(r"\\:\:");
     let mut name_cache = NameCache::default();
-    let t1 = name_cache.intern_file_name(r"\".into());
-    let d1 = name_cache.intern_file_name(":".into());
+    let t1 = leftover_span(r"\", 1, 1);
+    let d1 = leftover_span(r":", 5, 1);
     let mut engine = Default::default();
 
     let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
@@ -57,8 +57,8 @@ fn tricky_colon_escapes() {
 fn backslash_in_target() {
     let block = create_span("\\\\ : \\\\\\;");
     let mut name_cache = NameCache::default();
-    let t1 = name_cache.intern_file_name("\\".into());
-    let d1 = name_cache.intern_file_name(";".into());
+    let t1 = leftover_span("\\", 1, 1);
+    let d1 = leftover_span(";", 9, 1);
     let mut engine = Default::default();
 
     let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
@@ -80,7 +80,8 @@ fn backslash_at_end_of_input() {
 
     let block = create_span(r"\\ : \\");
     let mut name_cache = NameCache::default();
-    let v = name_cache.intern_file_name("\\".into());
+    let t1 = leftover_span(r"\", 1, 1);
+    let d1 = leftover_span(r"\", 6, 1);
     let mut engine = Default::default();
 
     let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
@@ -88,8 +89,8 @@ fn backslash_at_end_of_input() {
     assert_eq!(
         action,
         Action::NewRule {
-            targets: vec![v],
-            deps: vec![v],
+            targets: vec![t1],
+            deps: vec![d1],
             double_colon: false,
             initial_command: None,
         }
@@ -98,10 +99,11 @@ fn backslash_at_end_of_input() {
 
 #[test]
 fn two_backslash_targets() {
-    let block = create_span("\\\\ \\\\ : \\\\\\;");
+    let block = create_span(r"\\ \\ : \\\;");
     let mut name_cache = NameCache::default();
-    let t = name_cache.intern_file_name("\\".into());
-    let d = name_cache.intern_file_name(";".into());
+    let t1 = leftover_span(r"\", 1, 1);
+    let t2 = leftover_span(r"\", 4, 1);
+    let d = leftover_span(";", 12, 1);
     let mut engine = Default::default();
 
     let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
@@ -109,7 +111,7 @@ fn two_backslash_targets() {
     assert_eq!(
         action,
         Action::NewRule {
-            targets: vec![t, t],
+            targets: vec![t1, t2],
             deps: vec![d],
             double_colon: false,
             initial_command: None,
@@ -123,8 +125,8 @@ fn semicolon_as_target_with_command() {
 
     let block = create_span(r"\\\; : a;b");
     let mut name_cache = NameCache::default();
-    let t = name_cache.intern_file_name(r"\;".into());
-    let d = name_cache.intern_file_name("a".into());
+    let t = separated_spans(&[(1, 1, "\\"), (1, 4, ";")]);
+    let d = leftover_span("a", 8, 1);
     let mut engine = Default::default();
 
     let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
@@ -146,8 +148,8 @@ fn colon_as_target_with_command() {
 
     let block = create_span(r"\: : \\\;;b");
     let mut name_cache = NameCache::default();
-    let t = name_cache.intern_file_name(":".into());
-    let d = name_cache.intern_file_name(r"\;".into());
+    let t = leftover_span(":", 2, 1);
+    let d = separated_spans(&[(1, 6, "\\"), (1, 9, ";")]);
     let mut engine = Default::default();
 
     let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
@@ -169,9 +171,9 @@ fn mixed_semicolon_target() {
 
     let block = create_span(r"\\\; a :: a");
     let mut name_cache = NameCache::default();
-    let t1 = name_cache.intern_file_name(r"\;".into());
-    let t2 = name_cache.intern_file_name("a".into());
-    let d = name_cache.intern_file_name("a".into());
+    let t1 = separated_spans(&[(1, 1, "\\"), (1, 4, ";")]);
+    let t2 = leftover_span("a", 6, 1);
+    let d = leftover_span("a", 11, 1);
     let mut engine = Default::default();
 
     let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
@@ -191,7 +193,8 @@ fn mixed_semicolon_target() {
 fn command_simple() {
     let block = create_span("a : a;b");
     let mut name_cache = NameCache::default();
-    let t = name_cache.intern_file_name("a".into());
+    let t = leftover_span("a", 1, 1);
+    let d = leftover_span("a", 5, 1);
     let mut engine = Default::default();
 
     let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
@@ -200,7 +203,7 @@ fn command_simple() {
         action,
         Action::NewRule {
             targets: vec![t],
-            deps: vec![t],
+            deps: vec![d],
             double_colon: false,
             initial_command: Some(ast::constant(LocatedString::test_new(1, 7, "b"))),
         }
@@ -211,7 +214,8 @@ fn command_simple() {
 fn command_dcolon() {
     let block = create_span("a :: a;b");
     let mut name_cache = NameCache::default();
-    let t = name_cache.intern_file_name("a".into());
+    let t = leftover_span("a", 1, 1);
+    let d = leftover_span("a", 6, 1);
     let mut engine = Default::default();
 
     let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
@@ -220,7 +224,7 @@ fn command_dcolon() {
         action,
         Action::NewRule {
             targets: vec![t],
-            deps: vec![t],
+            deps: vec![d],
             double_colon: true,
             initial_command: Some(ast::constant(LocatedString::test_new(1, 8, "b"))),
         }
@@ -232,8 +236,8 @@ fn escaped_colon_target() {
     crate::test::setup();
     let block = create_span("\\: :: a");
     let mut name_cache = NameCache::default();
-    let t = name_cache.intern_file_name(":".into());
-    let d = name_cache.intern_file_name("a".into());
+    let t = leftover_span(":", 2, 1);
+    let d = leftover_span("a", 7, 1);
     let mut engine = Default::default();
 
     let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
@@ -254,8 +258,8 @@ fn escaped_semicolon_target() {
     crate::test::setup();
     let block = create_span(r"\\\; : a");
     let mut name_cache = NameCache::default();
-    let t = name_cache.intern_file_name("\\;".into());
-    let d = name_cache.intern_file_name("a".into());
+    let t = separated_spans(&[(1, 1, "\\"), (1, 4, ";")]);
+    let d = leftover_span("a", 8, 1);
     let mut engine = Default::default();
 
     let (_, action) = assert_ok!(parse_line(block.span(), &mut name_cache, &mut engine));
