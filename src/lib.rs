@@ -130,48 +130,6 @@ impl<'a> From<u32> for ParseErrorKind {
     }
 }
 
-/*
-/// Represents a span of the input
-/// TODO: we should really wrap this in our own structure so that nom_locate isn't part of
-/// our public API.
-/// This is to be replaced with crate::source_location::Span
-pub type Span<'a> = nom_locate::LocatedSpan<nom::types::CompleteStr<'a>>;
-
-/// Represents an owned span that originated from the input
-/// The `T` parameter is used to keep track of the originating file name.
-/// Making it generic allows us to be agnostic to whether or not that particular
-/// piece of information is owned. For most of the public API though, this will
-/// simply be a string reference that the user themselves handed us.
-#[derive(Clone, Debug, PartialEq)]
-pub struct OwnedFragment<T> {
-    /// The line on which this fragment starts
-    pub line: u32,
-    /// The offset of this fragment from the beginning of the input
-    /// represented by the provided file name
-    pub offset: usize,
-    /// The column at which this fragment starts
-    pub column: usize,
-    /// The actual fragment of the input, as an owned string
-    pub fragment: String,
-    /// The file name from which this fragment originated
-    pub file_name: T,
-}
-
-
-impl<T> OwnedFragment<T> {
-    /// Create an owned fragment from a specific span and a file name
-    pub fn from_span(s: Span, file_name: T) -> OwnedFragment<T> {
-        Self {
-            line: s.line,
-            offset: s.offset,
-            column: s.get_column(),
-            fragment: s.fragment.0.to_owned(),
-            file_name,
-        }
-    }
-}
-*/
-
 /// A command.
 /// We track only the unexpanded version of the command string, since
 /// command variable expansion is not performed until after makfile reading
