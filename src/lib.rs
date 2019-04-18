@@ -156,6 +156,13 @@ pub enum RuleType {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Recipe(Vec<Command>);
 
+impl Recipe {
+    /// Get the list of commands backing this recipe
+    pub fn commands(&self) -> &[Command] {
+        &self.0
+    }
+}
+
 /// A "rule" describes how to bring a set of "targets" up to date from a set of
 /// "dependencies", using a "recipe".
 #[derive(Clone, Debug, PartialEq)]
@@ -176,10 +183,24 @@ pub struct Rule {
 
 // TODO: move this impl into rule.rs
 impl Rule {
+    /// Get a reference to the block that defined the name of this target
+    pub fn target(&self) -> &Arc<Block> {
+        &self.target
+    }
+
+    /// Get the target as an interned file name
+    pub fn target_fname(&self) -> FileName {
+        self.target_fname
+    }
+
+    /// Get a reference to the recipe behind this command
+    pub fn recipe(&self) -> &Arc<Recipe> {
+        &self.recipe
+    }
+
     /// Iterate over the dependencies of this rule
-    /// TODO: change the return type of this to an actual iterator type
-    pub fn dependencies(&self) -> &[Block] {
-        unimplemented!()
+    pub fn dependencies(&self) -> &[Arc<Block>] {
+        &self.deps
     }
 }
 
@@ -207,6 +228,11 @@ pub struct Database {
 }
 
 impl Database {
+    /// Iterate over all the rules in this database
+    pub fn rules(&self) -> impl Iterator<Item=&Rule> {
+        self.rules.values()
+    }
+
     /// Add a rule into the database
     pub fn add_rule(&self, rule: Rule) -> Self {
         let mut tr = self.clone();
@@ -372,6 +398,7 @@ impl Database {
 
 /// Represents all the things that can go wrong while parsing an evaluating
 /// makefile statements.
+#[derive(Debug)]
 pub enum MakefileError {
     /// An IO error occurred while reading the makefile
     IOError(io::Error),
