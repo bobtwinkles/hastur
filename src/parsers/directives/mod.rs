@@ -58,19 +58,21 @@ impl crate::parsers::ParserState {
         seq_parse_options.check_ar = false;
 
         let files = parse_file_seq(contents.span(), seq_parse_options);
+        info!("Include directive will result in include of {} total files", files.len());
 
         for file in files {
             let mut path = engine.working_directory.clone();
             // TODO: we should surface the full Block form of this somewhere
             let file = file.into_string();
             path.push(&file);
+            info!("Including file {:?}", path);
 
             let f = match File::open(&path) {
                 Ok(f) => f,
                 Err(e) => {
+                    warn!("Failed to include file {:?}", &file);
                     if soft {
                         // TODO: Route this through a warnings system
-                        warn!("Failed to include file {:?}", &file);
                         continue;
                     } else {
                         return Err(ParseErrorKind::IncludeFailure(e.kind(), file));

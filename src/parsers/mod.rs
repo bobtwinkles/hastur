@@ -141,7 +141,7 @@ impl ParserState {
                         debug!(
                             "Parser {:?} emitted a recoverable error {:?}, backtracking",
                             stringify!($parsed),
-                            e
+                            e.into_error_kind()
                         )
                     }
                     Err(NErr::Failure(c)) => return Err(NErr::Failure(c)),
@@ -155,6 +155,7 @@ impl ParserState {
         // bespoke comment processing sprinkled through every other case)
         run_parser!(comment::parse_comment_following_whitespace(i), |_| {
             // Comment lines don't require any particular action
+            info!("Skipping over comment line");
             Ok(())
         });
 
@@ -196,7 +197,7 @@ impl ParserState {
                         debug!(
                             "Parser {:?} emitted a recoverable error {:?}, backtracking",
                             stringify!($parsed),
-                            e
+                            e.into_error_kind()
                         )
                     }
                     Err(NErr::Failure(c)) => return Err(lift_collapsed_span_error(NErr::Failure(c), line_start)),

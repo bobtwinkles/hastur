@@ -7,6 +7,7 @@ use nom::IResult;
 /// Snag all the comment content
 /// Expects to start on a '#'
 pub(super) fn parse_comment<'a>(i: BlockSpan<'a>) -> IResult<BlockSpan<'a>, (), ParseErrorKind> {
+    debug!("looking for comment in {:?}", i);
     let (mut i, mut line_parse) = preceded!(
         i,
         add_return_error!(
