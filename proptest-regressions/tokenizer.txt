@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc cfda98fccc632c18db0084dd79d9c3ff56e079ecddcd116ebabd0cbe54a47623 # shrinks to tokens = [Token { offset: 0, token_type: Colon(Yes) }]
+cc f8c71c5c8e46abc69f7d7ef4d22f3e1ef220a0edf6f2a5b45ec12799881d0178 # shrinks to tokens = [Token { offset: 0, token_type: Colon(No) }, Token { offset: 1, token_type: Colon(No) }]
+cc b012b104150c9acfec15f9b18d42c3adc2b42cef044b4a87a8e374e61a1b411c # shrinks to input = "++"

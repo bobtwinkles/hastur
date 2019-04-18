@@ -40,6 +40,7 @@ mod parsers;
 pub mod pattern;
 pub mod source_location;
 pub mod traits;
+pub mod tokenizer;
 mod types;
 
 pub use crate::eval::{Flavor, Origin, Variable, VariableParameters};
