@@ -275,10 +275,6 @@ where
                         consume_next!();
                         token!(TokenType::VariableReference(VariableKind::OpenBrace))
                     }
-                    '\\' => {
-                        warn!("Encountered a backslash after a variable name. It's unlikely that this is handled correctly");
-                        token!(TokenType::VariableReference(VariableKind::Unterminated))
-                    }
                     ' ' | '\t' => {
                         // We need this branch here explicitly to catch these
                         // "whitespace" characters which are treated as variable
@@ -302,6 +298,11 @@ where
                         token!(TokenType::Text)
                     }
                     _ => {
+                        // Note that this case implicitly picks up backslashes!
+                        // This is intentional, and matches Make's behavior
+                        // See tests/makefile/var_name_backslash.mk (run with
+                        // --warn-undefined-variables to get Make to print the
+                        // names of the variables being referenced)
                         consume_next!();
                         token!(TokenType::VariableReference(VariableKind::SingleCharacter))
                     }
