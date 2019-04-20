@@ -401,6 +401,8 @@ mod test {
     fn flatten_stream(original_string: &str, tokens: &[Token]) -> String {
         let mut buffer = String::with_capacity(tokens.len());
 
+        let mut last_end = 0;
+
         for token in tokens {
             match token.token_type {
                 TokenType::Whitespace => {
@@ -414,7 +416,7 @@ mod test {
                     let slice = &original_string[token.start..token.end];
 
                     // Special case: an "escaped" dollar character
-                    if slice == "$" {
+                    if slice == "$" && last_end != token.start {
                         buffer.push_str("$$");
                     } else {
                         buffer.push_str(slice);
@@ -515,6 +517,8 @@ mod test {
                 TokenType::DoubleQuote => buffer.push('"'),
                 TokenType::Comma => buffer.push(','),
             }
+
+            last_end = token.end;
         }
 
         buffer
