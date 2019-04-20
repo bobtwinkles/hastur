@@ -283,8 +283,27 @@ where
                         warn!("Encountered a backslash after a variable name. It's unlikely that this is handled correctly");
                         token!(TokenType::VariableReference(VariableKind::Unterminated))
                     }
+                    ' ' | '\t' => {
+                        // We need this branch here explicitly to catch these
+                        // "whitespace" characters which are treated as variable
+                        // name. In practice I'm pretty sure it's impossible to
+                        // actually set these variables ("$ " and "$\t") to
+                        // anything, but we need to parse references to them
+                        // correctly and thus need to catch these names before
+                        // the is_whitespace case.
+                        // See tests/makefiles/single_dollar.mk
+                        consume_next!();
+                        token!(TokenType::VariableReference(VariableKind::SingleCharacter))
+                    }
                     c if c.is_whitespace() => {
-                        token!(TokenType::VariableReference(VariableKind::Unterminated))
+                        // This is some sort of line break, emit as just a raw $
+                        // See tests/makefiles/single_dollar.mk
+                        token!(TokenType::Text)
+                    }
+                    '#' => {
+                        // Another "end of line" case
+                        // See tests/makefiles/comment_intro_variable.mk
+                        token!(TokenType::Text)
                     }
                     _ => {
                         consume_next!();
@@ -292,8 +311,9 @@ where
                     }
                 }
             } else {
-                // We saw a $ at the end of input
-                token!(TokenType::VariableReference(VariableKind::Unterminated))
+                // We saw a $ at the end of input, which means it's treated as just text
+                // (see tests/makefiles/single_dollar.mk)
+                token!(TokenType::Text)
             }
         } else if chr == '(' {
             token!(TokenType::OpenParen)
