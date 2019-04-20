@@ -265,11 +265,7 @@ where
                     '$' => {
                         // If it's another $ sign, this isn't a variable reference but an "escaped" $
                         consume_next!();
-                        Some(Token::new(
-                            next_start,
-                            TokenType::Text,
-                            end_idx,
-                        ))
+                        Some(Token::new(next_start, TokenType::Text, end_idx))
                     }
                     '(' => {
                         consume_next!();
