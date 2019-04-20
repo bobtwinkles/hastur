@@ -45,7 +45,7 @@ pub enum TokenType {
     /// A variable assignment operator
     VariableAssign(VariableAssign),
     /// The start of a variable reference (a `$` token)
-    VariableReference,
+    VariableReference(VariableKind),
     /// An open parenthesis
     OpenParen,
     /// A close parenthesis
@@ -64,6 +64,12 @@ pub enum TokenType {
     NewLine,
     /// A `#` character
     CommentStart,
+    /// A `"` character
+    DoubleQuote,
+    /// A `'` character
+    SingleQuote,
+    /// A `,` character
+    Comma,
 }
 
 /// Is the colon involved a double colon?
@@ -98,6 +104,21 @@ pub enum VariableAssign {
     Conditional,
     /// Corresponds to `!=`
     Bang,
+}
+
+/// What kind of variable reference is this?
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(test, derive(Arbitrary))]
+pub enum VariableKind {
+    /// It's a $ followed by a single character
+    SingleCharacter,
+    /// It's a $ followed by an open parenthesis
+    OpenParen,
+    /// It's a $ followed by an open brace
+    OpenBrace,
+    /// It's definitely unterminated. This happens if the character after the $
+    /// is a whitespace character
+    Unterminated,
 }
 
 /// A builtin function
@@ -155,7 +176,7 @@ pub enum Directive {
     IfDef,
     IfEq,
     IfNDef,
-    IfNeq,
+    IfNEq,
 
     Define,
     Enddef,
@@ -166,7 +187,7 @@ struct TokenStream<IT> {
     internal: IT,
 }
 
-const SPECIAL_CHARACTERS: &'static str = "\\$(){}:;%+?!=#";
+const SPECIAL_CHARACTERS: &'static str = "\\$(){}:;%+?!=#\"',";
 
 impl<IT> Iterator for TokenStream<Peekable<IT>>
 where
@@ -235,7 +256,45 @@ where
                 Some(chr2) => token!(TokenType::EscapedCharacter(Some(chr2))),
             }
         } else if chr == '$' {
-            token!(TokenType::VariableReference)
+            if let Some((next_start, next)) = self.internal.peek() {
+                // kill borrow of internal
+                let next_start = *next_start;
+                let next = *next;
+
+                match next {
+                    '$' => {
+                        // If it's another $ sign, this isn't a variable reference but an "escaped" $
+                        consume_next!();
+                        Some(Token::new(
+                            next_start,
+                            TokenType::Text,
+                            end_idx,
+                        ))
+                    }
+                    '(' => {
+                        consume_next!();
+                        token!(TokenType::VariableReference(VariableKind::OpenParen))
+                    }
+                    '{' => {
+                        consume_next!();
+                        token!(TokenType::VariableReference(VariableKind::OpenBrace))
+                    }
+                    '\\' => {
+                        warn!("Encountered a backslash after a variable name. It's unlikely that this is handled correctly");
+                        token!(TokenType::VariableReference(VariableKind::Unterminated))
+                    }
+                    c if c.is_whitespace() => {
+                        token!(TokenType::VariableReference(VariableKind::Unterminated))
+                    }
+                    _ => {
+                        consume_next!();
+                        token!(TokenType::VariableReference(VariableKind::SingleCharacter))
+                    }
+                }
+            } else {
+                // We saw a $ at the end of input
+                token!(TokenType::VariableReference(VariableKind::Unterminated))
+            }
         } else if chr == '(' {
             token!(TokenType::OpenParen)
         } else if chr == ')' {
@@ -285,6 +344,12 @@ where
             token!(TokenType::VariableAssign(VariableAssign::Recursive))
         } else if chr == '#' {
             token!(TokenType::CommentStart)
+        } else if chr == '\'' {
+            token!(TokenType::SingleQuote)
+        } else if chr == '"' {
+            token!(TokenType::DoubleQuote)
+        } else if chr == ',' {
+            token!(TokenType::Comma)
         } else {
             // Attempt to match using the generated matcher
             let (updated_end, matched) = text_matcher::do_match(end_idx, chr, &mut self.internal);
@@ -331,12 +396,19 @@ mod test {
                 }
                 TokenType::Text => {
                     let slice = &original_string[token.start..token.end];
-                    buffer.push_str(slice);
+
+                    // Special case: an "escaped" dollar character
+                    if slice == "$" {
+                        buffer.push_str("$$");
+                    } else {
+                        buffer.push_str(slice);
+                    }
                 }
                 TokenType::EscapedCharacter(Some(c)) => {
                     buffer.push('\\');
                     buffer.push(c)
                 }
+                TokenType::EscapedCharacter(None) => buffer.push('\\'),
                 TokenType::Directive(directive) => match directive {
                     Directive::Export => buffer.push_str("Export"),
                     Directive::Include(soft) => match soft {
@@ -355,7 +427,7 @@ mod test {
                     Directive::IfDef => buffer.push_str("IfDef"),
                     Directive::IfEq => buffer.push_str("IfEq"),
                     Directive::IfNDef => buffer.push_str("IfNDef"),
-                    Directive::IfNeq => buffer.push_str("IfNeq"),
+                    Directive::IfNEq => buffer.push_str("IfNeq"),
 
                     Directive::Define => buffer.push_str("Define"),
                     Directive::Enddef => buffer.push_str("Enddef"),
@@ -396,18 +468,23 @@ mod test {
                     BuiltinFunction::WordList => buffer.push_str("WordList"),
                     BuiltinFunction::Words => buffer.push_str("Words"),
                 },
-                TokenType::EscapedCharacter(None) => buffer.push('\\'),
-                TokenType::VariableAssign(VariableAssign::Recursive) => buffer.push_str("="),
-                TokenType::VariableAssign(VariableAssign::Simple(IsDoubleColon::No)) => {
-                    buffer.push_str(":=")
-                }
-                TokenType::VariableAssign(VariableAssign::Simple(IsDoubleColon::Yes)) => {
-                    buffer.push_str("::=")
-                }
-                TokenType::VariableAssign(VariableAssign::Append) => buffer.push_str("+="),
-                TokenType::VariableAssign(VariableAssign::Conditional) => buffer.push_str("?="),
-                TokenType::VariableAssign(VariableAssign::Bang) => buffer.push_str("!="),
-                TokenType::VariableReference => buffer.push('$'),
+                TokenType::VariableAssign(kind) => match kind {
+                    VariableAssign::Recursive => buffer.push_str("="),
+                    VariableAssign::Simple(IsDoubleColon::No) => buffer.push_str(":="),
+                    VariableAssign::Simple(IsDoubleColon::Yes) => buffer.push_str("::="),
+                    VariableAssign::Append => buffer.push_str("+="),
+                    VariableAssign::Conditional => buffer.push_str("?="),
+                    VariableAssign::Bang => buffer.push_str("!="),
+                },
+                TokenType::VariableReference(kind) => match kind {
+                    VariableKind::SingleCharacter => {
+                        let span = &original_string[token.start..token.end];
+                        buffer.push_str(span);
+                    }
+                    VariableKind::OpenParen => buffer.push_str("$("),
+                    VariableKind::OpenBrace => buffer.push_str("${"),
+                    VariableKind::Unterminated => buffer.push('$'),
+                },
                 TokenType::OpenParen => buffer.push('('),
                 TokenType::CloseParen => buffer.push(')'),
                 TokenType::OpenBrace => buffer.push('{'),
@@ -418,6 +495,9 @@ mod test {
                 TokenType::Percent => buffer.push('%'),
                 TokenType::NewLine => buffer.push('\n'),
                 TokenType::CommentStart => buffer.push('#'),
+                TokenType::SingleQuote => buffer.push('\''),
+                TokenType::DoubleQuote => buffer.push('"'),
+                TokenType::Comma => buffer.push(','),
             }
         }
 

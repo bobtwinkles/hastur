@@ -1117,9 +1117,9 @@ where
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
             Some(c) if c.is_whitespace() => {
-                (last_end, Some(TokenType::Directive(Directive::IfNeq)))
+                (last_end, Some(TokenType::Directive(Directive::IfNEq)))
             }
-            None => (last_end, Some(TokenType::Directive(Directive::IfNeq))),
+            None => (last_end, Some(TokenType::Directive(Directive::IfNEq))),
 
             _ => (last_end, None),
         }

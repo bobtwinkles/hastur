@@ -18,7 +18,7 @@ directives = {
     "ifdef": "IfDef",
     "ifeq": "IfEq",
     "ifndef": "IfNDef",
-    "ifneq": "IfNeq",
+    "ifneq": "IfNEq",
 
     "define": "Define",
     "enddef": "Enddef",
