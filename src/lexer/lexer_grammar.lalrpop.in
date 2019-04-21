@@ -1,0 +1,49 @@
+use crate::lexer::{Lexeme, Directive, BuiltinFunction};
+use crate::tokenizer::{TokenType, VariableAssign, IsDoubleColon};
+
+grammar;
+
+extern {
+    type Location = usize;
+    type Error = crate::lexer::LexicalError;
+    
+    enum TokenType {
+        "char" => TokenType::Text(_),
+        "whitespace" => TokenType::Whitespace(_),
+        "escaped_char" => TokenType::EscapedCharacter(_),
+        "var_assign" => TokenType::VariableAssign(_),
+        "(" => TokenType::OpenParen,
+        ")" => TokenType::CloseParen,
+        "{" => TokenType::OpenBrace,
+        "}" => TokenType::CloseBrace,
+        ":" => TokenType::Colon(IsDoubleColon::No),
+        "::" => TokenType::Colon(IsDoubleColon::Yes),
+        ";" => TokenType::SemiColon,
+        "%" => TokenType::Percent,
+        "\n" => TokenType::NewLine,
+        "#" => TokenType::CommentStart,
+        "\"" => TokenType::Text('"'),
+        "dash" => TokenType::Text('-'),
+        <<<DICT_TOKENS>>>
+    }
+}
+
+pub MakefileLine = <LineElement*>;
+
+LineElement: Lexeme = {
+    "whitespace" => Lexeme::Whitespace,
+    "(" => Lexeme::OpenParen,
+    ")" => Lexeme::CloseParen,
+    "{" => Lexeme::OpenBrace,
+    "}" => Lexeme::CloseBrace,
+    ":" => Lexeme::Colon(IsDoubleColon::No),
+    "::" => Lexeme::Colon(IsDoubleColon::Yes),
+    ";" => Lexeme::SemiColon,
+    "%" => Lexeme::Percent,
+    "\n" => Lexeme::NewLine,
+    "#" => Lexeme::CommentStart,
+}
+
+Whitespace: Lexeme = {
+    <"whitespace"+> => Lexeme::Whitespace,
+}
