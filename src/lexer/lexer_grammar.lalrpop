@@ -86,40 +86,56 @@ extern {
 pub MakefileLine : MakefileLine = <MakefileLineInner> Comment? EOL;
 
 MakefileLineInner : MakefileLine = {
-    <ConditionalLine> Whitespace => MakefileLine::ConditionalLine(<>),
+    <ConditionalLine> => MakefileLine::ConditionalLine(<>),
     Whitespace => MakefileLine::EmptyLine,
 }
 
 Comment = "#" AnyButNewline*;
 
 ConditionalLine : ConditionalLine = {
-    <start:@L> "ifeq" "whitespace"* <args:ConditionalEqArguments> <end:@R> => ConditionalLine {
-        start: start,
-        conditional: ConditionalTy::IfEq(args.0, args.1),
-        end: end,
-    },
-    <start:@L> "ifneq" "whitespace"* <args:ConditionalEqArguments> <end:@R> => ConditionalLine {
-        start: start,
-        conditional: ConditionalTy::IfEq(args.0, args.1),
-        end: end,
+    <start:@L> <conditional:AnyConditional> <end:@R> => ConditionalLine {
+        start, end, conditional,
     }
 }
 
-ConditionalEqArguments : (VariableAstNode, VariableAstNode) = {
-    "(" <a:VariableText> "," <b:VariableText> ")" => (a, b)
+AnyConditional : ConditionalTy = {
+    <IfEq>,
+    <IfDef>
 }
 
-VariableText : VariableAstNode = <start:@L> <input:AnyVariableWord*> <end:@R> => {
+#[inline]
+IfEq : ConditionalTy = {
+    "ifeq" Whitespace <args:ConditionalEqArguments> Whitespace => ConditionalTy::IfEq(args.0, args.1),
+    "ifneq" Whitespace <args:ConditionalEqArguments> Whitespace => ConditionalTy::IfNEq(args.0, args.1),
+}
+
+ConditionalEqArguments : (VariableAstNode, VariableAstNode) = {
+    "(" <a:VariableText> "," <b:VariableText> ")" => (a, b),
+    <a:ConditionalEqArg> "whitespace"+ <b:ConditionalEqArg> => (a, b)
+}
+
+ConditionalEqArg : VariableAstNode = {
+    "\"" <VariableText> "\"",
+    "'" <VariableText> "'",
+}
+
+#[inline]
+IfDef : ConditionalTy = {
+    "ifdef" <t:VariableText> => ConditionalTy::IfDef(t),
+    "ifndef" <t:VariableText> => ConditionalTy::IfNDef(t),
+}
+
+VariableText : VariableAstNode = Whitespace <start:@L> <input:(AnyVariableWord Whitespace)+> <end:@R> => {
+        use std::iter;
         let mut words = input;
         match words.len() {
-            0 => VariableAstNode {
-                start, end,
-                ty: VariableAstNodeTy::Text,
-            },
-            1 => words.remove(0),
+            0 => unreachable!("at least one variable word should have been mached -- this is a bug in the grammar"),
+            1 => words.remove(0).0,
             _ => VariableAstNode {
                 start, end,
-                ty: VariableAstNodeTy::Concat(words),
+                ty: VariableAstNodeTy::Concat(words.into_iter().flat_map(|x| {
+                    iter::once(x.0).chain(iter::once(x.1))
+                }).collect()),
             },
         }
     };
@@ -133,7 +149,6 @@ AnyVariableWord : VariableAstNode = {
 #[inline]
 VariableWordSpecials = {
    "text",
-   "whitespace",
    // TODO: there are probably more things that need to go here
 }
 
@@ -332,7 +347,9 @@ AnyButNewline = {
     ",",
 }
 
-Whitespace = "whitespace"*;
+#[inline]
+Whitespace: VariableAstNode = <start:@L> "whitespace"* <end:@R>
+    => token_as_text(start, TokenType::Whitespace, end);
 
 EOL : Option<TokenType> = {
     <"\n"> => Some(<>),

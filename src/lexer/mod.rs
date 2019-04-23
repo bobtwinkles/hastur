@@ -205,14 +205,7 @@ mod test {
                 start: 0,
                 conditional: ConditionalTy::IfEq(
                     VariableAstNode::new(5, VariableAstNodeTy::Text, 6),
-                    VariableAstNode::new(
-                        7,
-                        VariableAstNodeTy::Concat(vec![
-                            VariableAstNode::new(7, VariableAstNodeTy::Text, 8),
-                            VariableAstNode::new(8, VariableAstNodeTy::Text, 9)
-                        ]),
-                        9
-                    )
+                    VariableAstNode::new(8, VariableAstNodeTy::Text, 9)
                 ),
                 end: 10,
             }),
@@ -221,25 +214,55 @@ mod test {
     }
 
     #[test]
+    fn quote_ifeq() {
+        let res: MakefileLine =
+            assert_ok!(MakefileLineParser::new().parse(simple_iterator("ifeq \"a\" 'b'")));
+        assert_eq!(
+            MakefileLine::ConditionalLine(ConditionalLine {
+                start: 0,
+                conditional: ConditionalTy::IfEq(
+                    VariableAstNode::new(6, VariableAstNodeTy::Text, 7),
+                    VariableAstNode::new(10, VariableAstNodeTy::Text, 11)
+                ),
+                end: 12,
+            }),
+            res
+        )
+    }
+
+    #[test]
     fn ifeq_followed_by_comment() {
-        let res: MakefileLine = assert_ok!(
-            MakefileLineParser::new().parse(simple_iterator("ifeq(a, b) # this is a comment"))
-        );
+        crate::test::setup();
+        const input: &'static str = "ifeq(a, b) # this is a comment";
+        let res: MakefileLine = assert_ok!(MakefileLineParser::new().parse(simple_iterator(input)));
         assert_eq!(
             MakefileLine::ConditionalLine(ConditionalLine {
                 start: 0,
                 conditional: ConditionalTy::IfEq(
                     VariableAstNode::new(5, VariableAstNodeTy::Text, 6),
-                    VariableAstNode::new(
-                        7,
-                        VariableAstNodeTy::Concat(vec![
-                            VariableAstNode::new(7, VariableAstNodeTy::Text, 8),
-                            VariableAstNode::new(8, VariableAstNodeTy::Text, 9),
-                        ]),
-                        9
-                    )
+                    VariableAstNode::new(8, VariableAstNodeTy::Text, 9),
                 ),
-                end: 10,
+                /// XXX: This is a bit annoying, but without significantly
+                /// refactoring the grammar it's hard to avoid capturing the
+                /// tailing whitespace here
+                end: 11,
+            }),
+            res
+        )
+    }
+
+    #[test]
+    fn ifdef_simple() {
+        crate::test::setup();
+        const input: &'static str = "ifdef foo";
+        let res: MakefileLine = assert_ok!(MakefileLineParser::new().parse(simple_iterator(input)));
+        assert_eq!(
+            MakefileLine::ConditionalLine(ConditionalLine {
+                start: 0,
+                conditional: ConditionalTy::IfDef(
+                    VariableAstNode::new(6, VariableAstNodeTy::Text, 9),
+                ),
+                end: 9,
             }),
             res
         )
