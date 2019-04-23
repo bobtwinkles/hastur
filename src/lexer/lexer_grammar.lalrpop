@@ -33,6 +33,39 @@ extern {
         "${" =>  TokenType::VariableReference(VariableKind::OpenBrace),
 
         "abspath" => TokenType::BuiltinFunction(BuiltinFunction::Abspath),
+        "addprefix" => TokenType::BuiltinFunction(BuiltinFunction::AddPrefix),
+        "addsuffix" => TokenType::BuiltinFunction(BuiltinFunction::AddSuffix),
+        "and" => TokenType::BuiltinFunction(BuiltinFunction::And),
+        "basename" => TokenType::BuiltinFunction(BuiltinFunction::BaseName),
+        "call" => TokenType::BuiltinFunction(BuiltinFunction::Call),
+        "dir" => TokenType::BuiltinFunction(BuiltinFunction::Dir),
+        "error" => TokenType::BuiltinFunction(BuiltinFunction::Error),
+        "eval" => TokenType::BuiltinFunction(BuiltinFunction::Eval),
+        "file" => TokenType::BuiltinFunction(BuiltinFunction::File),
+        "filter" => TokenType::BuiltinFunction(BuiltinFunction::Filter),
+        "filterout" => TokenType::BuiltinFunction(BuiltinFunction::FilterOut),
+        "findstring" => TokenType::BuiltinFunction(BuiltinFunction::FindString),
+        "firstword" => TokenType::BuiltinFunction(BuiltinFunction::FirstWord),
+        "flavor" => TokenType::BuiltinFunction(BuiltinFunction::Flavor),
+        "if" => TokenType::BuiltinFunction(BuiltinFunction::If),
+        "info" => TokenType::BuiltinFunction(BuiltinFunction::Info),
+        "join" => TokenType::BuiltinFunction(BuiltinFunction::Join),
+        "lastword" => TokenType::BuiltinFunction(BuiltinFunction::LastWord),
+        "notdir" => TokenType::BuiltinFunction(BuiltinFunction::NotDir),
+        "or" => TokenType::BuiltinFunction(BuiltinFunction::Or),
+        "origin" => TokenType::BuiltinFunction(BuiltinFunction::Origin),
+        "patsubst" => TokenType::BuiltinFunction(BuiltinFunction::PatSubst),
+        "realpath" => TokenType::BuiltinFunction(BuiltinFunction::Realpath),
+        "sort" => TokenType::BuiltinFunction(BuiltinFunction::Sort),
+        "strip" => TokenType::BuiltinFunction(BuiltinFunction::Strip),
+        "subst" => TokenType::BuiltinFunction(BuiltinFunction::Subst),
+        "suffix" => TokenType::BuiltinFunction(BuiltinFunction::Suffix),
+        "value" => TokenType::BuiltinFunction(BuiltinFunction::Value),
+        "warning" => TokenType::BuiltinFunction(BuiltinFunction::Warning),
+        "wildcard" => TokenType::BuiltinFunction(BuiltinFunction::Wildcard),
+        "word" => TokenType::BuiltinFunction(BuiltinFunction::Word),
+        "wordlist" => TokenType::BuiltinFunction(BuiltinFunction::WordList),
+        "words" => TokenType::BuiltinFunction(BuiltinFunction::Words),
 
         "(" => TokenType::OpenParen,
         ")" => TokenType::CloseParen,
@@ -209,7 +242,7 @@ VariableTextNonFunction = {
    "text",
    "escaped_char",
    "#",
-   Directives,
+   Directive,
    Colons
 }
 
@@ -224,7 +257,7 @@ Braces = { "{", "}" }
 Parens = { "(", ")" }
 
 #[inline]
-Directives = {
+Directive = {
     "export",
     "include",
     "load",
@@ -240,32 +273,57 @@ Directives = {
     "enddef",
 }
 
+#[inline]
+FunctionName = {
+    "abspath",
+    "addprefix",
+    "addsuffix",
+    "and",
+    "basename",
+    "call",
+    "dir",
+    "error",
+    "eval",
+    "file",
+    "filter",
+    "filterout",
+    "findstring",
+    "firstword",
+    "flavor",
+    "if",
+    "info",
+    "join",
+    "lastword",
+    "notdir",
+    "or",
+    "origin",
+    "patsubst",
+    "realpath",
+    "sort",
+    "strip",
+    "subst",
+    "suffix",
+    "value",
+    "warning",
+    "wildcard",
+    "word",
+    "wordlist",
+    "words",
+}
+
 AnyButNewline = {
     "whitespace",
     "escaped_char",
     "var_assign",
     
     "text",
-    
-    "export",
-    "include",
-    "load",
-    "unexport",
-    "vpath",
-    "else",
-    "endif",
-    "ifdef",
-    "ifeq",
-    "ifndef",
-    "ifneq",
-    "define",
-    "enddef",
+
+    FunctionName,
+    Directive,
     
     "single_var",
     "$(",
     "${",
-    
-    "abspath",
     
     "(",
     ")",
