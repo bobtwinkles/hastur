@@ -53,8 +53,8 @@ extern {
 pub MakefileLine : MakefileLine = <MakefileLineInner> Comment? EOL;
 
 MakefileLineInner : MakefileLine = {
-    <ConditionalLine> => MakefileLine::ConditionalLine(<>),
-    "whitespace"* => MakefileLine::EmptyLine,
+    <ConditionalLine> Whitespace => MakefileLine::ConditionalLine(<>),
+    Whitespace => MakefileLine::EmptyLine,
 }
 
 Comment = "#" AnyButNewline*;
@@ -280,6 +280,8 @@ AnyButNewline = {
     "'",
     ",",
 }
+
+Whitespace = "whitespace"*;
 
 EOL : Option<TokenType> = {
     <"\n"> => Some(<>),
