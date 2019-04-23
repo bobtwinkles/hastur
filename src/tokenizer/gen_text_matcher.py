@@ -112,7 +112,7 @@ match_char_template = """
             }}"""
 
 match_whitespace_template = """
-            Some(c) if c.is_whitespace() => {{
+            Some(c) if !c.is_ascii_alphabetic() => {{
                 (last_end, Some({token}))
             }}
             None => {{

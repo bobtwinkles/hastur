@@ -586,4 +586,19 @@ mod test {
 
         assert_eq!(vec![Token::new(0, TokenType::Text, 5)], parsed)
     }
+
+    #[test]
+    fn recognize_ifeq_at_start() {
+        let input = "ifeq()";
+        let parsed: Vec<Token> = iterator_to_token_stream(input.char_indices()).collect();
+
+        assert_eq!(
+            vec![
+                Token::new(0, TokenType::Directive(Directive::IfEq), 4),
+                Token::new(4, TokenType::OpenParen, 5),
+                Token::new(5, TokenType::CloseParen, 6)
+            ],
+            parsed
+        )
+    }
 }

@@ -12,22 +12,22 @@ where
 {
     match first_char {
         '-' => match_dash_(last_end, it),
+        'e' => match_e(last_end, it),
+        'i' => match_i(last_end, it),
+        'l' => match_l(last_end, it),
+        's' => match_s(last_end, it),
+        'u' => match_u(last_end, it),
+        'v' => match_v(last_end, it),
+        'd' => match_d(last_end, it),
         'a' => match_a(last_end, it),
         'b' => match_b(last_end, it),
         'c' => match_c(last_end, it),
-        'd' => match_d(last_end, it),
-        'e' => match_e(last_end, it),
         'f' => match_f(last_end, it),
-        'i' => match_i(last_end, it),
         'j' => match_j(last_end, it),
-        'l' => match_l(last_end, it),
         'n' => match_n(last_end, it),
         'o' => match_o(last_end, it),
         'p' => match_p(last_end, it),
         'r' => match_r(last_end, it),
-        's' => match_s(last_end, it),
-        'u' => match_u(last_end, it),
-        'v' => match_v(last_end, it),
         'w' => match_w(last_end, it),
         _ => (last_end, None),
     }
@@ -170,7 +170,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::Directive(Directive::Include(IsSoft::Yes))),
             ),
@@ -247,7 +247,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::Directive(Directive::Load(IsSoft::Yes))),
             ),
@@ -376,7 +376,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => {
+            Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::Export)))
             }
             None => (last_end, Some(TokenType::Directive(Directive::Export))),
@@ -431,7 +431,9 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (last_end, Some(TokenType::Directive(Directive::Else))),
+            Some(c) if !c.is_ascii_alphabetic() => {
+                (last_end, Some(TokenType::Directive(Directive::Else)))
+            }
             None => (last_end, Some(TokenType::Directive(Directive::Else))),
 
             _ => (last_end, None),
@@ -506,7 +508,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => {
+            Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::EndIf)))
             }
             None => (last_end, Some(TokenType::Directive(Directive::EndIf))),
@@ -561,7 +563,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => {
+            Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::Enddef)))
             }
             None => (last_end, Some(TokenType::Directive(Directive::Enddef))),
@@ -634,7 +636,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Error)),
             ),
@@ -693,7 +695,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Eval)),
             ),
@@ -832,7 +834,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::Directive(Directive::Include(IsSoft::No))),
             ),
@@ -873,7 +875,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Info)),
             ),
@@ -908,7 +910,7 @@ where
                 let (start, chr) = it.next().unwrap();
                 match_ifn(start + chr.len_utf8(), it)
             }
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::If)),
             ),
@@ -967,7 +969,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => {
+            Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::IfDef)))
             }
             None => (last_end, Some(TokenType::Directive(Directive::IfDef))),
@@ -1004,7 +1006,9 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (last_end, Some(TokenType::Directive(Directive::IfEq))),
+            Some(c) if !c.is_ascii_alphabetic() => {
+                (last_end, Some(TokenType::Directive(Directive::IfEq)))
+            }
             None => (last_end, Some(TokenType::Directive(Directive::IfEq))),
 
             _ => (last_end, None),
@@ -1079,7 +1083,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => {
+            Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::IfNDef)))
             }
             None => (last_end, Some(TokenType::Directive(Directive::IfNDef))),
@@ -1116,7 +1120,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => {
+            Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::IfNEq)))
             }
             None => (last_end, Some(TokenType::Directive(Directive::IfNEq))),
@@ -1193,7 +1197,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::Directive(Directive::Load(IsSoft::No))),
             ),
@@ -1324,7 +1328,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::LastWord)),
             ),
@@ -1485,7 +1489,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::Directive(Directive::Include(IsSoft::Yes))),
             ),
@@ -1544,7 +1548,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Sort)),
             ),
@@ -1621,7 +1625,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Strip)),
             ),
@@ -1702,7 +1706,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Subst)),
             ),
@@ -1779,7 +1783,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Suffix)),
             ),
@@ -1928,7 +1932,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => {
+            Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::UnExport)))
             }
             None => (last_end, Some(TokenType::Directive(Directive::UnExport))),
@@ -2023,7 +2027,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => {
+            Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::VPath)))
             }
             None => (last_end, Some(TokenType::Directive(Directive::VPath))),
@@ -2096,7 +2100,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Value)),
             ),
@@ -2213,7 +2217,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => {
+            Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::Define)))
             }
             None => (last_end, Some(TokenType::Directive(Directive::Define))),
@@ -2250,7 +2254,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Dir)),
             ),
@@ -2389,7 +2393,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Abspath)),
             ),
@@ -2542,7 +2546,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::AddPrefix)),
             ),
@@ -2655,7 +2659,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::AddSuffix)),
             ),
@@ -2696,7 +2700,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::And)),
             ),
@@ -2845,7 +2849,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::BaseName)),
             ),
@@ -2922,7 +2926,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Call)),
             ),
@@ -3015,7 +3019,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::File)),
             ),
@@ -3078,7 +3082,7 @@ where
                 let (start, chr) = it.next().unwrap();
                 match_filtero(start + chr.len_utf8(), it)
             }
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Filter)),
             ),
@@ -3137,7 +3141,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::FilterOut)),
             ),
@@ -3286,7 +3290,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::FindString)),
             ),
@@ -3417,7 +3421,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::FirstWord)),
             ),
@@ -3512,7 +3516,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Flavor)),
             ),
@@ -3589,7 +3593,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Join)),
             ),
@@ -3702,7 +3706,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::NotDir)),
             ),
@@ -3747,7 +3751,7 @@ where
                 let (start, chr) = it.next().unwrap();
                 match_ori(start + chr.len_utf8(), it)
             }
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Or)),
             ),
@@ -3824,7 +3828,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Origin)),
             ),
@@ -3973,7 +3977,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::PatSubst)),
             ),
@@ -4122,7 +4126,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Realpath)),
             ),
@@ -4261,7 +4265,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Warning)),
             ),
@@ -4392,7 +4396,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Wildcard)),
             ),
@@ -4459,7 +4463,7 @@ where
                 let (start, chr) = it.next().unwrap();
                 match_words(start + chr.len_utf8(), it)
             }
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Word)),
             ),
@@ -4536,7 +4540,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::WordList)),
             ),
@@ -4559,7 +4563,7 @@ where
 {
     if let Some((_, chr)) = it.peek() {
         match chr.to_lowercase().next() {
-            Some(c) if c.is_whitespace() => (
+            Some(c) if !c.is_ascii_alphabetic() => (
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Words)),
             ),
