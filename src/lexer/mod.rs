@@ -49,6 +49,13 @@ pub struct VariableAstNode {
     end: usize,
 }
 
+impl VariableAstNode {
+    #[cfg(test)]
+    fn new(start: usize, ty: VariableAstNodeTy, end: usize) -> Self {
+        Self { start, ty, end }
+    }
+}
+
 /// What kind of AST node is it?
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[allow(dead_code)]
@@ -163,8 +170,7 @@ fn adapt_token_iterator(
 /// TODO: this shouldn't return the lalrpop error directly, as that exposes lalrpop_util as a public dep
 pub fn parse_stream(
     it: impl Iterator<Item = Token>,
-) -> Result<MakefileLine, lalrpop_util::ParseError<usize, tokenizer::TokenType, LexicalError>>
-{
+) -> Result<MakefileLine, lalrpop_util::ParseError<usize, tokenizer::TokenType, LexicalError>> {
     let parser = lexer_grammar::MakefileLineParser::new();
 
     parser.parse(adapt_token_iterator(it))
@@ -198,30 +204,15 @@ mod test {
             MakefileLine::ConditionalLine(ConditionalLine {
                 start: 0,
                 conditional: ConditionalTy::IfEq(
-                    VariableAstNode {
-                        // The "a"
-                        start: 5,
-                        end: 6,
-                        ty: VariableAstNodeTy::Text,
-                    },
-                    VariableAstNode {
-                        start: 7,
-                        end: 9,
-                        ty: VariableAstNodeTy::Concat(vec![
-                            VariableAstNode {
-                                // The whitespace
-                                start: 7,
-                                ty: VariableAstNodeTy::Text,
-                                end: 8,
-                            },
-                            VariableAstNode {
-                                // The "b"
-                                start: 8,
-                                ty: VariableAstNodeTy::Text,
-                                end: 9,
-                            }
+                    VariableAstNode::new(5, VariableAstNodeTy::Text, 6),
+                    VariableAstNode::new(
+                        7,
+                        VariableAstNodeTy::Concat(vec![
+                            VariableAstNode::new(7, VariableAstNodeTy::Text, 8),
+                            VariableAstNode::new(8, VariableAstNodeTy::Text, 9)
                         ]),
-                    }
+                        9
+                    )
                 ),
                 end: 10,
             }),
@@ -238,30 +229,15 @@ mod test {
             MakefileLine::ConditionalLine(ConditionalLine {
                 start: 0,
                 conditional: ConditionalTy::IfEq(
-                    VariableAstNode {
-                        // The "a"
-                        start: 5,
-                        end: 6,
-                        ty: VariableAstNodeTy::Text,
-                    },
-                    VariableAstNode {
-                        start: 7,
-                        end: 9,
-                        ty: VariableAstNodeTy::Concat(vec![
-                            VariableAstNode {
-                                // The whitespace
-                                start: 7,
-                                ty: VariableAstNodeTy::Text,
-                                end: 8,
-                            },
-                            VariableAstNode {
-                                // The "b"
-                                start: 8,
-                                ty: VariableAstNodeTy::Text,
-                                end: 9,
-                            }
+                    VariableAstNode::new(5, VariableAstNodeTy::Text, 6),
+                    VariableAstNode::new(
+                        7,
+                        VariableAstNodeTy::Concat(vec![
+                            VariableAstNode::new(7, VariableAstNodeTy::Text, 8),
+                            VariableAstNode::new(8, VariableAstNodeTy::Text, 9),
                         ]),
-                    }
+                        9
+                    )
                 ),
                 end: 10,
             }),
