@@ -411,7 +411,7 @@ mod test {
                 let s = $s;
                 assert!(s.eq_ignore_ascii_case(original), "string round tripped");
                 buffer.push_str(original);
-            }}
+            }};
         };
 
         for token in tokens {

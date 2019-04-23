@@ -58,7 +58,10 @@ impl crate::parsers::ParserState {
         seq_parse_options.check_ar = false;
 
         let files = parse_file_seq(contents.span(), seq_parse_options);
-        info!("Include directive will result in include of {} total files", files.len());
+        info!(
+            "Include directive will result in include of {} total files",
+            files.len()
+        );
 
         for file in files {
             let mut path = engine.working_directory.clone();

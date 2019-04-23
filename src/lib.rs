@@ -36,12 +36,12 @@ mod test_macros;
 pub mod ast;
 mod eval;
 pub mod evaluated;
+pub mod lexer;
 mod parsers;
 pub mod pattern;
 pub mod source_location;
-pub mod traits;
 pub mod tokenizer;
-pub mod lexer;
+pub mod traits;
 mod types;
 
 pub use crate::eval::{Flavor, Origin, Variable, VariableParameters};
@@ -231,7 +231,7 @@ pub struct Database {
 
 impl Database {
     /// Iterate over all the rules in this database
-    pub fn rules(&self) -> impl Iterator<Item=&Rule> {
+    pub fn rules(&self) -> impl Iterator<Item = &Rule> {
         self.rules.values()
     }
 

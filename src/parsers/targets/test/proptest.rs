@@ -91,14 +91,8 @@ fn arb_action() -> impl Strategy<Value = (Action, String, NameCache)> {
                 None => None,
             };
 
-            let targets = targets
-                .into_iter()
-                .map(|v| create_span(&v.0))
-                .collect();
-            let deps = deps
-                .into_iter()
-                .map(|v| create_span(&v.0))
-                .collect();
+            let targets = targets.into_iter().map(|v| create_span(&v.0)).collect();
+            let deps = deps.into_iter().map(|v| create_span(&v.0)).collect();
 
             (
                 Action::NewRule {
