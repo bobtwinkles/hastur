@@ -27,7 +27,5 @@ fn simple_prefix() {
 
     info!("Database state {:?}", engine.database);
 
-    assert!(false);
-
     variable_set_to!(names, engine, "SHELL", "/bin/sh");
 }

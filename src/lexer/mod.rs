@@ -1,11 +1,15 @@
-use super::tokenizer::{self, IsDoubleColon, Token, TokenType, VariableAssign};
+//! The lexer for makefile lines
+
+use super::tokenizer::{self, Token, TokenType};
 
 mod lexer_grammar;
 
 /// A parsed line of a makefile
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MakefileLine {
+    /// A line that starts with a conditional directive
     ConditionalLine(ConditionalLine),
+    /// An empty line
     EmptyLine,
 }
 
@@ -20,11 +24,17 @@ pub struct ConditionalLine {
 /// What type of conditional line is it?
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ConditionalTy {
+    /// An `ifeq` statement
     IfEq(VariableAstNode, VariableAstNode),
+    /// An `ifneq` statement
     IfNEq(VariableAstNode, VariableAstNode),
+    /// An `ifdef` statement
     IfDef(VariableAstNode),
+    /// An `ifndef` statement
     IfNDef(VariableAstNode),
+    /// An `else` statement, with an optional follow-on conditional
     Else(Option<Box<ConditionalTy>>),
+    /// An `endif` statement
     Endif,
 }
 
@@ -50,51 +60,78 @@ pub enum VariableAstNodeTy {
     Concat(Vec<VariableAstNode>),
 
     /// A reference to a variable.
-    /// The various location fields relate as follows:
-    /// ```
-    /// $(words a list of words)
-    /// ^                     ^
-    /// |                     \_ end
-    /// \_ start
-    /// ```
     VariableReference {
+        /// The name of the variable being referenced
         name: Box<VariableAstNode>,
     },
 
     /// The `abspath` function
     Abspath(Box<VariableAstNode>),
+    /// The `addprefix` function
     AddPrefix(NotYetImplemented),
+    /// The `addprefix` function
     AddSuffix(NotYetImplemented),
+    /// The `and` function
     And(NotYetImplemented),
+    /// The `basename` function
     BaseName(NotYetImplemented),
+    /// The `call` function
     Call(NotYetImplemented),
+    /// The `dir` function
     Dir(NotYetImplemented),
+    /// The `error` function
     Error(NotYetImplemented),
+    /// The `eval` function
     Eval(NotYetImplemented),
+    /// The `file` function
     File(NotYetImplemented),
+    /// The `filter` function
     Filter(NotYetImplemented),
+    /// The `filterout` function
     FilterOut(NotYetImplemented),
+    /// The `findstring` function
     FindString(NotYetImplemented),
+    /// The `firstword` function
     FirstWord(NotYetImplemented),
+    /// The `flavor` function
     Flavor(NotYetImplemented),
+    /// The `if` function
     If(NotYetImplemented),
+    /// The `info` function
     Info(NotYetImplemented),
+    /// The `join` function
     Join(NotYetImplemented),
+    /// The `lastword` function
     LastWord(NotYetImplemented),
+    /// The `notdir` function
     NotDir(NotYetImplemented),
+    /// The `or` function
     Or(NotYetImplemented),
+    /// The `origin` function
     Origin(NotYetImplemented),
+    /// The `patsubst` function
     PatSubst(NotYetImplemented),
+    /// The `realpath` function
     Realpath(NotYetImplemented),
+    /// The `sort` function
     Sort(NotYetImplemented),
+    /// The `strip` function
     Strip(NotYetImplemented),
+    /// The `subst` function
     Subst(NotYetImplemented),
+    /// The `suffix` function
     Suffix(NotYetImplemented),
+    /// The `value` function
     Value(NotYetImplemented),
+    /// The `warning` function
     Warning(NotYetImplemented),
+    /// The `wildcard` function
     Wildcard(NotYetImplemented),
+    /// The `word` function
     Word(NotYetImplemented),
+    /// The `wordlist` function
     WordList(NotYetImplemented),
+    /// The `words` function
     Words(NotYetImplemented),
 }
 
@@ -102,20 +139,12 @@ pub enum VariableAstNodeTy {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NotYetImplemented {}
 
-fn as_text(start: usize, end: usize) -> VariableAstNode {
-    VariableAstNode {
-        start,
-        end,
-        ty: VariableAstNodeTy::Text,
-    }
-}
-
 /// There are no lexical errors when parsing Makefiles
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LexicalError {}
 
 /// Convert an arbitrary token into a text node
-fn token_as_text(start: usize, tok: TokenType, end: usize) -> VariableAstNode {
+fn token_as_text(start: usize, _tok: TokenType, end: usize) -> VariableAstNode {
     VariableAstNode {
         start,
         end,
@@ -128,6 +157,17 @@ fn adapt_token_iterator(
     it: impl Iterator<Item = Token>,
 ) -> impl Iterator<Item = (usize, TokenType, usize)> {
     it.map(|token| (token.start, token.token_type, token.end))
+}
+
+/// Parse a stream of tokens into a line
+/// TODO: this shouldn't return the lalrpop error directly, as that exposes lalrpop_util as a public dep
+pub fn parse_stream(
+    it: impl Iterator<Item = Token>,
+) -> Result<MakefileLine, lalrpop_util::ParseError<usize, tokenizer::TokenType, LexicalError>>
+{
+    let parser = lexer_grammar::MakefileLineParser::new();
+
+    parser.parse(adapt_token_iterator(it))
 }
 
 #[cfg(test)]
@@ -154,6 +194,46 @@ mod test {
     fn simple_ifeq() {
         let res: MakefileLine =
             assert_ok!(MakefileLineParser::new().parse(simple_iterator("ifeq(a, b)")));
+        assert_eq!(
+            MakefileLine::ConditionalLine(ConditionalLine {
+                start: 0,
+                conditional: ConditionalTy::IfEq(
+                    VariableAstNode {
+                        // The "a"
+                        start: 5,
+                        end: 6,
+                        ty: VariableAstNodeTy::Text,
+                    },
+                    VariableAstNode {
+                        start: 7,
+                        end: 9,
+                        ty: VariableAstNodeTy::Concat(vec![
+                            VariableAstNode {
+                                // The whitespace
+                                start: 7,
+                                ty: VariableAstNodeTy::Text,
+                                end: 8,
+                            },
+                            VariableAstNode {
+                                // The "b"
+                                start: 8,
+                                ty: VariableAstNodeTy::Text,
+                                end: 9,
+                            }
+                        ]),
+                    }
+                ),
+                end: 10,
+            }),
+            res
+        )
+    }
+
+    #[test]
+    fn ifeq_followed_by_comment() {
+        let res: MakefileLine = assert_ok!(
+            MakefileLineParser::new().parse(simple_iterator("ifeq(a, b) # this is a comment"))
+        );
         assert_eq!(
             MakefileLine::ConditionalLine(ConditionalLine {
                 start: 0,

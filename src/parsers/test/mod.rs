@@ -81,19 +81,6 @@ pub(super) fn error_list_contains<I, E: PartialEq>(
     return false;
 }
 
-pub(super) fn error_list_contains_at_location<I: PartialEq, E: PartialEq>(
-    es: &Vec<(I, ErrorKind<E>)>,
-    error_needle: ErrorKind<E>,
-    location_needle: I,
-) -> bool {
-    for (location, error) in es {
-        if *error == error_needle && *location == location_needle {
-            return true;
-        }
-    }
-    return false;
-}
-
 #[test]
 fn test_ends_with_backslash() {
     // use std::io::Cursor;

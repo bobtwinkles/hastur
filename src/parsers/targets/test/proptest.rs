@@ -9,7 +9,7 @@ use proptest::prelude::*;
 
 fn arb_file_name(
     pre_separator: bool,
-    using_command: bool,
+    _using_command: bool,
 ) -> impl Strategy<Value = (String, String)> {
     // TODO: add ` ` here once parse_file_seq supports it
     if pre_separator {

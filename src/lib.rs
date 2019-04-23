@@ -41,7 +41,7 @@ pub mod pattern;
 pub mod source_location;
 pub mod traits;
 pub mod tokenizer;
-mod lexer;
+pub mod lexer;
 mod types;
 
 pub use crate::eval::{Flavor, Origin, Variable, VariableParameters};
@@ -597,12 +597,6 @@ impl Engine {
 #[cfg(test)]
 mod test {
     //! Test utilities
-    use super::Database;
-
-    pub(crate) fn empty_database() -> Database {
-        Default::default()
-    }
-
     pub(crate) fn setup() {
         let _ = env_logger::builder().is_test(true).try_init();
     }
