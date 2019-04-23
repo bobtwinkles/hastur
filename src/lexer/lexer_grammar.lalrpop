@@ -196,13 +196,7 @@ VariableTextInParen = VariableTextInternal<Braces>;
 #[inline]
 VariableTextInBrace = VariableTextInternal<Parens>;
 
-#[inline]
 VariableTextInternal<Accept> : VariableAstNodeTy = {
-    NonFunction<Accept>,
-    AbsPath<Accept>,
-}
-
-NonFunction<Accept> : VariableAstNodeTy =
     <fst_start:@L> <fst:VariableTextInit<Accept>> <fst_end:@R> <rest:VariableTextRest<Accept>?> =>
         match rest {
             None => fst,
@@ -210,10 +204,9 @@ NonFunction<Accept> : VariableAstNodeTy =
                 VariableAstNode{ start: fst_start, ty: fst, end: fst_end },
                 c
             ])
-        };
-
-AbsPath<Accept> : VariableAstNodeTy =
-    "abspath" "whitespace" <rest:VariableTextRest<Accept>> => VariableAstNodeTy::Abspath(Box::new(rest));
+        },
+    "abspath" "whitespace" <rest:VariableTextRest<Accept>> => VariableAstNodeTy::Abspath(Box::new(rest)),
+}
 
 #[inline]
 VariableTextInit<Accept> : VariableAstNodeTy = {
