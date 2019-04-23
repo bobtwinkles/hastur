@@ -404,6 +404,16 @@ mod test {
 
         let mut last_end = 0;
 
+        macro_rules! check_and_push {
+            ($tok:expr, $s:expr) => {{
+                let token = $tok;
+                let original = &original_string[token.start..token.end];
+                let s = $s;
+                assert!(s.eq_ignore_ascii_case(original), "string round tripped");
+                buffer.push_str(original);
+            }}
+        };
+
         for token in tokens {
             match token.token_type {
                 TokenType::Whitespace => {
@@ -429,63 +439,63 @@ mod test {
                 }
                 TokenType::EscapedCharacter(None) => buffer.push('\\'),
                 TokenType::Directive(directive) => match directive {
-                    Directive::Export => buffer.push_str("Export"),
+                    Directive::Export => check_and_push!(token, "Export"),
                     Directive::Include(soft) => match soft {
-                        IsSoft::Yes => buffer.push_str("-include"),
-                        IsSoft::No => buffer.push_str("include"),
+                        IsSoft::Yes => check_and_push!(token, "-include"),
+                        IsSoft::No => check_and_push!(token, "include"),
                     },
                     Directive::Load(soft) => match soft {
-                        IsSoft::Yes => buffer.push_str("-load"),
-                        IsSoft::No => buffer.push_str("load"),
+                        IsSoft::Yes => check_and_push!(token, "-load"),
+                        IsSoft::No => check_and_push!(token, "load"),
                     },
-                    Directive::UnExport => buffer.push_str("UnExport"),
-                    Directive::VPath => buffer.push_str("VPath"),
+                    Directive::UnExport => check_and_push!(token, "UnExport"),
+                    Directive::VPath => check_and_push!(token, "VPath"),
 
-                    Directive::Else => buffer.push_str("Else"),
-                    Directive::EndIf => buffer.push_str("EndIf"),
-                    Directive::IfDef => buffer.push_str("IfDef"),
-                    Directive::IfEq => buffer.push_str("IfEq"),
-                    Directive::IfNDef => buffer.push_str("IfNDef"),
-                    Directive::IfNEq => buffer.push_str("IfNeq"),
+                    Directive::Else => check_and_push!(token, "Else"),
+                    Directive::EndIf => check_and_push!(token, "EndIf"),
+                    Directive::IfDef => check_and_push!(token, "IfDef"),
+                    Directive::IfEq => check_and_push!(token, "IfEq"),
+                    Directive::IfNDef => check_and_push!(token, "IfNDef"),
+                    Directive::IfNEq => check_and_push!(token, "IfNeq"),
 
-                    Directive::Define => buffer.push_str("Define"),
-                    Directive::Enddef => buffer.push_str("Enddef"),
+                    Directive::Define => check_and_push!(token, "Define"),
+                    Directive::Enddef => check_and_push!(token, "Enddef"),
                 },
                 TokenType::BuiltinFunction(function) => match function {
-                    BuiltinFunction::Abspath => buffer.push_str("Abspath"),
-                    BuiltinFunction::AddPrefix => buffer.push_str("AddPrefix"),
-                    BuiltinFunction::AddSuffix => buffer.push_str("AddSuffix"),
-                    BuiltinFunction::And => buffer.push_str("And"),
-                    BuiltinFunction::BaseName => buffer.push_str("BaseName"),
-                    BuiltinFunction::Call => buffer.push_str("Call"),
-                    BuiltinFunction::Dir => buffer.push_str("Dir"),
-                    BuiltinFunction::Error => buffer.push_str("Error"),
-                    BuiltinFunction::Eval => buffer.push_str("Eval"),
-                    BuiltinFunction::File => buffer.push_str("File"),
-                    BuiltinFunction::Filter => buffer.push_str("Filter"),
-                    BuiltinFunction::FilterOut => buffer.push_str("FilterOut"),
-                    BuiltinFunction::FindString => buffer.push_str("FindString"),
-                    BuiltinFunction::FirstWord => buffer.push_str("FirstWord"),
-                    BuiltinFunction::Flavor => buffer.push_str("Flavor"),
-                    BuiltinFunction::If => buffer.push_str("If"),
-                    BuiltinFunction::Info => buffer.push_str("Info"),
-                    BuiltinFunction::Join => buffer.push_str("Join"),
-                    BuiltinFunction::LastWord => buffer.push_str("LastWord"),
-                    BuiltinFunction::NotDir => buffer.push_str("NotDir"),
-                    BuiltinFunction::Or => buffer.push_str("Or"),
-                    BuiltinFunction::Origin => buffer.push_str("Origin"),
-                    BuiltinFunction::PatSubst => buffer.push_str("PatSubst"),
-                    BuiltinFunction::Realpath => buffer.push_str("Realpath"),
-                    BuiltinFunction::Sort => buffer.push_str("Sort"),
-                    BuiltinFunction::Strip => buffer.push_str("Strip"),
-                    BuiltinFunction::Subst => buffer.push_str("Subst"),
-                    BuiltinFunction::Suffix => buffer.push_str("Suffix"),
-                    BuiltinFunction::Value => buffer.push_str("Value"),
-                    BuiltinFunction::Warning => buffer.push_str("Warning"),
-                    BuiltinFunction::Wildcard => buffer.push_str("Wildcard"),
-                    BuiltinFunction::Word => buffer.push_str("Word"),
-                    BuiltinFunction::WordList => buffer.push_str("WordList"),
-                    BuiltinFunction::Words => buffer.push_str("Words"),
+                    BuiltinFunction::Abspath => check_and_push!(token, "Abspath"),
+                    BuiltinFunction::AddPrefix => check_and_push!(token, "AddPrefix"),
+                    BuiltinFunction::AddSuffix => check_and_push!(token, "AddSuffix"),
+                    BuiltinFunction::And => check_and_push!(token, "And"),
+                    BuiltinFunction::BaseName => check_and_push!(token, "BaseName"),
+                    BuiltinFunction::Call => check_and_push!(token, "Call"),
+                    BuiltinFunction::Dir => check_and_push!(token, "Dir"),
+                    BuiltinFunction::Error => check_and_push!(token, "Error"),
+                    BuiltinFunction::Eval => check_and_push!(token, "Eval"),
+                    BuiltinFunction::File => check_and_push!(token, "File"),
+                    BuiltinFunction::Filter => check_and_push!(token, "Filter"),
+                    BuiltinFunction::FilterOut => check_and_push!(token, "FilterOut"),
+                    BuiltinFunction::FindString => check_and_push!(token, "FindString"),
+                    BuiltinFunction::FirstWord => check_and_push!(token, "FirstWord"),
+                    BuiltinFunction::Flavor => check_and_push!(token, "Flavor"),
+                    BuiltinFunction::If => check_and_push!(token, "If"),
+                    BuiltinFunction::Info => check_and_push!(token, "Info"),
+                    BuiltinFunction::Join => check_and_push!(token, "Join"),
+                    BuiltinFunction::LastWord => check_and_push!(token, "LastWord"),
+                    BuiltinFunction::NotDir => check_and_push!(token, "NotDir"),
+                    BuiltinFunction::Or => check_and_push!(token, "Or"),
+                    BuiltinFunction::Origin => check_and_push!(token, "Origin"),
+                    BuiltinFunction::PatSubst => check_and_push!(token, "PatSubst"),
+                    BuiltinFunction::Realpath => check_and_push!(token, "Realpath"),
+                    BuiltinFunction::Sort => check_and_push!(token, "Sort"),
+                    BuiltinFunction::Strip => check_and_push!(token, "Strip"),
+                    BuiltinFunction::Subst => check_and_push!(token, "Subst"),
+                    BuiltinFunction::Suffix => check_and_push!(token, "Suffix"),
+                    BuiltinFunction::Value => check_and_push!(token, "Value"),
+                    BuiltinFunction::Warning => check_and_push!(token, "Warning"),
+                    BuiltinFunction::Wildcard => check_and_push!(token, "Wildcard"),
+                    BuiltinFunction::Word => check_and_push!(token, "Word"),
+                    BuiltinFunction::WordList => check_and_push!(token, "WordList"),
+                    BuiltinFunction::Words => check_and_push!(token, "Words"),
                 },
                 TokenType::VariableAssign(kind) => match kind {
                     VariableAssign::Recursive => buffer.push_str("="),
