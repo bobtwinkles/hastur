@@ -189,82 +189,101 @@ mod test {
         adapt_token_iterator(iterator_to_token_stream(s.char_indices()))
     }
 
-    #[test]
-    fn simple_whitespace() {
-        let res: MakefileLine =
-            assert_ok!(MakefileLineParser::new().parse(simple_iterator("  \t")));
-        assert_eq!(MakefileLine::EmptyLine, res);
+    mod whitespace {
+        use super::*;
+        use pretty_assertions::assert_eq;
+
+        #[test]
+        fn simple() {
+            let res: MakefileLine =
+                assert_ok!(MakefileLineParser::new().parse(simple_iterator("  \t")));
+            assert_eq!(MakefileLine::EmptyLine, res);
+        }
     }
 
-    #[test]
-    fn simple_ifeq() {
-        let res: MakefileLine =
-            assert_ok!(MakefileLineParser::new().parse(simple_iterator("ifeq(a, b)")));
-        assert_eq!(
-            MakefileLine::ConditionalLine(ConditionalLine {
-                start: 0,
-                conditional: ConditionalTy::IfEq(
-                    VariableAstNode::new(5, VariableAstNodeTy::Text, 6),
-                    VariableAstNode::new(8, VariableAstNodeTy::Text, 9)
-                ),
-                end: 10,
-            }),
-            res
-        )
+    mod ifeq {
+        use super::*;
+        use pretty_assertions::assert_eq;
+
+        #[test]
+        fn simple() {
+            let res: MakefileLine =
+                assert_ok!(MakefileLineParser::new().parse(simple_iterator("ifeq(a, b)")));
+            assert_eq!(
+                MakefileLine::ConditionalLine(ConditionalLine {
+                    start: 0,
+                    conditional: ConditionalTy::IfEq(
+                        VariableAstNode::new(5, VariableAstNodeTy::Text, 6),
+                        VariableAstNode::new(8, VariableAstNodeTy::Text, 9)
+                    ),
+                    end: 10,
+                }),
+                res
+            )
+        }
+
+        #[test]
+        fn quote() {
+            let res: MakefileLine =
+                assert_ok!(MakefileLineParser::new().parse(simple_iterator("ifeq \"a\" 'b'")));
+            assert_eq!(
+                MakefileLine::ConditionalLine(ConditionalLine {
+                    start: 0,
+                    conditional: ConditionalTy::IfEq(
+                        VariableAstNode::new(6, VariableAstNodeTy::Text, 7),
+                        VariableAstNode::new(10, VariableAstNodeTy::Text, 11)
+                    ),
+                    end: 12,
+                }),
+                res
+            )
+        }
+
+        #[test]
+        fn followed_by_comment() {
+            crate::test::setup();
+            const input: &'static str = "ifeq(a, b) # this is a comment";
+            let res: MakefileLine =
+                assert_ok!(MakefileLineParser::new().parse(simple_iterator(input)));
+            assert_eq!(
+                MakefileLine::ConditionalLine(ConditionalLine {
+                    start: 0,
+                    conditional: ConditionalTy::IfEq(
+                        VariableAstNode::new(5, VariableAstNodeTy::Text, 6),
+                        VariableAstNode::new(8, VariableAstNodeTy::Text, 9),
+                    ),
+                    /// XXX: This is a bit annoying, but without significantly
+                    /// refactoring the grammar it's hard to avoid capturing the
+                    /// tailing whitespace here
+                    end: 11,
+                }),
+                res
+            )
+        }
     }
 
-    #[test]
-    fn quote_ifeq() {
-        let res: MakefileLine =
-            assert_ok!(MakefileLineParser::new().parse(simple_iterator("ifeq \"a\" 'b'")));
-        assert_eq!(
-            MakefileLine::ConditionalLine(ConditionalLine {
-                start: 0,
-                conditional: ConditionalTy::IfEq(
-                    VariableAstNode::new(6, VariableAstNodeTy::Text, 7),
-                    VariableAstNode::new(10, VariableAstNodeTy::Text, 11)
-                ),
-                end: 12,
-            }),
-            res
-        )
-    }
+    mod ifdef {
+        use super::*;
+        use pretty_assertions::assert_eq;
 
-    #[test]
-    fn ifeq_followed_by_comment() {
-        crate::test::setup();
-        const input: &'static str = "ifeq(a, b) # this is a comment";
-        let res: MakefileLine = assert_ok!(MakefileLineParser::new().parse(simple_iterator(input)));
-        assert_eq!(
-            MakefileLine::ConditionalLine(ConditionalLine {
-                start: 0,
-                conditional: ConditionalTy::IfEq(
-                    VariableAstNode::new(5, VariableAstNodeTy::Text, 6),
-                    VariableAstNode::new(8, VariableAstNodeTy::Text, 9),
-                ),
-                /// XXX: This is a bit annoying, but without significantly
-                /// refactoring the grammar it's hard to avoid capturing the
-                /// tailing whitespace here
-                end: 11,
-            }),
-            res
-        )
-    }
-
-    #[test]
-    fn ifdef_simple() {
-        crate::test::setup();
-        const input: &'static str = "ifdef foo";
-        let res: MakefileLine = assert_ok!(MakefileLineParser::new().parse(simple_iterator(input)));
-        assert_eq!(
-            MakefileLine::ConditionalLine(ConditionalLine {
-                start: 0,
-                conditional: ConditionalTy::IfDef(
-                    VariableAstNode::new(6, VariableAstNodeTy::Text, 9),
-                ),
-                end: 9,
-            }),
-            res
-        )
+        #[test]
+        fn simple() {
+            crate::test::setup();
+            const input: &'static str = "ifdef foo";
+            let res: MakefileLine =
+                assert_ok!(MakefileLineParser::new().parse(simple_iterator(input)));
+            assert_eq!(
+                MakefileLine::ConditionalLine(ConditionalLine {
+                    start: 0,
+                    conditional: ConditionalTy::IfDef(VariableAstNode::new(
+                        6,
+                        VariableAstNodeTy::Text,
+                        9
+                    ),),
+                    end: 9,
+                }),
+                res
+            )
+        }
     }
 }
