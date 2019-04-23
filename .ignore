@@ -1,0 +1,3 @@
+src/lexer/lexer_grammar.rs
+src/tokenizer/text_matcher.rs
+proptest-regressions/
