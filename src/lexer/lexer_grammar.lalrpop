@@ -8,20 +8,19 @@ extern {
     type Error = crate::lexer::LexicalError;
     
     enum TokenType {
-        "char" => TokenType::Text(_),
-        "whitespace" => TokenType::Whitespace(_),
+        "whitespace" => TokenType::Whitespace,
         "escaped_char" => TokenType::EscapedCharacter(_),
         "var_assign" => TokenType::VariableAssign(_),
 
         "text" => TokenType::Text,
 
         "export" => TokenType::Directive(Directive::Export),
-        "include" => TokenType::Directive(Directive::Include),
-        "load" => TokenType::Directive(Directive::Load),
+        "include" => TokenType::Directive(Directive::Include(_)),
+        "load" => TokenType::Directive(Directive::Load(_)),
         "unexport" => TokenType::Directive(Directive::UnExport),
         "vpath" => TokenType::Directive(Directive::VPath),
         "else" => TokenType::Directive(Directive::Else),
-        "endif" => TokenType::Directive(Directive::Endif),
+        "endif" => TokenType::Directive(Directive::EndIf),
         "ifdef" => TokenType::Directive(Directive::IfDef),
         "ifeq" => TokenType::Directive(Directive::IfEq),
         "ifndef" => TokenType::Directive(Directive::IfNDef),
@@ -51,29 +50,57 @@ extern {
     }
 }
 
-pub MakefileLine : MakefileLine = {
+pub MakefileLine : MakefileLine = <MakefileLineInner> Comment? EOL;
+
+MakefileLineInner : MakefileLine = {
     <ConditionalLine> => MakefileLine::ConditionalLine(<>),
+    "whitespace"* => MakefileLine::EmptyLine,
 }
 
+Comment = "#" AnyButNewline*;
+
 ConditionalLine : ConditionalLine = {
-    <start:@L> "ifeq" "(" <a:VariableText> "," <b:VariableText> ")" <end:@R> "\n" => ConditionalLine {
+    <start:@L> "ifeq" "whitespace"* <args:ConditionalEqArguments> <end:@R> => ConditionalLine {
         start: start,
+        conditional: ConditionalTy::IfEq(args.0, args.1),
+        end: end,
+    },
+    <start:@L> "ifneq" "whitespace"* <args:ConditionalEqArguments> <end:@R> => ConditionalLine {
+        start: start,
+        conditional: ConditionalTy::IfEq(args.0, args.1),
         end: end,
     }
 }
 
-VariableText : VariableAstNode = {
-    <AnyVariableWord*>
+ConditionalEqArguments : (VariableAstNode, VariableAstNode) = {
+    "(" <a:VariableText> "," <b:VariableText> ")" => (a, b)
 }
 
+VariableText : VariableAstNode = <start:@L> <input:AnyVariableWord*> <end:@R> => {
+        let mut words = input;
+        match words.len() {
+            0 => VariableAstNode {
+                start, end,
+                ty: VariableAstNodeTy::Text,
+            },
+            1 => words.remove(0),
+            _ => VariableAstNode {
+                start, end,
+                ty: VariableAstNodeTy::Concat(words),
+            },
+        }
+    };
+
+
 AnyVariableWord : VariableAstNode = {
-    VariableReference,
+    <reference:VariableReference> => reference,
     <start:@L> <special:VariableWordSpecials> <end:@R> => token_as_text(start, special, end)
 }
 
 #[inline]
 VariableWordSpecials = {
    "text",
+   "whitespace",
    // TODO: there are probably more things that need to go here
 }
 
@@ -82,55 +109,99 @@ VariableWordSpecials = {
 // support expressions like "${subst a,),aaa}" (which replaces the "a"s with
 // ")"s), and thus need to effectively have 2 complete copies of the production
 // rules
+#[inline]
 VariableReference : VariableAstNode = {
-    <start:@L> "single_var" <end:@R> => VariableAstNode {
-         dollar: start,
-         start: start + 1,
-         ty: VariableAstNodeTy::Text, 
-         end: end,
-    },
-    <dollar:@L> "$(" <start:@L> <captured:VariableTextInParen> <end:@R> ")" => VariableAstNode {
-         dollar,
-         start, 
-         ty: captured,
-         end,
-    },
-    <dollar:@L> "${" <start:@L> <captured:VariableTextInBrace> <end:@R> "}" => VariableAstNode {
-         dollar,
-         start, 
-         ty: captured,
-         end,
-    },
+   SingleVariableReference,
+//   ParenVariableReference,
+   BraceVariableReference,
 }
+
+SingleVariableReference : VariableAstNode =
+    <start:@L> "single_var" <end:@R> => VariableAstNode {
+        start: start,
+        ty: VariableAstNodeTy::VariableReference {
+            name: Box::new(VariableAstNode {
+                 start: start + 1,
+                 ty: VariableAstNodeTy::Text,
+                 end: end,
+            })
+        }, 
+        end: end,
+    };
+
+ParenVariableReference : VariableAstNode = 
+    <dollar_start:@L> "$(" <start:@L> <captured:VariableTextInParen> <end:@R> ")" <dollar_end:@R> => VariableAstNode {
+        start: dollar_start, 
+        ty: VariableAstNodeTy::VariableReference {
+            name: Box::new(VariableAstNode {
+                start: start,
+                ty: captured,
+                end: end
+            })
+        },
+        end: dollar_end,
+    };
+
+
+BraceVariableReference : VariableAstNode = 
+    <dollar_start:@L> "${" <start:@L> <captured:VariableTextInBrace> <end:@R> "}" <dollar_end:@R> => VariableAstNode {
+        start: dollar_start, 
+        ty: VariableAstNodeTy::VariableReference {
+            name: Box::new(VariableAstNode {
+                start: start,
+                ty: captured,
+                end: end
+            })
+        },
+        end: dollar_end,
+    };
+
 
 #[inline]
 VariableTextInParen = VariableTextInternal<Braces>;
+
 #[inline]
 VariableTextInBrace = VariableTextInternal<Parens>;
 
 #[inline]
 VariableTextInternal<Accept> : VariableAstNodeTy = {
-    <fst_start:@L> <fst:VariableTextNonFunction> <fst_end:@R> <rest:VariableTextRest<Accept>?> =>
+    NonFunction<Accept>,
+    AbsPath<Accept>,
+}
+
+NonFunction<Accept> : VariableAstNodeTy =
+    <fst_start:@L> <fst:VariableTextInit<Accept>> <fst_end:@R> <rest:VariableTextRest<Accept>?> =>
         match rest {
             None => fst,
-            Some(c) => VariableAstNodeTy::Concat(vec![VariableAstNode{ start: fst_start, ty: fst, end: fst_end }, c])
-        },
-    "abspath" "whitespace" <rest:VariableTextRest<Accept>> => VariableAstNodeTy::Abspath(rest),
+            Some(c) => VariableAstNodeTy::Concat(vec![
+                VariableAstNode{ start: fst_start, ty: fst, end: fst_end },
+                c
+            ])
+        };
+
+AbsPath<Accept> : VariableAstNodeTy =
+    "abspath" "whitespace" <rest:VariableTextRest<Accept>> => VariableAstNodeTy::Abspath(Box::new(rest));
+
+#[inline]
+VariableTextInit<Accept> : VariableAstNodeTy = {
+    <VariableTextNonFunction> => VariableAstNodeTy::Text,
+    <Accept> => VariableAstNodeTy::Text,
 }
 
 #[inline]
-VariableTextInit<Accept> = { <VariableTextNonFunction>, <Accept> }
+VariableTextRest<Accept> : VariableAstNode = 
+    <start:@L> <vte:VariableTextElement<Accept>+> <end:@R> =>
+        VariableAstNode {
+            start, end,
+            ty: VariableAstNodeTy::Concat(vte)
+        };
+
 
 #[inline]
-VariableTextRest<Accept> : VariableAstNodeTy = {
-    <vte:VariableTextElement<Accept>*> => VariableAstNodeTy::Concat(vte),
-}
-
-// #[inline]
 VariableTextElement<Accept> : VariableAstNode = {
-   <VariableReference>,
-   <start:@L> <cap:VariableTextNonFunction> <end:@R> => token_as_text(<>),
-   <start:@L> <cap:Accept> <end:@R> => token_as_text(start, cap, end),
+    <VariableReference>,
+    <start:@L> <cap:VariableTextNonFunction> <end:@R> => token_as_text(<>),
+    <start:@L> <cap:Accept> <end:@R> => token_as_text(start, cap, end),
 }
 
 #[inline]
@@ -167,4 +238,50 @@ Directives = {
     "ifneq",
     "define",
     "enddef",
+}
+
+AnyButNewline = {
+    "whitespace",
+    "escaped_char",
+    "var_assign",
+    
+    "text",
+    
+    "export",
+    "include",
+    "load",
+    "unexport",
+    "vpath",
+    "else",
+    "endif",
+    "ifdef",
+    "ifeq",
+    "ifndef",
+    "ifneq",
+    "define",
+    "enddef",
+    
+    "single_var",
+    "$(",
+    "${",
+    
+    "abspath",
+    
+    "(",
+    ")",
+    "{",
+    "}",
+    ":",
+    "::",
+    ";",
+    "%",
+    "#",
+    "\"",
+    "'",
+    ",",
+}
+
+EOL : Option<TokenType> = {
+    <"\n"> => Some(<>),
+    => None
 }

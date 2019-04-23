@@ -41,7 +41,7 @@ pub mod pattern;
 pub mod source_location;
 pub mod traits;
 pub mod tokenizer;
-// mod lexer;
+mod lexer;
 mod types;
 
 pub use crate::eval::{Flavor, Origin, Variable, VariableParameters};
