@@ -115,9 +115,6 @@ match_whitespace_template = """
             Some(c) if !c.is_ascii_alphabetic() => {{
                 (last_end, Some({token}))
             }}
-            None => {{
-                (last_end, Some({token}))
-            }}
             """
 
 match_custom_template = """
@@ -133,6 +130,14 @@ char_match_footer = """
         }}
     }} else {{
         (last_end, None)
+    }}
+}}
+"""
+
+char_match_terminal_footer = """
+        }}
+    }} else {{
+        (last_end, Some({token}))
     }}
 }}
 """
@@ -157,10 +162,11 @@ def gen_matcher(path, next_level):
         else:
             output += match_whitespace_template.format(token=v)
             output += match_catchall_template
+        output += char_match_terminal_footer.format(token=v)
     else:
         output += match_catchall_template
+        output += char_match_footer.format()
 
-    output += char_match_footer.format()
     return output
 
 # Get the name of the rule for the given output expression

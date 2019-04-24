@@ -174,15 +174,14 @@ where
                 last_end,
                 Some(TokenType::Directive(Directive::Include(IsSoft::Yes))),
             ),
-            None => (
-                last_end,
-                Some(TokenType::Directive(Directive::Include(IsSoft::Yes))),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::Directive(Directive::Include(IsSoft::Yes))),
+        )
     }
 }
 
@@ -251,15 +250,14 @@ where
                 last_end,
                 Some(TokenType::Directive(Directive::Load(IsSoft::Yes))),
             ),
-            None => (
-                last_end,
-                Some(TokenType::Directive(Directive::Load(IsSoft::Yes))),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::Directive(Directive::Load(IsSoft::Yes))),
+        )
     }
 }
 
@@ -379,12 +377,11 @@ where
             Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::Export)))
             }
-            None => (last_end, Some(TokenType::Directive(Directive::Export))),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (last_end, Some(TokenType::Directive(Directive::Export)))
     }
 }
 
@@ -434,12 +431,11 @@ where
             Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::Else)))
             }
-            None => (last_end, Some(TokenType::Directive(Directive::Else))),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (last_end, Some(TokenType::Directive(Directive::Else)))
     }
 }
 
@@ -511,12 +507,11 @@ where
             Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::EndIf)))
             }
-            None => (last_end, Some(TokenType::Directive(Directive::EndIf))),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (last_end, Some(TokenType::Directive(Directive::EndIf)))
     }
 }
 
@@ -566,12 +561,11 @@ where
             Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::Enddef)))
             }
-            None => (last_end, Some(TokenType::Directive(Directive::Enddef))),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (last_end, Some(TokenType::Directive(Directive::Enddef)))
     }
 }
 
@@ -640,15 +634,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Error)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Error)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Error)),
+        )
     }
 }
 
@@ -699,15 +692,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Eval)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Eval)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Eval)),
+        )
     }
 }
 
@@ -838,15 +830,14 @@ where
                 last_end,
                 Some(TokenType::Directive(Directive::Include(IsSoft::No))),
             ),
-            None => (
-                last_end,
-                Some(TokenType::Directive(Directive::Include(IsSoft::No))),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::Directive(Directive::Include(IsSoft::No))),
+        )
     }
 }
 
@@ -879,15 +870,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Info)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Info)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Info)),
+        )
     }
 }
 
@@ -914,15 +904,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::If)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::If)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::If)),
+        )
     }
 }
 
@@ -972,12 +961,11 @@ where
             Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::IfDef)))
             }
-            None => (last_end, Some(TokenType::Directive(Directive::IfDef))),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (last_end, Some(TokenType::Directive(Directive::IfDef)))
     }
 }
 
@@ -1009,12 +997,11 @@ where
             Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::IfEq)))
             }
-            None => (last_end, Some(TokenType::Directive(Directive::IfEq))),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (last_end, Some(TokenType::Directive(Directive::IfEq)))
     }
 }
 
@@ -1086,12 +1073,11 @@ where
             Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::IfNDef)))
             }
-            None => (last_end, Some(TokenType::Directive(Directive::IfNDef))),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (last_end, Some(TokenType::Directive(Directive::IfNDef)))
     }
 }
 
@@ -1123,12 +1109,11 @@ where
             Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::IfNEq)))
             }
-            None => (last_end, Some(TokenType::Directive(Directive::IfNEq))),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (last_end, Some(TokenType::Directive(Directive::IfNEq)))
     }
 }
 
@@ -1201,15 +1186,14 @@ where
                 last_end,
                 Some(TokenType::Directive(Directive::Load(IsSoft::No))),
             ),
-            None => (
-                last_end,
-                Some(TokenType::Directive(Directive::Load(IsSoft::No))),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::Directive(Directive::Load(IsSoft::No))),
+        )
     }
 }
 
@@ -1332,15 +1316,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::LastWord)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::LastWord)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::LastWord)),
+        )
     }
 }
 
@@ -1493,15 +1476,14 @@ where
                 last_end,
                 Some(TokenType::Directive(Directive::Include(IsSoft::Yes))),
             ),
-            None => (
-                last_end,
-                Some(TokenType::Directive(Directive::Include(IsSoft::Yes))),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::Directive(Directive::Include(IsSoft::Yes))),
+        )
     }
 }
 
@@ -1552,15 +1534,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Sort)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Sort)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Sort)),
+        )
     }
 }
 
@@ -1629,15 +1610,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Strip)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Strip)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Strip)),
+        )
     }
 }
 
@@ -1710,15 +1690,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Subst)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Subst)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Subst)),
+        )
     }
 }
 
@@ -1787,15 +1766,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Suffix)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Suffix)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Suffix)),
+        )
     }
 }
 
@@ -1935,12 +1913,11 @@ where
             Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::UnExport)))
             }
-            None => (last_end, Some(TokenType::Directive(Directive::UnExport))),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (last_end, Some(TokenType::Directive(Directive::UnExport)))
     }
 }
 
@@ -2030,12 +2007,11 @@ where
             Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::VPath)))
             }
-            None => (last_end, Some(TokenType::Directive(Directive::VPath))),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (last_end, Some(TokenType::Directive(Directive::VPath)))
     }
 }
 
@@ -2104,15 +2080,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Value)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Value)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Value)),
+        )
     }
 }
 
@@ -2220,12 +2195,11 @@ where
             Some(c) if !c.is_ascii_alphabetic() => {
                 (last_end, Some(TokenType::Directive(Directive::Define)))
             }
-            None => (last_end, Some(TokenType::Directive(Directive::Define))),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (last_end, Some(TokenType::Directive(Directive::Define)))
     }
 }
 
@@ -2258,15 +2232,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Dir)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Dir)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Dir)),
+        )
     }
 }
 
@@ -2397,15 +2370,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Abspath)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Abspath)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Abspath)),
+        )
     }
 }
 
@@ -2550,15 +2522,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::AddPrefix)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::AddPrefix)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::AddPrefix)),
+        )
     }
 }
 
@@ -2663,15 +2634,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::AddSuffix)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::AddSuffix)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::AddSuffix)),
+        )
     }
 }
 
@@ -2704,15 +2674,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::And)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::And)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::And)),
+        )
     }
 }
 
@@ -2853,15 +2822,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::BaseName)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::BaseName)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::BaseName)),
+        )
     }
 }
 
@@ -2930,15 +2898,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Call)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Call)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Call)),
+        )
     }
 }
 
@@ -3023,15 +2990,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::File)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::File)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::File)),
+        )
     }
 }
 
@@ -3086,15 +3052,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Filter)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Filter)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Filter)),
+        )
     }
 }
 
@@ -3145,15 +3110,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::FilterOut)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::FilterOut)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::FilterOut)),
+        )
     }
 }
 
@@ -3294,15 +3258,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::FindString)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::FindString)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::FindString)),
+        )
     }
 }
 
@@ -3425,15 +3388,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::FirstWord)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::FirstWord)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::FirstWord)),
+        )
     }
 }
 
@@ -3520,15 +3482,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Flavor)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Flavor)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Flavor)),
+        )
     }
 }
 
@@ -3597,15 +3558,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Join)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Join)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Join)),
+        )
     }
 }
 
@@ -3710,15 +3670,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::NotDir)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::NotDir)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::NotDir)),
+        )
     }
 }
 
@@ -3755,15 +3714,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Or)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Or)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Or)),
+        )
     }
 }
 
@@ -3832,15 +3790,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Origin)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Origin)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Origin)),
+        )
     }
 }
 
@@ -3981,15 +3938,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::PatSubst)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::PatSubst)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::PatSubst)),
+        )
     }
 }
 
@@ -4130,15 +4086,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Realpath)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Realpath)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Realpath)),
+        )
     }
 }
 
@@ -4269,15 +4224,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Warning)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Warning)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Warning)),
+        )
     }
 }
 
@@ -4400,15 +4354,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Wildcard)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Wildcard)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Wildcard)),
+        )
     }
 }
 
@@ -4467,15 +4420,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Word)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Word)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Word)),
+        )
     }
 }
 
@@ -4544,15 +4496,14 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::WordList)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::WordList)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::WordList)),
+        )
     }
 }
 
@@ -4567,14 +4518,13 @@ where
                 last_end,
                 Some(TokenType::BuiltinFunction(BuiltinFunction::Words)),
             ),
-            None => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Words)),
-            ),
 
             _ => (last_end, None),
         }
     } else {
-        (last_end, None)
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Words)),
+        )
     }
 }

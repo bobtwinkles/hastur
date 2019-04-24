@@ -611,4 +611,16 @@ mod test {
             parsed
         )
     }
+
+    #[test]
+    fn recognize_else() {
+        crate::test::setup();
+        let input = "else";
+        let parsed: Vec<Token> = iterator_to_token_stream(input.char_indices()).collect();
+
+        assert_eq!(
+            vec![Token::new(0, TokenType::Directive(Directive::Else), 4)],
+            parsed
+        );
+    }
 }
