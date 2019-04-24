@@ -242,9 +242,9 @@ mod test {
         #[test]
         fn followed_by_comment() {
             crate::test::setup();
-            const input: &'static str = "ifeq(a, b) # this is a comment";
+            const INPUT: &'static str = "ifeq(a, b) # this is a comment";
             let res: MakefileLine =
-                assert_ok!(MakefileLineParser::new().parse(simple_iterator(input)));
+                assert_ok!(MakefileLineParser::new().parse(simple_iterator(INPUT)));
             assert_eq!(
                 MakefileLine::ConditionalLine(ConditionalLine {
                     start: 0,
@@ -269,9 +269,9 @@ mod test {
         #[test]
         fn simple() {
             crate::test::setup();
-            const input: &'static str = "ifdef foo";
+            const INPUT: &'static str = "ifdef foo";
             let res: MakefileLine =
-                assert_ok!(MakefileLineParser::new().parse(simple_iterator(input)));
+                assert_ok!(MakefileLineParser::new().parse(simple_iterator(INPUT)));
             assert_eq!(
                 MakefileLine::ConditionalLine(ConditionalLine {
                     start: 0,
