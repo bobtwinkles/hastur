@@ -181,6 +181,7 @@ pub enum Directive {
 
     Define,
     Enddef,
+    Undefine,
 }
 
 /// Internal iterator implementation
@@ -462,6 +463,7 @@ mod test {
 
                     Directive::Define => check_and_push!(token, "Define"),
                     Directive::Enddef => check_and_push!(token, "Enddef"),
+                    Directive::Undefine => check_and_push!(token, "Undefine"),
                 },
                 TokenType::BuiltinFunction(function) => match function {
                     BuiltinFunction::Abspath => check_and_push!(token, "Abspath"),

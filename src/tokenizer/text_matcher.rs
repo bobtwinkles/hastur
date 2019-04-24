@@ -2056,6 +2056,10 @@ where
                 let (start, chr) = it.next().unwrap();
                 match_une(start + chr.len_utf8(), it)
             }
+            Some('d') => {
+                let (start, chr) = it.next().unwrap();
+                match_und(start + chr.len_utf8(), it)
+            }
             _ => (last_end, None),
         }
     } else {
@@ -2168,6 +2172,114 @@ where
         }
     } else {
         (last_end, Some(TokenType::Directive(Directive::UnExport)))
+    }
+}
+
+#[inline]
+fn match_und<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('e') => {
+                let (start, chr) = it.next().unwrap();
+                match_unde(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_unde<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('f') => {
+                let (start, chr) = it.next().unwrap();
+                match_undef(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_undef<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('i') => {
+                let (start, chr) = it.next().unwrap();
+                match_undefi(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_undefi<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('n') => {
+                let (start, chr) = it.next().unwrap();
+                match_undefin(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_undefin<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('e') => {
+                let (start, chr) = it.next().unwrap();
+                match_undefine(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_undefine<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some(c) if !c.is_ascii_alphabetic() => {
+                (last_end, Some(TokenType::Directive(Directive::Undefine)))
+            }
+
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, Some(TokenType::Directive(Directive::Undefine)))
     }
 }
 

@@ -26,6 +26,7 @@ extern {
         "include" => TokenType::Directive(Directive::Include(_)),
         "load" => TokenType::Directive(Directive::Load(_)),
         "override" => TokenType::Directive(Directive::Override),
+        "undefine" => TokenType::Directive(Directive::Undefine),
         "unexport" => TokenType::Directive(Directive::UnExport),
         "vpath" => TokenType::Directive(Directive::VPath),
 

@@ -23,6 +23,7 @@ directives = {
 
     "define": "Define",
     "enddef": "Enddef",
+    "undefine": "Undefine",
 }
 
 for (k,v) in directives.items():
