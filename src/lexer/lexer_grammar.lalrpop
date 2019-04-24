@@ -26,6 +26,7 @@ extern {
         "include" => TokenType::Directive(Directive::Include(_)),
         "load" => TokenType::Directive(Directive::Load(_)),
         "override" => TokenType::Directive(Directive::Override),
+        "private" => TokenType::Directive(Directive::Private),
         "undefine" => TokenType::Directive(Directive::Undefine),
         "unexport" => TokenType::Directive(Directive::UnExport),
         "vpath" => TokenType::Directive(Directive::VPath),
@@ -282,20 +283,22 @@ Parens = { "(", ")" }
 
 #[inline]
 Directive = {
-    "export",
-    "include",
-    "load",
-    "unexport",
-    "vpath",
+    "define",
     "else",
+    "enddef",
     "endif",
+    "export",
     "ifdef",
     "ifeq",
     "ifndef",
     "ifneq",
-    "define",
-    "enddef",
+    "include",
+    "load",
     "override",
+    "override",
+    "private",
+    "unexport",
+    "vpath",
 }
 
 #[inline]
