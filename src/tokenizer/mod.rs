@@ -180,6 +180,7 @@ pub enum Directive {
     IfNEq,
 
     Define,
+    Private,
     Enddef,
     Undefine,
 }
@@ -463,6 +464,7 @@ mod test {
 
                     Directive::Define => check_and_push!(token, "Define"),
                     Directive::Enddef => check_and_push!(token, "Enddef"),
+                    Directive::Private => check_and_push!(token, "Private"),
                     Directive::Undefine => check_and_push!(token, "Undefine"),
                 },
                 TokenType::BuiltinFunction(function) => match function {

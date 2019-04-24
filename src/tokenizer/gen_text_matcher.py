@@ -23,6 +23,7 @@ directives = {
 
     "define": "Define",
     "enddef": "Enddef",
+    "private": "Private",
     "undefine": "Undefine",
 }
 

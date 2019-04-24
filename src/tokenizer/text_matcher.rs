@@ -20,13 +20,13 @@ where
         'u' => match_u(last_end, it),
         'v' => match_v(last_end, it),
         'd' => match_d(last_end, it),
+        'p' => match_p(last_end, it),
         'a' => match_a(last_end, it),
         'b' => match_b(last_end, it),
         'c' => match_c(last_end, it),
         'f' => match_f(last_end, it),
         'j' => match_j(last_end, it),
         'n' => match_n(last_end, it),
-        'p' => match_p(last_end, it),
         'r' => match_r(last_end, it),
         'w' => match_w(last_end, it),
         _ => (last_end, None),
@@ -2606,6 +2606,266 @@ where
 }
 
 #[inline]
+fn match_p<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('r') => {
+                let (start, chr) = it.next().unwrap();
+                match_pr(start + chr.len_utf8(), it)
+            }
+            Some('a') => {
+                let (start, chr) = it.next().unwrap();
+                match_pa(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_pr<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('i') => {
+                let (start, chr) = it.next().unwrap();
+                match_pri(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_pri<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('v') => {
+                let (start, chr) = it.next().unwrap();
+                match_priv(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_priv<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('a') => {
+                let (start, chr) = it.next().unwrap();
+                match_priva(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_priva<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('t') => {
+                let (start, chr) = it.next().unwrap();
+                match_privat(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_privat<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('e') => {
+                let (start, chr) = it.next().unwrap();
+                match_private(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_private<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some(c) if !c.is_ascii_alphabetic() => {
+                (last_end, Some(TokenType::Directive(Directive::Private)))
+            }
+
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, Some(TokenType::Directive(Directive::Private)))
+    }
+}
+
+#[inline]
+fn match_pa<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('t') => {
+                let (start, chr) = it.next().unwrap();
+                match_pat(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_pat<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('s') => {
+                let (start, chr) = it.next().unwrap();
+                match_pats(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_pats<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('u') => {
+                let (start, chr) = it.next().unwrap();
+                match_patsu(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_patsu<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('b') => {
+                let (start, chr) = it.next().unwrap();
+                match_patsub(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_patsub<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('s') => {
+                let (start, chr) = it.next().unwrap();
+                match_patsubs(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_patsubs<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('t') => {
+                let (start, chr) = it.next().unwrap();
+                match_patsubst(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_patsubst<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some(c) if !c.is_ascii_alphabetic() => (
+                last_end,
+                Some(TokenType::BuiltinFunction(BuiltinFunction::PatSubst)),
+            ),
+
+            _ => (last_end, None),
+        }
+    } else {
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::PatSubst)),
+        )
+    }
+}
+
+#[inline]
 fn match_a<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
 where
     IT: Iterator<Item = (usize, char)>,
@@ -4039,154 +4299,6 @@ where
         (
             last_end,
             Some(TokenType::BuiltinFunction(BuiltinFunction::NotDir)),
-        )
-    }
-}
-
-#[inline]
-fn match_p<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
-where
-    IT: Iterator<Item = (usize, char)>,
-{
-    if let Some((_, chr)) = it.peek() {
-        match chr.to_lowercase().next() {
-            Some('a') => {
-                let (start, chr) = it.next().unwrap();
-                match_pa(start + chr.len_utf8(), it)
-            }
-            _ => (last_end, None),
-        }
-    } else {
-        (last_end, None)
-    }
-}
-
-#[inline]
-fn match_pa<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
-where
-    IT: Iterator<Item = (usize, char)>,
-{
-    if let Some((_, chr)) = it.peek() {
-        match chr.to_lowercase().next() {
-            Some('t') => {
-                let (start, chr) = it.next().unwrap();
-                match_pat(start + chr.len_utf8(), it)
-            }
-            _ => (last_end, None),
-        }
-    } else {
-        (last_end, None)
-    }
-}
-
-#[inline]
-fn match_pat<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
-where
-    IT: Iterator<Item = (usize, char)>,
-{
-    if let Some((_, chr)) = it.peek() {
-        match chr.to_lowercase().next() {
-            Some('s') => {
-                let (start, chr) = it.next().unwrap();
-                match_pats(start + chr.len_utf8(), it)
-            }
-            _ => (last_end, None),
-        }
-    } else {
-        (last_end, None)
-    }
-}
-
-#[inline]
-fn match_pats<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
-where
-    IT: Iterator<Item = (usize, char)>,
-{
-    if let Some((_, chr)) = it.peek() {
-        match chr.to_lowercase().next() {
-            Some('u') => {
-                let (start, chr) = it.next().unwrap();
-                match_patsu(start + chr.len_utf8(), it)
-            }
-            _ => (last_end, None),
-        }
-    } else {
-        (last_end, None)
-    }
-}
-
-#[inline]
-fn match_patsu<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
-where
-    IT: Iterator<Item = (usize, char)>,
-{
-    if let Some((_, chr)) = it.peek() {
-        match chr.to_lowercase().next() {
-            Some('b') => {
-                let (start, chr) = it.next().unwrap();
-                match_patsub(start + chr.len_utf8(), it)
-            }
-            _ => (last_end, None),
-        }
-    } else {
-        (last_end, None)
-    }
-}
-
-#[inline]
-fn match_patsub<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
-where
-    IT: Iterator<Item = (usize, char)>,
-{
-    if let Some((_, chr)) = it.peek() {
-        match chr.to_lowercase().next() {
-            Some('s') => {
-                let (start, chr) = it.next().unwrap();
-                match_patsubs(start + chr.len_utf8(), it)
-            }
-            _ => (last_end, None),
-        }
-    } else {
-        (last_end, None)
-    }
-}
-
-#[inline]
-fn match_patsubs<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
-where
-    IT: Iterator<Item = (usize, char)>,
-{
-    if let Some((_, chr)) = it.peek() {
-        match chr.to_lowercase().next() {
-            Some('t') => {
-                let (start, chr) = it.next().unwrap();
-                match_patsubst(start + chr.len_utf8(), it)
-            }
-            _ => (last_end, None),
-        }
-    } else {
-        (last_end, None)
-    }
-}
-
-#[inline]
-fn match_patsubst<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
-where
-    IT: Iterator<Item = (usize, char)>,
-{
-    if let Some((_, chr)) = it.peek() {
-        match chr.to_lowercase().next() {
-            Some(c) if !c.is_ascii_alphabetic() => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::PatSubst)),
-            ),
-
-            _ => (last_end, None),
-        }
-    } else {
-        (
-            last_end,
-            Some(TokenType::BuiltinFunction(BuiltinFunction::PatSubst)),
         )
     }
 }
