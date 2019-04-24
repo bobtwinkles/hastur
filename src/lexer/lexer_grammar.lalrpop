@@ -93,20 +93,24 @@ MakefileLineInner : MakefileLine = {
 Comment = "#" AnyButNewline*;
 
 ConditionalLine : ConditionalLine = {
-    <start:@L> <conditional:AnyConditional> <end:@R> => ConditionalLine {
-        start, end, conditional,
+    <start:@L> <conditional:AnyConditional> => ConditionalLine {
+        start,
+        end: conditional.1,
+        conditional: conditional.0,
     }
 }
 
-AnyConditional : ConditionalTy = {
+AnyConditional : (ConditionalTy, usize) = {
     <IfEq>,
     <IfDef>
 }
 
 #[inline]
-IfEq : ConditionalTy = {
-    "ifeq" Whitespace <args:ConditionalEqArguments> Whitespace => ConditionalTy::IfEq(args.0, args.1),
-    "ifneq" Whitespace <args:ConditionalEqArguments> Whitespace => ConditionalTy::IfNEq(args.0, args.1),
+IfEq : (ConditionalTy, usize) = {
+    "ifeq" Whitespace <args:ConditionalEqArguments> <end:@R> Whitespace =>
+        (ConditionalTy::IfEq(args.0, args.1), end),
+    "ifneq" Whitespace <args:ConditionalEqArguments> <end:@R> Whitespace =>
+        (ConditionalTy::IfNEq(args.0, args.1), end),
 }
 
 ConditionalEqArguments : (VariableAstNode, VariableAstNode) = {
@@ -120,9 +124,9 @@ ConditionalEqArg : VariableAstNode = {
 }
 
 #[inline]
-IfDef : ConditionalTy = {
-    "ifdef" <t:VariableText> => ConditionalTy::IfDef(t),
-    "ifndef" <t:VariableText> => ConditionalTy::IfNDef(t),
+IfDef : (ConditionalTy, usize) = {
+    "ifdef" <t:VariableText> <end:@R> => (ConditionalTy::IfDef(t), end),
+    "ifndef" <t:VariableText> <end:@R> => (ConditionalTy::IfNDef(t), end),
 }
 
 VariableText : VariableAstNode = Whitespace <start:@L> <input:(AnyVariableWord Whitespace)+> <end:@R> => {

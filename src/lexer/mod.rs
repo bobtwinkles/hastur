@@ -252,10 +252,7 @@ mod test {
                         VariableAstNode::new(5, VariableAstNodeTy::Text, 6),
                         VariableAstNode::new(8, VariableAstNodeTy::Text, 9),
                     ),
-                    /// XXX: This is a bit annoying, but without significantly
-                    /// refactoring the grammar it's hard to avoid capturing the
-                    /// tailing whitespace here
-                    end: 11,
+                    end: 10,
                 }),
                 res
             )
