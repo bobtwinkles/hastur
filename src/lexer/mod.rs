@@ -35,7 +35,7 @@ pub enum ConditionalTy {
     /// An `else` statement, with an optional follow-on conditional
     Else(Option<Box<ConditionalTy>>),
     /// An `endif` statement
-    Endif,
+    EndIf,
 }
 
 /// A variable AST node capture.
@@ -322,6 +322,84 @@ mod test {
             let res = assert_err!(run_parser!("ifdef # comment after ifdef"));
             let token = assert_unrecognized_token!(res);
             assert_eq!(token, Some((6, TokenType::CommentStart, 7)))
+        }
+    }
+
+    mod _else {
+        use super::*;
+        use pretty_assertions::assert_eq;
+
+        #[test]
+        fn simple() {
+            let res = assert_ok!(run_parser_init!("else"));
+            assert_eq!(
+                MakefileLine::ConditionalLine(ConditionalLine {
+                    start: 0,
+                    conditional: ConditionalTy::Else(None),
+                    end: 4,
+                }),
+                res
+            );
+        }
+
+        #[test]
+        fn followup_cond() {
+            let res = assert_ok!(run_parser_init!("else ifdef foo"));
+            assert_eq!(
+                MakefileLine::ConditionalLine(ConditionalLine {
+                    start: 0,
+                    conditional: ConditionalTy::Else(Some(Box::new(ConditionalTy::IfDef(
+                        VariableAstNode::new(11, VariableAstNodeTy::Text, 14)
+                    )))),
+                    end: 14
+                }),
+                res
+            );
+
+            let res = assert_ok!(run_parser!("else ifeq 'foo' 'bar'"));
+            assert_eq!(
+                MakefileLine::ConditionalLine(ConditionalLine {
+                    start: 0,
+                    conditional: ConditionalTy::Else(Some(Box::new(ConditionalTy::IfEq(
+                        VariableAstNode::new(11, VariableAstNodeTy::Text, 14),
+                        VariableAstNode::new(17, VariableAstNodeTy::Text, 20)
+                    )))),
+                    end: 21
+                }),
+                res
+            )
+        }
+
+        #[test]
+        fn followup_invalid() {
+            let res = assert_err!(run_parser_init!("else foo"));
+            let tok = assert_unrecognized_token!(res);
+            assert_eq!(tok, Some((5, TokenType::Text, 8)));
+        }
+    }
+
+    mod endif {
+        use super::*;
+        use pretty_assertions::assert_eq;
+
+        #[test]
+        fn simple() {
+            let res = assert_ok!(run_parser_init!("endif"));
+            assert_eq!(
+                MakefileLine::ConditionalLine(ConditionalLine {
+                    start: 0,
+                    conditional: ConditionalTy::EndIf,
+                    end: 5
+                }),
+                res
+            );
+        }
+
+        #[test]
+        fn extra_tokens() {
+            let res = assert_err!(run_parser_init!("endif foo"));
+            let tok = assert_unrecognized_token!(res);
+            assert_eq!(tok, Some((6, TokenType::Text, 9)));
         }
     }
 }
