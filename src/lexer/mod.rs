@@ -183,7 +183,19 @@ mod test {
     use super::{ConditionalLine, ConditionalTy, MakefileLine, VariableAstNode, VariableAstNodeTy};
     use crate::tokenizer::iterator_to_token_stream;
     use crate::tokenizer::TokenType;
-    use pretty_assertions::assert_eq;
+
+    macro_rules! run_parser_init {
+        ($i:expr) => {{
+            crate::test::setup();
+            run_parser!($i)
+        }};
+    }
+
+    macro_rules! run_parser {
+        ($i:expr) => {{
+            MakefileLineParser::new().parse(simple_iterator($i))
+        }};
+    }
 
     fn simple_iterator(s: &'static str) -> impl Iterator<Item = (usize, TokenType, usize)> {
         adapt_token_iterator(iterator_to_token_stream(s.char_indices()))
@@ -195,8 +207,7 @@ mod test {
 
         #[test]
         fn simple() {
-            let res: MakefileLine =
-                assert_ok!(MakefileLineParser::new().parse(simple_iterator("  \t")));
+            let res = assert_ok!(run_parser_init!("  \t"));
             assert_eq!(MakefileLine::EmptyLine, res);
         }
     }
@@ -207,8 +218,7 @@ mod test {
 
         #[test]
         fn simple() {
-            let res: MakefileLine =
-                assert_ok!(MakefileLineParser::new().parse(simple_iterator("ifeq(a, b)")));
+            let res = assert_ok!(run_parser_init!("ifeq(a, b)"));
             assert_eq!(
                 MakefileLine::ConditionalLine(ConditionalLine {
                     start: 0,
@@ -224,8 +234,7 @@ mod test {
 
         #[test]
         fn quote() {
-            let res: MakefileLine =
-                assert_ok!(MakefileLineParser::new().parse(simple_iterator("ifeq \"a\" 'b'")));
+            let res = assert_ok!(run_parser_init!("ifeq \"a\" 'b'"));
             assert_eq!(
                 MakefileLine::ConditionalLine(ConditionalLine {
                     start: 0,
@@ -241,10 +250,7 @@ mod test {
 
         #[test]
         fn followed_by_comment() {
-            crate::test::setup();
-            const INPUT: &'static str = "ifeq(a, b) # this is a comment";
-            let res: MakefileLine =
-                assert_ok!(MakefileLineParser::new().parse(simple_iterator(INPUT)));
+            let res = assert_ok!(run_parser_init!("ifeq(a, b) # this is a comment"));
             assert_eq!(
                 MakefileLine::ConditionalLine(ConditionalLine {
                     start: 0,
@@ -265,10 +271,7 @@ mod test {
 
         #[test]
         fn simple() {
-            crate::test::setup();
-            const INPUT: &'static str = "ifdef foo";
-            let res: MakefileLine =
-                assert_ok!(MakefileLineParser::new().parse(simple_iterator(INPUT)));
+            let res = assert_ok!(run_parser_init!("ifdef foo"));
             assert_eq!(
                 MakefileLine::ConditionalLine(ConditionalLine {
                     start: 0,
