@@ -14,19 +14,20 @@ extern {
 
         "text" => TokenType::Text,
 
-        "export" => TokenType::Directive(Directive::Export),
-        "include" => TokenType::Directive(Directive::Include(_)),
-        "load" => TokenType::Directive(Directive::Load(_)),
-        "unexport" => TokenType::Directive(Directive::UnExport),
-        "vpath" => TokenType::Directive(Directive::VPath),
+        "define" => TokenType::Directive(Directive::Define),
         "else" => TokenType::Directive(Directive::Else),
+        "enddef" => TokenType::Directive(Directive::Enddef),
         "endif" => TokenType::Directive(Directive::EndIf),
+        "export" => TokenType::Directive(Directive::Export),
         "ifdef" => TokenType::Directive(Directive::IfDef),
         "ifeq" => TokenType::Directive(Directive::IfEq),
         "ifndef" => TokenType::Directive(Directive::IfNDef),
         "ifneq" => TokenType::Directive(Directive::IfNEq),
-        "define" => TokenType::Directive(Directive::Define),
-        "enddef" => TokenType::Directive(Directive::Enddef),
+        "include" => TokenType::Directive(Directive::Include(_)),
+        "load" => TokenType::Directive(Directive::Load(_)),
+        "override" => TokenType::Directive(Directive::Override),
+        "unexport" => TokenType::Directive(Directive::UnExport),
+        "vpath" => TokenType::Directive(Directive::VPath),
 
         "single_var" => TokenType::VariableReference(VariableKind::SingleCharacter),
         "$(" => TokenType::VariableReference(VariableKind::OpenParen),
@@ -293,6 +294,7 @@ Directive = {
     "ifneq",
     "define",
     "enddef",
+    "override",
 }
 
 #[inline]

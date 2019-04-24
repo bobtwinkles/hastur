@@ -168,6 +168,7 @@ pub enum Directive {
     Export,
     Include(IsSoft),
     Load(IsSoft),
+    Override,
     UnExport,
     VPath,
 
@@ -439,6 +440,7 @@ mod test {
                 }
                 TokenType::EscapedCharacter(None) => buffer.push('\\'),
                 TokenType::Directive(directive) => match directive {
+                    Directive::Override => check_and_push!(token, "Override"),
                     Directive::Export => check_and_push!(token, "Export"),
                     Directive::Include(soft) => match soft {
                         IsSoft::Yes => check_and_push!(token, "-include"),

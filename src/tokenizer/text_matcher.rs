@@ -15,6 +15,7 @@ where
         'e' => match_e(last_end, it),
         'i' => match_i(last_end, it),
         'l' => match_l(last_end, it),
+        'o' => match_o(last_end, it),
         's' => match_s(last_end, it),
         'u' => match_u(last_end, it),
         'v' => match_v(last_end, it),
@@ -25,7 +26,6 @@ where
         'f' => match_f(last_end, it),
         'j' => match_j(last_end, it),
         'n' => match_n(last_end, it),
-        'o' => match_o(last_end, it),
         'p' => match_p(last_end, it),
         'r' => match_r(last_end, it),
         'w' => match_w(last_end, it),
@@ -1323,6 +1323,256 @@ where
         (
             last_end,
             Some(TokenType::BuiltinFunction(BuiltinFunction::LastWord)),
+        )
+    }
+}
+
+#[inline]
+fn match_o<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('v') => {
+                let (start, chr) = it.next().unwrap();
+                match_ov(start + chr.len_utf8(), it)
+            }
+            Some('r') => {
+                let (start, chr) = it.next().unwrap();
+                match_or(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_ov<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('e') => {
+                let (start, chr) = it.next().unwrap();
+                match_ove(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_ove<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('r') => {
+                let (start, chr) = it.next().unwrap();
+                match_over(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_over<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('r') => {
+                let (start, chr) = it.next().unwrap();
+                match_overr(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_overr<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('i') => {
+                let (start, chr) = it.next().unwrap();
+                match_overri(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_overri<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('d') => {
+                let (start, chr) = it.next().unwrap();
+                match_overrid(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_overrid<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('e') => {
+                let (start, chr) = it.next().unwrap();
+                match_override(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_override<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some(c) if !c.is_ascii_alphabetic() => {
+                (last_end, Some(TokenType::Directive(Directive::Override)))
+            }
+
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, Some(TokenType::Directive(Directive::Override)))
+    }
+}
+
+#[inline]
+fn match_or<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('i') => {
+                let (start, chr) = it.next().unwrap();
+                match_ori(start + chr.len_utf8(), it)
+            }
+            Some(c) if !c.is_ascii_alphabetic() => (
+                last_end,
+                Some(TokenType::BuiltinFunction(BuiltinFunction::Or)),
+            ),
+
+            _ => (last_end, None),
+        }
+    } else {
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Or)),
+        )
+    }
+}
+
+#[inline]
+fn match_ori<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('g') => {
+                let (start, chr) = it.next().unwrap();
+                match_orig(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_orig<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('i') => {
+                let (start, chr) = it.next().unwrap();
+                match_origi(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_origi<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some('n') => {
+                let (start, chr) = it.next().unwrap();
+                match_origin(start + chr.len_utf8(), it)
+            }
+            _ => (last_end, None),
+        }
+    } else {
+        (last_end, None)
+    }
+}
+
+#[inline]
+fn match_origin<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    if let Some((_, chr)) = it.peek() {
+        match chr.to_lowercase().next() {
+            Some(c) if !c.is_ascii_alphabetic() => (
+                last_end,
+                Some(TokenType::BuiltinFunction(BuiltinFunction::Origin)),
+            ),
+
+            _ => (last_end, None),
+        }
+    } else {
+        (
+            last_end,
+            Some(TokenType::BuiltinFunction(BuiltinFunction::Origin)),
         )
     }
 }
@@ -3677,126 +3927,6 @@ where
         (
             last_end,
             Some(TokenType::BuiltinFunction(BuiltinFunction::NotDir)),
-        )
-    }
-}
-
-#[inline]
-fn match_o<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
-where
-    IT: Iterator<Item = (usize, char)>,
-{
-    if let Some((_, chr)) = it.peek() {
-        match chr.to_lowercase().next() {
-            Some('r') => {
-                let (start, chr) = it.next().unwrap();
-                match_or(start + chr.len_utf8(), it)
-            }
-            _ => (last_end, None),
-        }
-    } else {
-        (last_end, None)
-    }
-}
-
-#[inline]
-fn match_or<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
-where
-    IT: Iterator<Item = (usize, char)>,
-{
-    if let Some((_, chr)) = it.peek() {
-        match chr.to_lowercase().next() {
-            Some('i') => {
-                let (start, chr) = it.next().unwrap();
-                match_ori(start + chr.len_utf8(), it)
-            }
-            Some(c) if !c.is_ascii_alphabetic() => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Or)),
-            ),
-
-            _ => (last_end, None),
-        }
-    } else {
-        (
-            last_end,
-            Some(TokenType::BuiltinFunction(BuiltinFunction::Or)),
-        )
-    }
-}
-
-#[inline]
-fn match_ori<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
-where
-    IT: Iterator<Item = (usize, char)>,
-{
-    if let Some((_, chr)) = it.peek() {
-        match chr.to_lowercase().next() {
-            Some('g') => {
-                let (start, chr) = it.next().unwrap();
-                match_orig(start + chr.len_utf8(), it)
-            }
-            _ => (last_end, None),
-        }
-    } else {
-        (last_end, None)
-    }
-}
-
-#[inline]
-fn match_orig<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
-where
-    IT: Iterator<Item = (usize, char)>,
-{
-    if let Some((_, chr)) = it.peek() {
-        match chr.to_lowercase().next() {
-            Some('i') => {
-                let (start, chr) = it.next().unwrap();
-                match_origi(start + chr.len_utf8(), it)
-            }
-            _ => (last_end, None),
-        }
-    } else {
-        (last_end, None)
-    }
-}
-
-#[inline]
-fn match_origi<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
-where
-    IT: Iterator<Item = (usize, char)>,
-{
-    if let Some((_, chr)) = it.peek() {
-        match chr.to_lowercase().next() {
-            Some('n') => {
-                let (start, chr) = it.next().unwrap();
-                match_origin(start + chr.len_utf8(), it)
-            }
-            _ => (last_end, None),
-        }
-    } else {
-        (last_end, None)
-    }
-}
-
-#[inline]
-fn match_origin<IT>(last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
-where
-    IT: Iterator<Item = (usize, char)>,
-{
-    if let Some((_, chr)) = it.peek() {
-        match chr.to_lowercase().next() {
-            Some(c) if !c.is_ascii_alphabetic() => (
-                last_end,
-                Some(TokenType::BuiltinFunction(BuiltinFunction::Origin)),
-            ),
-
-            _ => (last_end, None),
-        }
-    } else {
-        (
-            last_end,
-            Some(TokenType::BuiltinFunction(BuiltinFunction::Origin)),
         )
     }
 }

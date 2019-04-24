@@ -9,6 +9,7 @@ directives = {
     "export": "Export",
     "include": "Include(IsSoft::No)",
     "load": "Load(IsSoft::No)",
+    "override": "Override",
     "sinclude": "Include(IsSoft::Yes)",
     "unexport": "UnExport",
     "vpath": "VPath",
