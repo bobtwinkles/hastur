@@ -183,6 +183,7 @@ mod test {
     use super::{ConditionalLine, ConditionalTy, MakefileLine, VariableAstNode, VariableAstNodeTy};
     use crate::tokenizer::iterator_to_token_stream;
     use crate::tokenizer::TokenType;
+    use lalrpop_util::ParseError;
 
     macro_rules! run_parser_init {
         ($i:expr) => {{
@@ -194,6 +195,21 @@ mod test {
     macro_rules! run_parser {
         ($i:expr) => {{
             MakefileLineParser::new().parse(simple_iterator($i))
+        }};
+    }
+
+    macro_rules! assert_unrecognized_token {
+        ($err:expr) => {{
+            let err = $err;
+            if let ParseError::UnrecognizedToken {
+                token,
+                expected: _expected,
+            } = err
+            {
+                token
+            } else {
+                panic!("Unexpected error {:?}", err)
+            }
         }};
     }
 
@@ -263,6 +279,17 @@ mod test {
                 res
             )
         }
+
+        #[test]
+        fn unterminated_parens() {
+            let res = assert_err!(run_parser_init!("ifeq(a, b"));
+            let token = assert_unrecognized_token!(res);
+            assert!(token.is_none());
+
+            let res = assert_err!(run_parser!("ifeq(a"));
+            let token = assert_unrecognized_token!(res);
+            assert!(token.is_none());
+        }
     }
 
     mod ifdef {
@@ -284,6 +311,17 @@ mod test {
                 }),
                 res
             )
+        }
+
+        #[test]
+        fn no_content() {
+            let res = assert_err!(run_parser_init!("ifdef "));
+            let token = assert_unrecognized_token!(res);
+            assert!(token.is_none());
+
+            let res = assert_err!(run_parser!("ifdef # comment after ifdef"));
+            let token = assert_unrecognized_token!(res);
+            assert_eq!(token, Some((6, TokenType::CommentStart, 7)))
         }
     }
 }
