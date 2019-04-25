@@ -1,6 +1,6 @@
 //! The lexer for makefile lines
 
-use super::tokenizer::{self, IsDoubleColon, Token, TokenType, VariableAssign};
+use super::tokenizer::{self, IsDoubleColon, IsSoft, Token, TokenType, VariableAssign};
 
 mod lexer_grammar;
 
@@ -14,6 +14,8 @@ pub enum MakefileLine {
     /// A line that defines some targets and either their dependencies or a
     /// target-specific variable
     TargetLine(TargetLine),
+    /// Some sort of directive line,
+    DirectiveLine(DirectiveLine),
     /// An empty line
     EmptyLine,
 }
@@ -96,6 +98,19 @@ pub enum TargetLineTy {
     },
     /// This target line does something to target specific variables
     VariableOp(Box<VariableLine>),
+}
+
+/// What sort of directive line
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DirectiveLine {
+    /// An `include`, `sinclude` or `-include` directive
+    Include(IsSoft, VariableAstNode),
+    /// An `export` directive.
+    Export(VariableAstNode),
+    /// An `unexport` directive.
+    Unexport(VariableAstNode),
+    /// A `vpath` directive.
+    Vpath(VariableAstNode, Option<VariableAstNode>),
 }
 
 /// A variable AST node capture.
