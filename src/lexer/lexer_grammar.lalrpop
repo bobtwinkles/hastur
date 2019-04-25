@@ -70,6 +70,13 @@ extern {
         "wordlist" => TokenType::BuiltinFunction(BuiltinFunction::WordList),
         "words" => TokenType::BuiltinFunction(BuiltinFunction::Words),
 
+        "=" => TokenType::VariableAssign(VariableAssign::Recursive),
+        ":=" => TokenType::VariableAssign(VariableAssign::Simple(IsDoubleColon::No)),
+        "::=" => TokenType::VariableAssign(VariableAssign::Simple(IsDoubleColon::Yes)),
+        "+=" => TokenType::VariableAssign(VariableAssign::Append),
+        "?=" => TokenType::VariableAssign(VariableAssign::Conditional),
+        "!=" => TokenType::VariableAssign(VariableAssign::Bang),
+
         "(" => TokenType::OpenParen,
         ")" => TokenType::CloseParen,
         "{" => TokenType::OpenBrace,
@@ -90,11 +97,13 @@ pub MakefileLine : MakefileLine = <MakefileLineInner> Comment? EOL;
 
 MakefileLineInner : MakefileLine = {
     <ConditionalLine> => MakefileLine::ConditionalLine(<>),
+    <VariableLine> => MakefileLine::VariableLine(<>),
     Whitespace => MakefileLine::EmptyLine,
 }
 
 Comment = "#" AnyButNewline*;
 
+/// A line that starts with a conditional directive
 ConditionalLine : ConditionalLine = {
     <start:@L> <conditional:AnyConditional> => ConditionalLine {
         start,
@@ -119,8 +128,8 @@ IfEq : (ConditionalTy, usize) = {
 }
 
 ConditionalEqArguments : (VariableAstNode, VariableAstNode) = {
-    "(" <a:VariableText> "," <b:VariableText> ")" => (a, b),
-    <a:ConditionalEqArg> "whitespace"+ <b:ConditionalEqArg> => (a, b)
+    "(" Whitespace <a:VariableText> "," Whitespace <b:VariableText> ")" => (a, b),
+    <a:ConditionalEqArg> WhitespaceReq <b:ConditionalEqArg> => (a, b)
 }
 
 ConditionalEqArg : VariableAstNode = {
@@ -130,19 +139,47 @@ ConditionalEqArg : VariableAstNode = {
 
 #[inline]
 IfDef : (ConditionalTy, usize) = {
-    "ifdef" <t:VariableText> <end:@R> => (ConditionalTy::IfDef(t), end),
-    "ifndef" <t:VariableText> <end:@R> => (ConditionalTy::IfNDef(t), end),
+    "ifdef" Whitespace <t:VariableText> <end:@R> => (ConditionalTy::IfDef(t), end),
+    "ifndef" Whitespace <t:VariableText> <end:@R> => (ConditionalTy::IfNDef(t), end),
 }
 
 #[inline]
 Else : (ConditionalTy, usize) = {
      "else" <end:@R> Whitespace => (ConditionalTy::Else(None), end),
-     "else" Whitespace <next:IfEq> => (ConditionalTy::Else(Some(Box::new(next.0))), next.1),
-     "else" Whitespace <next:IfDef> => (ConditionalTy::Else(Some(Box::new(next.0))), next.1),
+     "else" WhitespaceReq <next:IfEq> => (ConditionalTy::Else(Some(Box::new(next.0))), next.1),
+     "else" WhitespaceReq <next:IfDef> => (ConditionalTy::Else(Some(Box::new(next.0))), next.1),
+}
+
+/// A line that represents an assignment operation
+VariableLine : VariableLine = {
+    <start:@L> <parse_modifiers:(ModifierStack WhitespaceReq)*> <name:VariableText> <op:AssignmentOperator> Whitespace
+                                                  <value:VariableText> <end:@R> => {
+        if let TokenType::VariableAssign(ty) = op {
+            let mut modifiers = Modifiers::default();
+            for (modifier, _) in parse_modifiers {
+                match modifier {
+                    Modifier::Export => modifiers.export = true,
+                    Modifier::Override => modifiers.mod_override = true,
+                    Modifier::Private => modifiers.private = true,
+                }
+            }
+            VariableLine {
+                start, end, name, value, ty, modifiers,
+            }
+        } else {
+            panic!("grammar bug: AssignmentOperator matches things that are not, in fact, assignment operators");
+        }
+    }
+}
+
+ModifierStack : Modifier = {
+    "export" => Modifier::Export,
+    "override" => Modifier::Override,
+    "private" => Modifier::Private,
 }
 
 /// The primary entry point for parsing text that may include variable expansions
-VariableText : VariableAstNode = Whitespace <start:@L> <input:(AnyVariableWord Whitespace)+> <end:@R> => {
+VariableText : VariableAstNode = <start:@L> <input:(AnyVariableWord Whitespace)+> <end:@R> => {
         use std::iter;
         let mut words = input;
         match words.len() {
@@ -295,7 +332,6 @@ Directive = {
     "include",
     "load",
     "override",
-    "override",
     "private",
     "unexport",
     "vpath",
@@ -371,7 +407,21 @@ AnyButNewline = {
 Whitespace: VariableAstNode = <start:@L> "whitespace"* <end:@R>
     => token_as_text(start, TokenType::Whitespace, end);
 
+#[inline]
+WhitespaceReq: VariableAstNode = <start:@L> "whitespace"+ <end:@R>
+    => token_as_text(start, TokenType::Whitespace, end);
+
 EOL : Option<TokenType> = {
     <"\n"> => Some(<>),
     => None
+}
+
+#[inline]
+AssignmentOperator = {
+    "=",
+    ":=",
+    "::=",
+    "+=",
+    "?=",
+    "!=",
 }

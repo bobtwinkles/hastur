@@ -1,6 +1,6 @@
 //! The lexer for makefile lines
 
-use super::tokenizer::{self, Token, TokenType};
+use super::tokenizer::{self, Token, TokenType, VariableAssign};
 
 mod lexer_grammar;
 
@@ -9,6 +9,8 @@ mod lexer_grammar;
 pub enum MakefileLine {
     /// A line that starts with a conditional directive
     ConditionalLine(ConditionalLine),
+    /// A variable assignment line
+    VariableLine(VariableLine),
     /// An empty line
     EmptyLine,
 }
@@ -36,6 +38,32 @@ pub enum ConditionalTy {
     Else(Option<Box<ConditionalTy>>),
     /// An `endif` statement
     EndIf,
+}
+
+/// Represents a line of variable assignment
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VariableLine {
+    start: usize,
+    name: VariableAstNode,
+    value: VariableAstNode,
+    ty: VariableAssign,
+    modifiers: Modifiers,
+    end: usize,
+}
+
+/// Represents modifiers
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
+pub struct Modifiers {
+    /// True when an `export` modifier has been seen
+    pub export: bool,
+    /// True when an `override` modifier has been seen
+    pub mod_override: bool,
+    /// True when a `private` modifier has been seen
+    pub private: bool,
+}
+
+pub enum Modifier {
+    Export, Override, Private
 }
 
 /// A variable AST node capture.
@@ -180,9 +208,9 @@ pub fn parse_stream(
 mod test {
     use super::adapt_token_iterator;
     use super::lexer_grammar::MakefileLineParser;
-    use super::{ConditionalLine, ConditionalTy, MakefileLine, VariableAstNode, VariableAstNodeTy};
+    use super::*;
     use crate::tokenizer::iterator_to_token_stream;
-    use crate::tokenizer::TokenType;
+    use crate::tokenizer::{IsDoubleColon, TokenType};
     use lalrpop_util::ParseError;
 
     macro_rules! run_parser_init {
@@ -400,6 +428,82 @@ mod test {
             let res = assert_err!(run_parser_init!("endif foo"));
             let tok = assert_unrecognized_token!(res);
             assert_eq!(tok, Some((6, TokenType::Text, 9)));
+        }
+    }
+
+    mod variable {
+        use super::*;
+        use crate::tokenizer::VariableAssign;
+        use pretty_assertions::assert_eq;
+
+        #[test]
+        fn simple() {
+            let res = assert_ok!(run_parser_init!("a := bar"));
+
+            assert_eq!(
+                MakefileLine::VariableLine(VariableLine {
+                    start: 0,
+                    name: VariableAstNode::new(0, VariableAstNodeTy::Text, 1),
+                    value: VariableAstNode::new(5, VariableAstNodeTy::Text, 8),
+                    ty: VariableAssign::Simple(IsDoubleColon::No),
+                    modifiers: Default::default(),
+                    end: 8
+                }),
+                res
+            );
+        }
+
+        #[test]
+        fn value_with_space() {
+            let res = assert_ok!(run_parser_init!("a := foo bar"));
+
+            assert_eq!(
+                MakefileLine::VariableLine(VariableLine {
+                    start: 0,
+                    name: VariableAstNode::new(0, VariableAstNodeTy::Text, 1),
+                    value: VariableAstNode::new(
+                        5,
+                        VariableAstNodeTy::Concat(vec![
+                            // "foo"
+                            VariableAstNode::new(5, VariableAstNodeTy::Text, 8),
+                            // " "
+                            VariableAstNode::new(8, VariableAstNodeTy::Text, 9),
+                            // "bar"
+                            VariableAstNode::new(9, VariableAstNodeTy::Text, 12),
+                            // ""
+                            VariableAstNode::new(12, VariableAstNodeTy::Text, 12),
+                        ]),
+                        12
+                    ),
+                    ty: VariableAssign::Simple(IsDoubleColon::No),
+                    modifiers: Default::default(),
+                    end: 12
+                }),
+                res
+            );
+        }
+
+        #[test]
+        fn modifiers() {
+            let res = assert_ok!(run_parser_init!(
+                "override a := foo"
+            ));
+
+            assert_eq!(
+                MakefileLine::VariableLine(VariableLine {
+                    start: 0,
+                    name: VariableAstNode::new(9, VariableAstNodeTy::Text, 10),
+                    value: VariableAstNode::new(14, VariableAstNodeTy::Text, 17),
+                    ty: VariableAssign::Simple(IsDoubleColon::No),
+                    modifiers: Modifiers {
+                        mod_override: true,
+                        private: false,
+                        export: false,
+                    },
+                    end: 17
+                }),
+                res
+            );
         }
     }
 }

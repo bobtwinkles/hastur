@@ -216,12 +216,17 @@ where
 
         macro_rules! token {
             ($ty:expr) => {
-                Some(Token {
-                    start: start_idx,
-                    end: end_idx,
-                    token_type: $ty,
-                })
+                token!(start_idx, $ty)
             };
+            ($start:expr, $ty:expr) => {{
+                let ty = $ty;
+                debug!("Yielding token {:?}", ty);
+                Some(Token {
+                    start: $start,
+                    end: end_idx,
+                    token_type: ty,
+                })
+            }};
         };
 
         macro_rules! check_next {
@@ -268,7 +273,7 @@ where
                     '$' => {
                         // If it's another $ sign, this isn't a variable reference but an "escaped" $
                         consume_next!();
-                        Some(Token::new(next_start, TokenType::Text, end_idx))
+                        token!(next_start, TokenType::Text)
                     }
                     '(' => {
                         consume_next!();

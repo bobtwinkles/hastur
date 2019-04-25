@@ -105,6 +105,7 @@ char_match_header = """
 fn match{path}<IT> (last_end: usize, it: &mut Peekable<IT>) -> (usize, Option<TokenType>)
   where IT: Iterator<Item = (usize, char)>
 {{
+    debug!("Running matcher for {{:?}}", "{path}");
     if let Some((_, chr)) = it.peek() {{
         match chr.to_lowercase().next() {{"""
 
@@ -116,6 +117,7 @@ match_char_template = """
 
 match_whitespace_template = """
             Some(c) if !c.is_ascii_alphabetic() => {{
+                debug!("Match found : {token}, next is {{:?}}", c);
                 (last_end, Some({token}))
             }}
             """
