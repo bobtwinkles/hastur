@@ -93,12 +93,14 @@ extern {
     }
 }
 
-pub MakefileLine : MakefileLine = <MakefileLineInner> Comment? EOL;
+pub MakefileLine : MakefileLine = {
+    Whitespace <MakefileLineInner> Comment? EOL => <>,
+    Whitespace Comment? EOL => MakefileLine::EmptyLine,
+}
 
 MakefileLineInner : MakefileLine = {
     <ConditionalLine> => MakefileLine::ConditionalLine(<>),
     <VariableLine> => MakefileLine::VariableLine(<>),
-    Whitespace => MakefileLine::EmptyLine,
 }
 
 Comment = "#" AnyButNewline*;
