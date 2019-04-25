@@ -48,12 +48,16 @@ pub enum ConditionalTy {
 /// Represents a line of variable assignment
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VariableLine {
-    start: usize,
-    name: VariableAstNode,
-    value: VariableAstNode,
-    ty: VariableAssign,
     modifiers: Modifiers,
-    end: usize,
+    name: VariableAstNode,
+    rhs: Option<AssignmentRhs>,
+}
+
+/// An assignment operation
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AssignmentRhs {
+    ty: VariableAssign,
+    value: VariableAstNode,
 }
 
 /// Represents modifiers
@@ -497,6 +501,7 @@ mod test {
 
     mod variable {
         use super::*;
+        use crate::lexer::AssignmentRhs;
         use crate::tokenizer::VariableAssign;
         use pretty_assertions::assert_eq;
 
@@ -506,12 +511,12 @@ mod test {
 
             assert_eq!(
                 MakefileLine::VariableLine(VariableLine {
-                    start: 0,
                     name: VariableAstNode::new(0, VariableAstNodeTy::Text, 1),
-                    value: VariableAstNode::new(5, VariableAstNodeTy::Text, 8),
-                    ty: VariableAssign::Simple(IsDoubleColon::No),
+                    rhs: Some(AssignmentRhs {
+                        ty: VariableAssign::Simple(IsDoubleColon::No),
+                        value: VariableAstNode::new(5, VariableAstNodeTy::Text, 8),
+                    }),
                     modifiers: Default::default(),
-                    end: 8
                 }),
                 res
             );
@@ -523,25 +528,25 @@ mod test {
 
             assert_eq!(
                 MakefileLine::VariableLine(VariableLine {
-                    start: 0,
                     name: VariableAstNode::new(0, VariableAstNodeTy::Text, 1),
-                    value: VariableAstNode::new(
-                        5,
-                        VariableAstNodeTy::Concat(vec![
-                            // "foo"
-                            VariableAstNode::new(5, VariableAstNodeTy::Text, 8),
-                            // " "
-                            VariableAstNode::new(8, VariableAstNodeTy::Text, 9),
-                            // "bar"
-                            VariableAstNode::new(9, VariableAstNodeTy::Text, 12),
-                            // ""
-                            VariableAstNode::new(12, VariableAstNodeTy::Text, 12),
-                        ]),
-                        12
-                    ),
-                    ty: VariableAssign::Simple(IsDoubleColon::No),
+                    rhs: Some(AssignmentRhs {
+                        value: VariableAstNode::new(
+                            5,
+                            VariableAstNodeTy::Concat(vec![
+                                // "foo"
+                                VariableAstNode::new(5, VariableAstNodeTy::Text, 8),
+                                // " "
+                                VariableAstNode::new(8, VariableAstNodeTy::Text, 9),
+                                // "bar"
+                                VariableAstNode::new(9, VariableAstNodeTy::Text, 12),
+                                // ""
+                                VariableAstNode::new(12, VariableAstNodeTy::Text, 12),
+                            ]),
+                            12
+                        ),
+                        ty: VariableAssign::Simple(IsDoubleColon::No),
+                    }),
                     modifiers: Default::default(),
-                    end: 12
                 }),
                 res
             );
@@ -553,16 +558,16 @@ mod test {
 
             assert_eq!(
                 MakefileLine::VariableLine(VariableLine {
-                    start: 0,
                     name: VariableAstNode::new(9, VariableAstNodeTy::Text, 10),
-                    value: VariableAstNode::new(14, VariableAstNodeTy::Text, 17),
-                    ty: VariableAssign::Simple(IsDoubleColon::No),
+                    rhs: Some(AssignmentRhs {
+                        value: VariableAstNode::new(14, VariableAstNodeTy::Text, 17),
+                        ty: VariableAssign::Simple(IsDoubleColon::No),
+                    }),
                     modifiers: Modifiers {
                         mod_override: true,
                         private: false,
                         export: false,
                     },
-                    end: 17
                 }),
                 res
             );
