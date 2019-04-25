@@ -63,7 +63,9 @@ pub struct Modifiers {
 }
 
 pub enum Modifier {
-    Export, Override, Private
+    Export,
+    Override,
+    Private,
 }
 
 /// A variable AST node capture.
@@ -485,9 +487,7 @@ mod test {
 
         #[test]
         fn modifiers() {
-            let res = assert_ok!(run_parser_init!(
-                "override a := foo"
-            ));
+            let res = assert_ok!(run_parser_init!("override a := foo"));
 
             assert_eq!(
                 MakefileLine::VariableLine(VariableLine {
