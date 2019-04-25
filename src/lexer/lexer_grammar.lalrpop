@@ -93,13 +93,15 @@ extern {
     }
 }
 
-pub MakefileLine : MakefileLine = <MakefileLineInner> Comment? EOL;
+pub MakefileLine : MakefileLine = {
+    Whitespace <MakefileLineInner> Comment? EOL => <>,
+    Whitespace Comment? EOL => MakefileLine::EmptyLine,
+}
 
 MakefileLineInner : MakefileLine = {
     <ConditionalLine> => MakefileLine::ConditionalLine(<>),
     <VariableLine> => MakefileLine::VariableLine(<>),
     <TargetLine> => MakefileLine::TargetLine(<>),
-    Whitespace => MakefileLine::EmptyLine,
 }
 
 Comment = "#" AnyButNewline*;
@@ -153,17 +155,9 @@ Else : (ConditionalTy, usize) = {
 
 /// A line that represents an assignment operation
 VariableLine : VariableLine = {
-    <start:@L> <parse_modifiers:(ModifierStack WhitespaceReq)*> <name:VariableText> <op:AssignmentOperator> Whitespace
+    <start:@L> <modifiers:ModifierStack> <name:VariableText> <op:AssignmentOperator> Whitespace
                                                   <value:VariableText> <end:@R> => {
         if let TokenType::VariableAssign(ty) = op {
-            let mut modifiers = Modifiers::default();
-            for (modifier, _) in parse_modifiers {
-                match modifier {
-                    Modifier::Export => modifiers.export = true,
-                    Modifier::Override => modifiers.mod_override = true,
-                    Modifier::Private => modifiers.private = true,
-                }
-            }
             VariableLine {
                 start, end, name, value, ty, modifiers,
             }
@@ -173,7 +167,20 @@ VariableLine : VariableLine = {
     }
 }
 
-ModifierStack : Modifier = {
+#[inline]
+ModifierStack: Modifiers = <parse_modifiers:(Modifier WhitespaceReq)*> => {
+        let mut modifiers = Modifiers::default();
+        for (modifier, _) in parse_modifiers {
+            match modifier {
+                Modifier::Export => modifiers.export = true,
+                Modifier::Override => modifiers.mod_override = true,
+                Modifier::Private => modifiers.private = true,
+            }
+        }
+        modifiers
+    };
+
+Modifier : Modifier = {
     "export" => Modifier::Export,
     "override" => Modifier::Override,
     "private" => Modifier::Private,

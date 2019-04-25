@@ -456,6 +456,19 @@ mod test {
         }
 
         #[test]
+        fn prefixed_space() {
+            let res = assert_ok!(run_parser_init!(" endif"));
+            assert_eq!(
+                MakefileLine::ConditionalLine(ConditionalLine {
+                    start: 1,
+                    conditional: ConditionalTy::EndIf,
+                    end: 6
+                }),
+                res
+            );
+        }
+
+        #[test]
         fn extra_tokens() {
             let res = assert_err!(run_parser_init!("endif foo"));
             let tok = assert_unrecognized_token!(res);
@@ -517,9 +530,7 @@ mod test {
 
         #[test]
         fn modifiers() {
-            let res = assert_ok!(run_parser_init!(
-                "override a := foo"
-            ));
+            let res = assert_ok!(run_parser_init!("override a := foo"));
 
             assert_eq!(
                 MakefileLine::VariableLine(VariableLine {
