@@ -174,7 +174,7 @@ VariableLine : VariableLine = {
 }
 
 AssignmentRhs : AssignmentRhs = {
-    <op:AssignmentOperator> Whitespace <value:VariableText> <end:@R> => {
+    <op:AssignmentOperator> Whitespace <value:VariableText> => {
         if let TokenType::VariableAssign(ty) = op {
                 AssignmentRhs {
                     value, ty,
