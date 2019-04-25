@@ -157,8 +157,8 @@ Else : (ConditionalTy, usize) = {
 
 /// A line that represents an assignment operation
 VariableLine : VariableLine = {
-    <start:@L> <modifiers:ModifierStack> <name:VariableText> <op:AssignmentOperator> Whitespace
-                                                  <value:VariableText> <end:@R> => {
+    <start:@L> <modifiers:ModifierStack> "define"?
+      <name:VariableText> <op:AssignmentOperator> Whitespace <value:VariableText> <end:@R> => {
         if let TokenType::VariableAssign(ty) = op {
             VariableLine {
                 start, end, name, value, ty, modifiers,
@@ -217,6 +217,10 @@ DirectiveLine : DirectiveLine = {
     "export" <val:VariableText> => DirectiveLine::Export(val),
     "unexport" <val:VariableText> => DirectiveLine::Unexport(val),
     "vpath" <pattern:AnyVariableWord> WhitespaceReq <val:VariableText?> => DirectiveLine::Vpath(pattern, val),
+    <modifiers:ModifierStack> "undefine" <vars:VariableText> =>
+        DirectiveLine::Undefine(modifiers, vars),
+    <modifiers:ModifierStack> "define" <vars:VariableText> =>
+        DirectiveLine::Define(modifiers, vars),
 }
 
 /// The primary entry point for parsing text that may include variable expansions

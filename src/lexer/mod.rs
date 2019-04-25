@@ -109,6 +109,10 @@ pub enum DirectiveLine {
     Export(VariableAstNode),
     /// An `unexport` directive.
     Unexport(VariableAstNode),
+    /// Define a variable, without any content
+    Define(Modifiers, VariableAstNode),
+    /// A "undefine" operation,
+    Undefine(Modifiers, VariableAstNode),
     /// A `vpath` directive.
     Vpath(VariableAstNode, Option<VariableAstNode>),
 }
