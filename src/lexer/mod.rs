@@ -62,8 +62,16 @@ pub struct Modifiers {
     pub private: bool,
 }
 
+/// Represents a single modifier
 pub enum Modifier {
-    Export, Override, Private
+    /// The `export` modifier
+    Export,
+    /// The `override` modifier
+    Override,
+    /// The `private` modifier
+    Private,
+}
+
 }
 
 /// A variable AST node capture.
