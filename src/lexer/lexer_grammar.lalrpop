@@ -98,6 +98,7 @@ pub MakefileLine : MakefileLine = <MakefileLineInner> Comment? EOL;
 MakefileLineInner : MakefileLine = {
     <ConditionalLine> => MakefileLine::ConditionalLine(<>),
     <VariableLine> => MakefileLine::VariableLine(<>),
+    <TargetLine> => MakefileLine::TargetLine(<>),
     Whitespace => MakefileLine::EmptyLine,
 }
 
@@ -176,6 +177,28 @@ ModifierStack : Modifier = {
     "export" => Modifier::Export,
     "override" => Modifier::Override,
     "private" => Modifier::Private,
+}
+
+/// A target lines is anything that begins with a list of targets followed by a : or ::
+TargetLine: TargetLine = {
+    <start:@L> <targets:VariableText> <sep:TargetSeparator> Whitespace <deps:VariableText> <end:@R> =>
+        TargetLine {
+            start, end, targets,
+            ty: TargetLineTy::DepLine {
+                is_double_colon: sep,
+                deps
+            }
+        },
+    <start:@L> <targets:VariableText> TargetSeparator Whitespace <varline: VariableLine> <end:@R> =>
+        TargetLine {
+            start, end, targets,
+            ty: TargetLineTy::VariableOp(Box::new(varline))
+        }
+}
+
+TargetSeparator : IsDoubleColon = {
+    ":" => IsDoubleColon::No,
+    "::" => IsDoubleColon::Yes
 }
 
 /// The primary entry point for parsing text that may include variable expansions
@@ -305,7 +328,8 @@ VariableTextNonFunction = {
    "escaped_char",
    "#",
    Directive,
-   Colons
+   Colons,
+   AssignmentOperator,
 }
 
 ////////////////////////////////////////////////////////////////////////////////

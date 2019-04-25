@@ -1,6 +1,6 @@
 //! The lexer for makefile lines
 
-use super::tokenizer::{self, Token, TokenType, VariableAssign};
+use super::tokenizer::{self, IsDoubleColon, Token, TokenType, VariableAssign};
 
 mod lexer_grammar;
 
@@ -11,6 +11,9 @@ pub enum MakefileLine {
     ConditionalLine(ConditionalLine),
     /// A variable assignment line
     VariableLine(VariableLine),
+    /// A line that defines some targets and either their dependencies or a
+    /// target-specific variable
+    TargetLine(TargetLine),
     /// An empty line
     EmptyLine,
 }
@@ -72,6 +75,27 @@ pub enum Modifier {
     Private,
 }
 
+/// A line that operates on targets
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TargetLine {
+    start: usize,
+    targets: VariableAstNode,
+    ty: TargetLineTy,
+    end: usize,
+}
+
+/// What sort of target line is this
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TargetLineTy {
+    /// This line specifies dependencies
+    DepLine {
+        /// Whether this was double or single colon rule
+        is_double_colon: IsDoubleColon,
+        /// The deps being specified
+        deps: VariableAstNode,
+    },
+    /// This target line does something to target specific variables
+    VariableOp(Box<VariableLine>),
 }
 
 /// A variable AST node capture.
@@ -512,6 +536,48 @@ mod test {
                 }),
                 res
             );
+        }
+    }
+
+    mod target_line {
+        use super::*;
+
+        mod rule_start {
+            use super::*;
+            use pretty_assertions::assert_eq;
+
+            #[test]
+            fn simple() {
+                let res = assert_ok!(run_parser_init!("a: b"));
+
+                assert_eq!(
+                    MakefileLine::TargetLine(TargetLine {
+                        start: 0,
+                        ty: TargetLineTy::DepLine {
+                            is_double_colon: IsDoubleColon::No,
+                            deps: VariableAstNode::new(3, VariableAstNodeTy::Text, 4),
+                        },
+                        targets: VariableAstNode::new(0, VariableAstNodeTy::Text, 1),
+                        end: 4
+                    }),
+                    res
+                );
+
+                let res = assert_ok!(run_parser!("a :: b"));
+
+                assert_eq!(
+                    MakefileLine::TargetLine(TargetLine {
+                        start: 0,
+                        ty: TargetLineTy::DepLine {
+                            is_double_colon: IsDoubleColon::Yes,
+                            deps: VariableAstNode::new(5, VariableAstNodeTy::Text, 6),
+                        },
+                        targets: VariableAstNode::new(0, VariableAstNodeTy::Text, 1),
+                        end: 6
+                    }),
+                    res
+                );
+            }
         }
     }
 }
