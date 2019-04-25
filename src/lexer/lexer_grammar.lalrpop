@@ -6,7 +6,7 @@ grammar;
 extern {
     type Location = usize;
     type Error = crate::lexer::LexicalError;
-    
+
     enum TokenType {
         "whitespace" => TokenType::Whitespace,
         "escaped_char" => TokenType::EscapedCharacter(_),
@@ -227,13 +227,13 @@ SingleVariableReference : VariableAstNode =
                  ty: VariableAstNodeTy::Text,
                  end: end,
             })
-        }, 
+        },
         end: end,
     };
 
-ParenVariableReference : VariableAstNode = 
+ParenVariableReference : VariableAstNode =
     <dollar_start:@L> "$(" <start:@L> <captured:VariableTextInParen> <end:@R> ")" <dollar_end:@R> => VariableAstNode {
-        start: dollar_start, 
+        start: dollar_start,
         ty: VariableAstNodeTy::VariableReference {
             name: Box::new(VariableAstNode {
                 start: start,
@@ -245,9 +245,9 @@ ParenVariableReference : VariableAstNode =
     };
 
 
-BraceVariableReference : VariableAstNode = 
+BraceVariableReference : VariableAstNode =
     <dollar_start:@L> "${" <start:@L> <captured:VariableTextInBrace> <end:@R> "}" <dollar_end:@R> => VariableAstNode {
-        start: dollar_start, 
+        start: dollar_start,
         ty: VariableAstNodeTy::VariableReference {
             name: Box::new(VariableAstNode {
                 start: start,
@@ -284,7 +284,7 @@ VariableTextInit<Accept> : VariableAstNodeTy = {
 }
 
 #[inline]
-VariableTextRest<Accept> : VariableAstNode = 
+VariableTextRest<Accept> : VariableAstNode =
     <start:@L> <vte:VariableTextElement<Accept>+> <end:@R> =>
         VariableAstNode {
             start, end,
@@ -379,16 +379,16 @@ AnyButNewline = {
     "whitespace",
     "escaped_char",
     "var_assign",
-    
+
     "text",
 
     FunctionName,
     Directive,
-    
+
     "single_var",
     "$(",
     "${",
-    
+
     "(",
     ")",
     "{",
