@@ -157,17 +157,10 @@ Else : (ConditionalTy, usize) = {
 
 /// A line that represents an assignment operation
 VariableLine : VariableLine = {
-    <modifiers:ModifierStack> <name:VariableText> <rhs:AssignmentRhs> =>
-        VariableLine { modifiers, name, rhs: Some(rhs) },
-    <first_mod: Modifier> <modifiers:ModifierStack> <name:VariableText> => {
-        let mut modifiers = modifiers;
-        match first_mod {
-            Modifier::Export => modifiers.export = true,
-            Modifier::Override => modifiers.mod_override = true,
-            Modifier::Private => modifiers.private = true,
-        }
-        VariableLine { modifiers, name, rhs: None }
+    <modifiers:ModifierStack> <name:VariableText> <rhs:AssignmentRhs?> => {
+        VariableLine { modifiers, name, rhs }
     },
+    <name:VariableText> <rhs:AssignmentRhs> => VariableLine { modifiers: Default::default(), name, rhs: Some(rhs) },
     // "override" "undefine" => a,
     // "undefine" => b,
     // <modifiers:ModifierStack> "define" => define,
@@ -186,7 +179,7 @@ AssignmentRhs : AssignmentRhs = {
 }
 
 #[inline]
-ModifierStack: Modifiers = <parse_modifiers:(Modifier WhitespaceReq)*> => {
+ModifierStack: Modifiers = <parse_modifiers:(Modifier WhitespaceReq)+> => {
         let mut modifiers = Modifiers::default();
         for (modifier, _) in parse_modifiers {
             match modifier {

@@ -615,4 +615,30 @@ mod test {
             }
         }
     }
+
+    mod directives {
+        use super::*;
+
+        mod export {
+            use super::*;
+            use pretty_assertions::assert_eq;
+
+            #[test]
+            fn simple() {
+                let res = assert_ok!(run_parser_init!("export foo"));
+
+                assert_eq!(
+                    MakefileLine::VariableLine(VariableLine {
+                        name: VariableAstNode::new(7, VariableAstNodeTy::Text, 10),
+                        rhs: None,
+                        modifiers: Modifiers {
+                            export: true,
+                            ..Default::default()
+                        },
+                    }),
+                    res
+                )
+            }
+        }
+    }
 }
