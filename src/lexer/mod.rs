@@ -667,6 +667,28 @@ mod test {
                     res
                 )
             }
+
+            #[test]
+            fn target_line() {
+                let res = assert_ok!(run_parser_init!("a: export foo"));
+
+                assert_eq!(
+                    MakefileLine::TargetLine(TargetLine {
+                        start: 0,
+                        targets: VariableAstNode::new(0, VariableAstNodeTy::Text, 1),
+                        ty: TargetLineTy::VariableOp(Box::new(VariableLine {
+                            name: VariableAstNode::new(10, VariableAstNodeTy::Text, 13),
+                            rhs: None,
+                            modifiers: Modifiers {
+                                export: true,
+                                ..Default::default()
+                            }
+                        })),
+                        end: 13,
+                    }),
+                    res,
+                );
+            }
         }
     }
 }
