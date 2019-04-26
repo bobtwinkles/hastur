@@ -221,11 +221,11 @@ TargetSeparator : IsDoubleColon = {
 
 /// Directive matching
 DirectiveLine : DirectiveLine = {
-    "include" Whitespace <val:VariableText> =>
+    "include" Whitespace <val:VariableText?> =>
         DirectiveLine::Include(IsSoft::No, val),
-    "-include" Whitespace <val:VariableText> =>
+    "-include" Whitespace <val:VariableText?> =>
         DirectiveLine::Include(IsSoft::Yes, val),
-    "unexport" Whitespace <val:VariableText> =>
+    "unexport" Whitespace <val:VariableText?> =>
         DirectiveLine::Unexport(val),
     "vpath" Whitespace <pattern:AnyVariableWord> WhitespaceReq <val:VariableText?> =>
         DirectiveLine::Vpath(pattern, val),

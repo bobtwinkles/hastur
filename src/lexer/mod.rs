@@ -108,11 +108,11 @@ pub enum TargetLineTy {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DirectiveLine {
     /// An `include`, `sinclude` or `-include` directive
-    Include(IsSoft, VariableAstNode),
+    Include(IsSoft, Option<VariableAstNode>),
     /// An `export` directive.
-    Export(VariableAstNode),
+    Export(Option<VariableAstNode>),
     /// An `unexport` directive.
-    Unexport(VariableAstNode),
+    Unexport(Option<VariableAstNode>),
     /// Define a variable, without any content
     Define(Modifiers, VariableAstNode),
     /// A "undefine" operation,
@@ -630,10 +630,20 @@ mod test {
                 assert_eq!(
                     MakefileLine::DirectiveLine(DirectiveLine::Include(
                         IsSoft::No,
-                        VariableAstNode::new(8, VariableAstNodeTy::Text, 12)
+                        Some(VariableAstNode::new(8, VariableAstNodeTy::Text, 12))
                     )),
                     res
                 );
+            }
+
+            #[test]
+            fn no_followup() {
+                let res = assert_ok!(run_parser_init!("include"));
+
+                assert_eq!(
+                    MakefileLine::DirectiveLine(DirectiveLine::Include(IsSoft::No, None)),
+                    res
+                )
             }
         }
 
