@@ -619,6 +619,24 @@ mod test {
     mod directives {
         use super::*;
 
+        mod include {
+            use super::*;
+            use pretty_assertions::assert_eq;
+
+            #[test]
+            fn include() {
+                let res = assert_ok!(run_parser_init!("include a.mk"));
+
+                assert_eq!(
+                    MakefileLine::DirectiveLine(DirectiveLine::Include(
+                        IsSoft::No,
+                        VariableAstNode::new(8, VariableAstNodeTy::Text, 12)
+                    )),
+                    res
+                );
+            }
+        }
+
         mod export {
             use super::*;
             use pretty_assertions::assert_eq;

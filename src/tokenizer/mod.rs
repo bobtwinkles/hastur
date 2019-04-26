@@ -634,4 +634,16 @@ mod test {
             parsed
         );
     }
+
+    #[test]
+    fn recognize_include() {
+        crate::test::setup();
+        let input = "include";
+        let parsed: Vec<Token> = iterator_to_token_stream(input.char_indices()).collect();
+
+        assert_eq!(
+            vec![Token::new(0, TokenType::Directive(Directive::Include(IsSoft::No)), 7)],
+            parsed
+        );
+    }
 }
