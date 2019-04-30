@@ -598,7 +598,10 @@ impl Engine {
 mod test {
     //! Test utilities
     pub(crate) fn setup() {
-        let _ = env_logger::builder().is_test(true).try_init();
+        let _ = env_logger::builder()
+            .is_test(true)
+            .filter_level(log::LevelFilter::Debug)
+            .try_init();
     }
 
     /*
