@@ -42,8 +42,6 @@ pub enum TokenType {
     Whitespace,
     /// An escaped character (character preceded by a \)
     EscapedCharacter(Option<char>),
-    /// An escaped whitespace character (this includes escaped newlines)
-    EscapedWhitespace(char),
     /// A variable assignment operator
     VariableAssign(VariableAssign),
     /// The start of a variable reference (a `$` token)
@@ -263,13 +261,7 @@ where
         } else if chr == '\\' {
             match consume_next!() {
                 None => token!(TokenType::EscapedCharacter(None)),
-                Some(chr2) => {
-                    if chr2.is_whitespace() {
-                        token!(TokenType::EscapedWhitespace(chr2))
-                    } else {
-                        token!(TokenType::EscapedCharacter(Some(chr2)))
-                    }
-                }
+                Some(chr2) => token!(TokenType::EscapedCharacter(Some(chr2))),
             }
         } else if chr == '$' {
             if let Some((next_start, next)) = self.internal.peek() {
@@ -438,10 +430,6 @@ mod test {
                         assert!(chr.is_whitespace())
                     }
                     buffer.push_str(slice);
-                }
-                TokenType::EscapedWhitespace(c) => {
-                    buffer.push('\\');
-                    buffer.push(c);
                 }
                 TokenType::Text => {
                     let slice = &original_string[token.start..token.end];
@@ -654,11 +642,7 @@ mod test {
         let parsed: Vec<Token> = iterator_to_token_stream(input.char_indices()).collect();
 
         assert_eq!(
-            vec![Token::new(
-                0,
-                TokenType::Directive(Directive::Include(IsSoft::No)),
-                7
-            )],
+            vec![Token::new(0, TokenType::Directive(Directive::Include(IsSoft::No)), 7)],
             parsed
         );
     }

@@ -9,7 +9,6 @@ extern {
 
     enum TokenType {
         "whitespace" => TokenType::Whitespace,
-        "escaped_whitespace" => TokenType::EscapedWhitespace(_),
         "escaped_char" => TokenType::EscapedCharacter(_),
         "var_assign" => TokenType::VariableAssign(_),
 
@@ -169,7 +168,7 @@ VariableLine : VariableLine = {
 }
 
 AssignmentRhs : AssignmentRhs = {
-    <op:AssignmentOperator> <loc:@L> Whitespace  <value:VariableText?> => {
+    <op:AssignmentOperator> Whitespace <loc:@R> <value:VariableText?> => {
         if let TokenType::VariableAssign(ty) = op {
                 match value {
                     Some(value) => AssignmentRhs {value, ty},
@@ -463,14 +462,11 @@ AnyButNewline = {
 }
 
 #[inline]
-AnySingleWhitespace = {"whitespace", "escaped_whitespace"}
-
-#[inline]
-Whitespace: VariableAstNode = <start:@L> AnySingleWhitespace* <end:@R>
+Whitespace: VariableAstNode = <start:@L> "whitespace"* <end:@R>
     => token_as_text(start, TokenType::Whitespace, end);
 
 #[inline]
-WhitespaceReq: VariableAstNode = <start:@L> AnySingleWhitespace+ <end:@R>
+WhitespaceReq: VariableAstNode = <start:@L> "whitespace"+ <end:@R>
     => token_as_text(start, TokenType::Whitespace, end);
 
 EOL : Option<TokenType> = {
