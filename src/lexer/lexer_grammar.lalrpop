@@ -160,17 +160,22 @@ VariableLine : VariableLine = {
     <modifiers:ModifierStack> <name:VariableText> <rhs:AssignmentRhs?> => {
         VariableLine { modifiers, name, rhs }
     },
-    <name:VariableText> <rhs:AssignmentRhs> => VariableLine { modifiers: Default::default(), name, rhs: Some(rhs) },
+    <name:VariableText> <rhs:AssignmentRhs> =>
+        VariableLine { modifiers: Default::default(), name, rhs: Some(rhs) },
     // "override" "undefine" => a,
     // "undefine" => b,
     // <modifiers:ModifierStack> "define" => define,
 }
 
 AssignmentRhs : AssignmentRhs = {
-    <op:AssignmentOperator> Whitespace <value:VariableText> => {
+    <op:AssignmentOperator> Whitespace <loc:@R> <value:VariableText?> => {
         if let TokenType::VariableAssign(ty) = op {
-                AssignmentRhs {
-                    value, ty,
+                match value {
+                    Some(value) => AssignmentRhs {value, ty},
+                    None => AssignmentRhs {
+                        value: VariableAstNode::new(loc, VariableAstNodeTy::Text, loc),
+                        ty
+                    }
                 }
             } else {
                 panic!("grammar bug: AssignmentOperator matches things that are not, in fact, assignment operators");

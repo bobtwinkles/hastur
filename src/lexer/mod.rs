@@ -133,7 +133,6 @@ pub struct VariableAstNode {
 }
 
 impl VariableAstNode {
-    #[cfg(test)]
     fn new(start: usize, ty: VariableAstNodeTy, end: usize) -> Self {
         Self { start, ty, end }
     }
@@ -568,6 +567,23 @@ mod test {
                         private: false,
                         export: false,
                     },
+                }),
+                res
+            );
+        }
+
+        #[test]
+        fn empty_value() {
+            let res = assert_ok!(run_parser_init!("a :="));
+
+            assert_eq!(
+                MakefileLine::VariableLine(VariableLine {
+                    name: VariableAstNode::new(0, VariableAstNodeTy::Text, 1),
+                    rhs: Some(AssignmentRhs {
+                        value: VariableAstNode::new(4, VariableAstNodeTy::Text, 4),
+                        ty: VariableAssign::Simple(IsDoubleColon::No),
+                    }),
+                    modifiers: Default::default(),
                 }),
                 res
             );
