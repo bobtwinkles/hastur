@@ -587,6 +587,20 @@ mod test {
                 }),
                 res
             );
+
+            let res = assert_ok!(run_parser_init!("a := \\\n"));
+
+            assert_eq!(
+                MakefileLine::VariableLine(VariableLine {
+                    name: VariableAstNode::new(0, VariableAstNodeTy::Text, 1),
+                    rhs: Some(AssignmentRhs {
+                        value: VariableAstNode::new(4, VariableAstNodeTy::Text, 4),
+                        ty: VariableAssign::Simple(IsDoubleColon::No),
+                    }),
+                    modifiers: Default::default(),
+                }),
+                res
+            );
         }
     }
 
