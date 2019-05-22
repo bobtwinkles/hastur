@@ -38,8 +38,6 @@ pub enum TokenType {
     BuiltinFunction(BuiltinFunction),
     /// Some plain text
     Text,
-    /// Whitespace characters
-    Whitespace,
     /// An escaped character (character preceded by a \)
     EscapedCharacter(Option<char>),
     /// A variable assignment operator
@@ -273,7 +271,7 @@ where
                 }
                 consume_next!();
             }
-            token!(TokenType::Whitespace)
+            return NextOperation::GoAgain;
         } else if chr.is_whitespace() {
             token!(TokenType::NewLine)
         } else if chr == '\\' {
@@ -503,13 +501,6 @@ mod test {
 
         for token in tokens {
             match token.token_type {
-                TokenType::Whitespace => {
-                    let slice = &original_string[token.start..token.end];
-                    for chr in slice.chars() {
-                        assert!(chr.is_whitespace())
-                    }
-                    buffer.push_str(slice);
-                }
                 TokenType::Text => {
                     let slice = &original_string[token.start..token.end];
 
@@ -626,7 +617,7 @@ mod test {
 
     proptest! {
         #[test]
-        fn round_trip_tokens(input in r"[[:alpha:]\-=\\+!%: \t$(){}¥ѨȺ🕴]+") {
+        fn round_trip_tokens(input in r"[[:alpha:]\-=\\+!%:$(){}¥ѨȺ🕴]+") {
             let parsed: Vec<Token> = iterator_to_token_stream(input.char_indices()).collect();
             let flat = flatten_stream(&input, &parsed);
 
@@ -722,7 +713,11 @@ mod test {
         let parsed: Vec<Token> = iterator_to_token_stream(input.char_indices()).collect();
 
         assert_eq!(
-            vec![Token::new(0, TokenType::Directive(Directive::Include(IsSoft::No)), 7)],
+            vec![Token::new(
+                0,
+                TokenType::Directive(Directive::Include(IsSoft::No)),
+                7
+            )],
             parsed
         );
     }

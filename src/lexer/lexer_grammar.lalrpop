@@ -8,7 +8,6 @@ extern {
     type Error = crate::lexer::LexicalError;
 
     enum TokenType {
-        "whitespace" => TokenType::Whitespace,
         "escaped_char" => TokenType::EscapedCharacter(_),
         "var_assign" => TokenType::VariableAssign(_),
 
@@ -96,8 +95,8 @@ extern {
 // pub AllLines : Vec<(MakefileLine, EOL)> = (MakefileLine EOL)+;
 
 pub MakefileLine : MakefileLine = {
-    Whitespace <MakefileLineInner> => <>,
-    Whitespace => MakefileLine::EmptyLine,
+    <MakefileLineInner> => <>,
+    => MakefileLine::EmptyLine,
 }
 
 MakefileLineInner : MakefileLine = {
@@ -120,20 +119,20 @@ AnyConditional : (ConditionalTy, usize) = {
     <IfEq>,
     <IfDef>,
     <Else>,
-    "endif" <end:@R> Whitespace => (ConditionalTy::EndIf, end),
+    "endif" <end:@R> => (ConditionalTy::EndIf, end),
 }
 
 #[inline]
 IfEq : (ConditionalTy, usize) = {
-    "ifeq" Whitespace <args:ConditionalEqArguments> <end:@R> Whitespace =>
+    "ifeq" <args:ConditionalEqArguments> <end:@R> =>
         (ConditionalTy::IfEq(args.0, args.1), end),
-    "ifneq" Whitespace <args:ConditionalEqArguments> <end:@R> Whitespace =>
+    "ifneq" <args:ConditionalEqArguments> <end:@R> =>
         (ConditionalTy::IfNEq(args.0, args.1), end),
 }
 
 ConditionalEqArguments : (VariableAstNode, VariableAstNode) = {
-    "(" Whitespace <a:VariableText> "," Whitespace <b:VariableText> ")" => (a, b),
-    <a:ConditionalEqArg> WhitespaceReq <b:ConditionalEqArg> => (a, b)
+    "(" <a:VariableText> "," <b:VariableText> ")" => (a, b),
+    <a:ConditionalEqArg> <b:ConditionalEqArg> => (a, b)
 }
 
 ConditionalEqArg : VariableAstNode = {
@@ -143,15 +142,15 @@ ConditionalEqArg : VariableAstNode = {
 
 #[inline]
 IfDef : (ConditionalTy, usize) = {
-    "ifdef" Whitespace <t:VariableText> <end:@R> => (ConditionalTy::IfDef(t), end),
-    "ifndef" Whitespace <t:VariableText> <end:@R> => (ConditionalTy::IfNDef(t), end),
+    "ifdef" <t:VariableText> <end:@R> => (ConditionalTy::IfDef(t), end),
+    "ifndef" <t:VariableText> <end:@R> => (ConditionalTy::IfNDef(t), end),
 }
 
 #[inline]
 Else : (ConditionalTy, usize) = {
-     "else" <end:@R> Whitespace => (ConditionalTy::Else(None), end),
-     "else" WhitespaceReq <next:IfEq> => (ConditionalTy::Else(Some(Box::new(next.0))), next.1),
-     "else" WhitespaceReq <next:IfDef> => (ConditionalTy::Else(Some(Box::new(next.0))), next.1),
+     "else" <end:@R> => (ConditionalTy::Else(None), end),
+     "else" <next:IfEq> => (ConditionalTy::Else(Some(Box::new(next.0))), next.1),
+     "else" <next:IfDef> => (ConditionalTy::Else(Some(Box::new(next.0))), next.1),
 }
 
 /// A line that represents an assignment operation
@@ -167,7 +166,7 @@ VariableLine : VariableLine = {
 }
 
 AssignmentRhs : AssignmentRhs = {
-    <op:AssignmentOperator> Whitespace <loc:@R> <value:VariableText?> => {
+    <op:AssignmentOperator> <loc:@R> <value:VariableText?> => {
         if let TokenType::VariableAssign(ty) = op {
                 match value {
                     Some(value) => AssignmentRhs {value, ty},
@@ -183,9 +182,9 @@ AssignmentRhs : AssignmentRhs = {
 }
 
 #[inline]
-ModifierStack: Modifiers = <parse_modifiers:(Modifier WhitespaceReq)+> => {
+ModifierStack: Modifiers = <parse_modifiers:Modifier+> => {
         let mut modifiers = Modifiers::default();
-        for (modifier, _) in parse_modifiers {
+        for modifier in parse_modifiers {
             match modifier {
                 Modifier::Export => modifiers.export = true,
                 Modifier::Override => modifiers.mod_override = true,
@@ -203,7 +202,7 @@ Modifier : Modifier = {
 
 /// A target lines is anything that begins with a list of targets followed by a : or ::
 TargetLine: TargetLine = {
-    <start:@L> <targets:VariableText> <sep:TargetSeparator> Whitespace <deps:VariableText> <end:@R> =>
+    <start:@L> <targets:VariableText> <sep:TargetSeparator> <deps:VariableText> <end:@R> =>
         TargetLine {
             start, end, targets,
             ty: TargetLineTy::DepLine {
@@ -211,7 +210,7 @@ TargetLine: TargetLine = {
                 deps
             }
         },
-    <start:@L> <targets:VariableText> TargetSeparator Whitespace <varline: VariableLine> <end:@R> =>
+    <start:@L> <targets:VariableText> TargetSeparator <varline: VariableLine> <end:@R> =>
         TargetLine {
             start, end, targets,
             ty: TargetLineTy::VariableOp(Box::new(varline))
@@ -225,28 +224,29 @@ TargetSeparator : IsDoubleColon = {
 
 /// Directive matching
 DirectiveLine : DirectiveLine = {
-    "include" Whitespace <val:VariableText?> =>
+    "include" <val:VariableText?> =>
         DirectiveLine::Include(IsSoft::No, val),
-    "-include" Whitespace <val:VariableText?> =>
+    "-include" <val:VariableText?> =>
         DirectiveLine::Include(IsSoft::Yes, val),
-    "unexport" Whitespace <val:VariableText?> =>
+    "unexport" <val:VariableText?> =>
         DirectiveLine::Unexport(val),
-    "vpath" Whitespace <pattern:AnyVariableWord> WhitespaceReq <val:VariableText?> =>
+    "vpath" <pattern:AnyVariableWord> <val:VariableText?> =>
         DirectiveLine::Vpath(pattern, val),
 }
 
 /// The primary entry point for parsing text that may include variable expansions
-VariableText : VariableAstNode = <start:@L> <input:(AnyVariableWord Whitespace)+> <end:@R> => {
+VariableText : VariableAstNode = <start:@L> <input:AnyVariableWord+> <end:@R> => {
         use std::iter;
         let mut words = input;
         match words.len() {
             0 => unreachable!("at least one variable word should have been mached -- this is a bug in the grammar"),
-            1 => words.remove(0).0,
+            1 => words.remove(0),
             _ => VariableAstNode {
                 start, end,
-                ty: VariableAstNodeTy::Concat(words.into_iter().flat_map(|x| {
-                    iter::once(x.0).chain(iter::once(x.1))
-                }).collect()),
+                ty: VariableAstNodeTy::Concat(words),
+                // ty: VariableAstNodeTy::Concat(words.into_iter().flat_map(|x| {
+                //     iter::once(x)
+                // }).collect()),
             },
         }
     };
@@ -330,7 +330,7 @@ VariableTextInternal<Accept> : VariableAstNodeTy = {
                 c
             ])
         },
-    "abspath" "whitespace" <rest:VariableTextRest<Accept>> => VariableAstNodeTy::Abspath(Box::new(rest)),
+    "abspath" <rest:VariableTextRest<Accept>> => VariableAstNodeTy::Abspath(Box::new(rest)),
 }
 
 #[inline]
@@ -432,7 +432,6 @@ FunctionName = {
 }
 
 AnyButNewline = {
-    "whitespace",
     "escaped_char",
     "var_assign",
 
@@ -457,14 +456,6 @@ AnyButNewline = {
     "'",
     ",",
 }
-
-#[inline]
-Whitespace: VariableAstNode = <start:@L> "whitespace"* <end:@R>
-    => token_as_text(start, TokenType::Whitespace, end);
-
-#[inline]
-WhitespaceReq: VariableAstNode = <start:@L> "whitespace"+ <end:@R>
-    => token_as_text(start, TokenType::Whitespace, end);
 
 EOL : Option<TokenType> = {
     <"\n"> => Some(<>),

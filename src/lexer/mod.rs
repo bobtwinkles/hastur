@@ -549,12 +549,8 @@ mod test {
                             VariableAstNodeTy::Concat(vec![
                                 // "foo"
                                 VariableAstNode::new(5, VariableAstNodeTy::Text, 8),
-                                // " "
-                                VariableAstNode::new(8, VariableAstNodeTy::Text, 9),
                                 // "bar"
                                 VariableAstNode::new(9, VariableAstNodeTy::Text, 12),
-                                // ""
-                                VariableAstNode::new(12, VariableAstNodeTy::Text, 12),
                             ]),
                             12
                         ),
