@@ -312,6 +312,7 @@ mod test {
 
     mod ifeq {
         use super::*;
+        use crate::tokenizer::VariableKind;
         use pretty_assertions::assert_eq;
 
         #[test]
@@ -371,6 +372,20 @@ mod test {
             let res = assert_err!(run_parser!("ifeq(a"));
             let token = assert_unrecognized_token!(res);
             assert!(token.is_none());
+        }
+
+        #[test]
+        fn comma_in_var() {
+            let res = assert_err!(run_parser_init!("ifeq ($(a,b))"));
+            let token = assert_unrecognized_token!(res);
+            assert_eq!(
+                token,
+                Some((
+                    6,
+                    TokenType::VariableReference(VariableKind::OpenParen),
+                    8
+                ))
+            )
         }
     }
 
