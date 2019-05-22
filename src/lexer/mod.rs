@@ -414,11 +414,11 @@ mod test {
         fn no_content() {
             let res = assert_err!(run_parser_init!("ifdef "));
             let token = assert_unrecognized_token!(res);
-            assert!(token.is_none());
+            assert_eq!(token, None);
 
             let res = assert_err!(run_parser!("ifdef # comment after ifdef"));
             let token = assert_unrecognized_token!(res);
-            assert_eq!(token, Some((6, TokenType::CommentStart, 7)))
+            assert_eq!(token, None)
         }
     }
 

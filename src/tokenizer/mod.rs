@@ -62,8 +62,6 @@ pub enum TokenType {
     Percent,
     /// An unescaped newline
     NewLine,
-    /// A `#` character
-    CommentStart,
     /// A `"` character
     DoubleQuote,
     /// A `'` character
@@ -192,14 +190,34 @@ struct TokenStream<IT> {
 
 const SPECIAL_CHARACTERS: &'static str = "\\$(){}:;%+?!=#\"',";
 
-impl<IT> Iterator for TokenStream<Peekable<IT>>
+/// Possible actions to take
+enum NextOperation {
+    /// All input has been consumd
+    InputComplete,
+    /// We matched something valid, but not interesting
+    GoAgain,
+    /// We found a real token,
+    Token(Token),
+}
+
+impl Into<NextOperation> for Option<Token> {
+    fn into(self) -> NextOperation {
+        match self {
+            None => NextOperation::InputComplete,
+            Some(t) => NextOperation::Token(t),
+        }
+    }
+}
+
+impl<IT> TokenStream<Peekable<IT>>
 where
     IT: Iterator<Item = (usize, char)>,
 {
-    type Item = Token;
-
-    fn next(&mut self) -> Option<Token> {
-        let (start_idx, chr) = self.internal.next()?;
+    fn guess_next(&mut self) -> NextOperation {
+        let (start_idx, chr) = match self.internal.next() {
+            Some(v) => v,
+            None => return NextOperation::InputComplete,
+        };
         let mut end_idx = start_idx + chr.len_utf8();
 
         macro_rules! consume_next {
@@ -221,7 +239,7 @@ where
             ($start:expr, $ty:expr) => {{
                 let ty = $ty;
                 debug!("Yielding token {:?}", ty);
-                Some(Token {
+                NextOperation::Token(Token {
                     start: $start,
                     end: end_idx,
                     token_type: ty,
@@ -368,7 +386,28 @@ where
         } else if chr == '=' {
             token!(TokenType::VariableAssign(VariableAssign::Recursive))
         } else if chr == '#' {
-            token!(TokenType::CommentStart)
+            // Munch the comment
+            while let Some((_next_idx, chr2)) = self.internal.peek() {
+                let chr2 = *chr2;
+                if chr2.is_whitespace() && chr2 != ' ' && chr2 != '\t' {
+                    // We found a newline (whitespace that isn't space or tab)
+                    break;
+                }
+                if chr2 == '\\' {
+                    // Consum 2 characters -- the backslash and whatever comes after it
+                    if self.internal.peek().is_some() {
+                        // This actually muches the '\\' itself, the followup
+                        // consume_next! below will eat the next character
+                        consume_next!();
+                    } else {
+                        // there weren't 2 charactrs, bail
+                        return NextOperation::InputComplete;
+                    }
+                }
+                consume_next!();
+            }
+            // Comments mean that we should go back to the drawing board
+            return NextOperation::GoAgain;
         } else if chr == '\'' {
             token!(TokenType::SingleQuote)
         } else if chr == '"' {
@@ -389,6 +428,46 @@ where
                 consume_next!();
             }
             return token!(TokenType::Text);
+        }
+    }
+}
+
+impl<IT> Iterator for TokenStream<Peekable<IT>>
+where
+    IT: Iterator<Item = (usize, char)>,
+{
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Token> {
+        let mut consumed;
+        loop {
+            consumed = self.guess_next();
+            match consumed {
+                NextOperation::InputComplete => return None,
+                NextOperation::GoAgain => {
+                    /* Nothing to do in this case, since we don't have a good thing to do */
+                }
+                NextOperation::Token(t) => {
+                    if t.token_type == TokenType::NewLine {
+                        // XXX: This is a massive hack to get things working
+                        // until I can hack lalrpop to handle shift-reduce
+                        // conflicts sanely. The problem right now is that we
+                        // can't push handling of multiple lines into
+                        // lalrpop-land since the obvious definition for
+                        // multiple lines:
+                        //  pub AllLines : Vec<(MakefileLine, Token)> = (MakefileLine EOL)+;
+                        // results in shift-reduce conflicts.
+                        // lalrpop needs to be extended to support flex's behavior,
+                        // which is to prefere shifting unless otherwise
+                        // specified, but that support doesn't exist yet.
+                        // Thus, this hack where we pretend that an EOL is
+                        // actually the end of the document
+                        return None;
+                    } else {
+                        return Some(t);
+                    }
+                }
+            }
         }
     }
 }
@@ -534,7 +613,6 @@ mod test {
                 TokenType::SemiColon => buffer.push(';'),
                 TokenType::Percent => buffer.push('%'),
                 TokenType::NewLine => buffer.push('\n'),
-                TokenType::CommentStart => buffer.push('#'),
                 TokenType::SingleQuote => buffer.push('\''),
                 TokenType::DoubleQuote => buffer.push('"'),
                 TokenType::Comma => buffer.push(','),
@@ -548,7 +626,7 @@ mod test {
 
     proptest! {
         #[test]
-        fn round_trip_tokens(input in r"[[:alpha:]\-=\\+!%: \t\n#$(){}¥ѨȺ🕴]+") {
+        fn round_trip_tokens(input in r"[[:alpha:]\-=\\+!%: \t$(){}¥ѨȺ🕴]+") {
             let parsed: Vec<Token> = iterator_to_token_stream(input.char_indices()).collect();
             let flat = flatten_stream(&input, &parsed);
 
@@ -584,10 +662,12 @@ mod test {
         let parsed: Vec<Token> = iterator_to_token_stream(input.char_indices()).collect();
 
         assert_eq!(
-            vec![
-                Token::new(0, TokenType::NewLine, 1),
-                Token::new(1, TokenType::NewLine, 2)
-            ],
+            // XXX: This is due to the "newlines are EOF" hack outlined in the implementation of next
+            Vec::<Token>::new(),
+            // vec![
+            //     Token::new(0, TokenType::NewLine, 1),
+            //     Token::new(1, TokenType::NewLine, 2)
+            // ],
             parsed
         );
     }

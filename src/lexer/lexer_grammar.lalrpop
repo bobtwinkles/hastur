@@ -87,16 +87,17 @@ extern {
         ";" => TokenType::SemiColon,
         "%" => TokenType::Percent,
         "\n" => TokenType::NewLine,
-        "#" => TokenType::CommentStart,
         "\"" => TokenType::DoubleQuote,
         "'" => TokenType::SingleQuote,
         "," => TokenType::Comma,
     }
 }
 
+// pub AllLines : Vec<(MakefileLine, EOL)> = (MakefileLine EOL)+;
+
 pub MakefileLine : MakefileLine = {
-    Whitespace <MakefileLineInner> Comment? EOL => <>,
-    Whitespace Comment? EOL => MakefileLine::EmptyLine,
+    Whitespace <MakefileLineInner> => <>,
+    Whitespace => MakefileLine::EmptyLine,
 }
 
 MakefileLineInner : MakefileLine = {
@@ -105,8 +106,6 @@ MakefileLineInner : MakefileLine = {
     <TargetLine> => MakefileLine::TargetLine(<>),
     <DirectiveLine> => MakefileLine::DirectiveLine(<>),
 }
-
-Comment = "#" AnyButNewline*;
 
 /// A line that starts with a conditional directive
 ConditionalLine : ConditionalLine = {
@@ -360,7 +359,6 @@ VariableTextElement<Accept> : VariableAstNode = {
 VariableTextNonFunction = {
    "text",
    "escaped_char",
-   "#",
    Directive,
    Colons,
    AssignmentOperator,
@@ -455,7 +453,6 @@ AnyButNewline = {
     "::",
     ";",
     "%",
-    "#",
     "\"",
     "'",
     ",",

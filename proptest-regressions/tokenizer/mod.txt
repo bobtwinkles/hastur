@@ -8,3 +8,4 @@ cc 7580564cf0de7a4809dc8a23a35864be0ee50b4faf93b7bc63106c67fddcb7ab # shrinks to
 cc adfb3cb25ebb85c59f05c1b8e9eff0092dbafaf18a37280607de3febec734146 # shrinks to input = "\n\n"
 cc cf533a96a96080fcb0a9b8262278f841ad84537a28c6cdf146811ecb66714fc5 # shrinks to input = "$"
 cc 7443652a2df141689489136fe44e6c167af787b17b677b167b04dff9a2f59a33 # shrinks to input = "or#"
+cc 940deed3397575942321cf4bac5c83705a67617bc6474f33732fbc81972c0c7b # shrinks to input = "#"
