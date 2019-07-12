@@ -1,0 +1,133 @@
+* Parsing steps
+** Steps when reading a makefile:
+    Rooted at read.c:eval
+*** Complicated search procedure. We probably don't need to replicate this?
+     It might be needed for include directives though
+*** Check for a BOM. If we find one, skip it
+*** Then, for each line:
+**** If the line is empty, skip it
+**** If the first character of the line is the recipe prefix (defaults to \t, configurable via .RECIPEPREFIX)
+***** If we are reading a rule with no targets, just skip the line.
+***** If we are ignoring, skip the line
+      I think this is used to support skipping over lines after processing an if* directive?
+***** Otherwise, add the line (after the recipe prefix) to the list of commands to execute in the current recipe
+**** Otherwise, "collapse continuations"
+**** Strip comments
+**** Determine if the line is a variable assignment. If it is works, we need to do some cleanup:
+***** If we're currently ignoring, but this was a define, set a flag (in_ignoring_define) so that we know we're inside of a define (and ignoring things). Stop processing the line
+***** Terminate the current rule/recipe
+***** If this was a variable undefine, perform the undefine and stop processing the line
+***** If this variable was introduced by the "define" directive, process the rest of the define
+***** Otherwise, try to parse it as a variable definition
+***** At this point, we should have a variable structure to work with
+***** Propagate the "export" and "private" modifiers
+***** We're done processing this line
+**** If the "in_ignoring_define" flags is set
+***** Check to see if we've found the matching "endef"
+      If we have, unset the in_ignoring_define flag
+***** Stop processing the line
+**** Determine if the line is a conditional
+***** If it is, react to it by setting the "ignoring" flag as appropriate given the result of evaluating the condition and stop processing the line
+**** If the "ignoring" flag is set, stop processing the line
+**** If we encounter the "export" or "unexport" keywords
+***** Terminate the current rule/recipe
+***** Perform variable expansion on the remainder of the line
+***** Process the line after the keyword as a list of variables to act on
+***** Stop processing the line
+**** If the line starts with the "vpath" directive
+***** Terminate the current rule/recipe
+***** TODO Search for word1eq("vpath")
+      It appears this code modifies the vpath by fully expanding the line and then processing it, but I'm not sure
+***** Terminate processing of the line
+**** If the line starts with "include", "-include", or "sinclude"
+***** Terminate the current rule/recipe
+***** Parse the list of files, without expanding archive references
+***** Save the state of all the conditionals
+***** Recurse into the newly found makefiles
+***** Restore conditional state
+***** Terminate processing of the line
+**** If we encounter the "load" or "-load" directives
+***** Terminate the current rule/recipe
+***** Fully expand the line, then load the DSOs specified after the directive
+***** Terminate processing of the line
+**** If we've somehow made it this far, and the first character in the line is the recipe command prefix, exit with an error
+**** We've found a recipe specification!
+***** Terminate the previous rule/recipe
+***** Look for a ;, # or $
+****** If we find a #, terminate the line there
+****** If we find a $ or ;, terminate the line there but remember where it was
+***** Collapse continuations on the shortened line
+***** Start stepping through the line, one "makefile word" at a time. First we check the first makefile word:
+****** The end of a line
+       If there was a ; or $ in the line, error out. The user probably started
+       specifying a rule before they started specifying the recipe for that
+       rule. Otherwise, there was nothing left in the line after
+       comment/continuation elimination, terminate processing of this line and
+       continue.
+****** A colon or double colon
+       The line started with a : or ::. Terminate processing of the line, but don't error.
+***** Variable-expand the first makefile word
+***** while(1)
+****** If we had found a ; or $
+** TODO Variable assignment determination procedure: parse_var_assign
+** TODO Define processing procedure: do_define
+** TODO Conditional determination procedure: conditional_line
+** TODO Continuation collapse procedure: collapse_continuations
+** TODO Comment strip procedure: remove_comments
+* Features
+** Line continuations
+   Lines that end with '\' should be joined with the following line
+** TODO Condition handling
+   conditional_line() function
+** TODO Keywords
+*** TODO export/unexport
+    read.c:797
+    Both these are handled similarly.
+    First, we record_waiting_files().
+    Then, if we have no arguments, we set the "export_all_variables" flag on the engine
+    Otherwise we expand the line and then mark all the variables that show up as (un)exported
+*** TODO vpath
+    read.c:832
+    First we record_waiting_files().
+    Then we expand the line and process the directive (see https://www.gnu.org/software/make/manual/make.html#Selective-Search)
+*** TODO include/-include/sinclude
+    read.c:860
+    First we record_waiting_files() and expand the line.
+    Include the specified makefile
+    If we're using either the -include or sinclude variants,
+    we don't blow up if we can't find the specified file.
+*** TODO load/-load
+    read.c:921
+    These probably won't be supported, as they are extremely cursed
+    https://www.gnu.org/software/make/manual/make.html#Loading-Dynamic-Objects
+** TODO Target lines
+*** TODO Abort if we get here without consuming the command character
+    read.c:981
+*** TODO Record the previous rule
+    read.c:1003
+*** TODO Expand the line until we find a semicolon
+    read.c:1008 to 131
+*** TODO Set the default target if one isn't set yet
+    read.c:1317 to 1373
+* Cursed 
+** Windows $(SHELL) behavior
+   On Windows, GNU Make overrides SHELL to point to the environment shell even if
+   the makefile sets it, as a workaround to the number of braindead makefiles out
+   there.
+** Parsing of backslashes in patterns
+   Because of the way `find_char_unquote` works, only '\'s leading up to the % are removed.
+   So if it's called with `\\\\a%`, the four backslashes will remain. However, in `\\\\%` only
+   two backslashes are left.
+** Parsing of `define`
+   the way `define` is parsed allows for some incredibly cursed variable names to arise.
+   For example, in the fragment
+
+     define foo bar :=
+       content
+     endef
+
+   a variable named "foo bar :=" is defined. Note that this variable can never be referenced,
+   since the `:=` at the end will be parsed as a substitution. There is no facility for escaping
+   these characters in variable names (`lindex` is used to find them which has no escaping logic)
+   and substitution references are identified *after* the expansion of the name, so we can't even
+   try hiding it inside of a variable indirection. This also applies to the POSIX style.

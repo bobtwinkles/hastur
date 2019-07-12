@@ -160,9 +160,8 @@ VariableLine : VariableLine = {
     },
     <name:VariableText> <rhs:AssignmentRhs> =>
         VariableLine { modifiers: Default::default(), name, rhs: Some(rhs) },
-    // "override" "undefine" => a,
-    // "undefine" => b,
-    // <modifiers:ModifierStack> "define" => define,
+    <modifiers:ModifierStack?> "define" <name:VariableText> <rhs:AssignmentRhs?> =>
+        panic!("unable to handle define line {:?} {:?} {:?}", modifiers, name, rhs),
 }
 
 AssignmentRhs : AssignmentRhs = {

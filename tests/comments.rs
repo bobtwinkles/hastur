@@ -26,6 +26,7 @@ fn simple_prefix() {
     engine.read_makefile(&mut names, &mut bufreader, "prefix.mk").unwrap();
 
     info!("Database state {:?}", engine.database);
+    assert!(false);
 
     variable_set_to!(names, engine, "SHELL", "/bin/sh");
 }
