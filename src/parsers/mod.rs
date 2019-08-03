@@ -121,18 +121,6 @@ impl ParserState {
         engine: &mut Engine,
     ) -> IResult<BlockSpan<'a>, (), ParseErrorKind> {
         use nom::InputIter;
-        let line_stream = i.iter_indices();
-        let line_stream = crate::tokenizer::iterator_to_token_stream(line_stream);
-        let line_stream = crate::lexer::parse_stream(line_stream);
-
-        let line = match line_stream {
-            Ok(line) => line,
-            Err(e) => {
-                panic!("Failed to parse line, error {:?}", e);
-            }
-        };
-
-        debug!("New lexer yielded {:?}", line);
 
         let line_start = i;
         /// A small macro that returns on Err(NErr::Failure) or Ok()
