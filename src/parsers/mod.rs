@@ -24,6 +24,8 @@ pub(crate) mod variable;
 
 use self::error_utils::lift_collapsed_span_error;
 use self::recipe_line::recipe_line;
+use crate::tokenizer::iterator_to_token_stream;
+use crate::tokenizer::{TokenType, VariableKind};
 
 /// Whether this conditional allows or disallows interpretation of the makefile lines currently.
 /// the moral equivalent of this enum (the char *ignoring in the conditional code for GNU make)
@@ -310,32 +312,67 @@ pub enum LineEndReason {
 /// Get a line, stopping on a UNIX line break, Windows line break, or the beginning of a comment
 pub fn makefile_grab_line<T>(input: T) -> IResult<T, (T, LineEndReason), ParseErrorKind>
 where
-    T: Clone
-        + Copy
-        + nom::AtEof
-        + nom::Slice<std::ops::Range<usize>>
-        + nom::Slice<std::ops::RangeFrom<usize>>
-        + nom::Slice<std::ops::RangeTo<usize>>
-        + nom::InputTake
-        + nom::InputIter<Item = char>
-        + nom::Compare<&'static str>
-        + nom::InputLength
-        + nom::FindSubstring<&'static str>,
+    T: Clone + Copy + nom::InputIter<Item = char> + nom::InputTake,
 {
-    fix_error!(
-        input,
-        ParseErrorKind,
-        alt_complete!(
-            take_until!("#") =>
-                { |l| (l, LineEndReason::Comment) }  |  // Comments
-            terminated!(take_until!("\n"), tag!("\n")) =>
-                { |l| (l, LineEndReason::LineBreak) } | // UNIX line endings
-            terminated!(take_until!("\r\n"), tag!("\r\n")) =>
-                { |l| (l, LineEndReason::LineBreak) } | // Windows line endings
-            nom::rest =>
-                { |l| (l, LineEndReason::EOF) }         // EOF
-        )
-    )
+    let mut it = iterator_to_token_stream(input.iter_indices());
+
+    let mut paren_count = 0u32;
+    let mut brace_count = 0u32;
+
+    let mut end = 0;
+
+    // Iterate looking for an EoL character (comment start or legit linebreak)
+    // outside of a variable reference. Note that this is slightly imprecise: we
+    // don't check that the open paren/braces are actually variable references
+    // (i.e. preceded by `$`). Instead, we assume any open brace is the start of
+    // a variable reference. This shouldn't mater for well-formed makefiles
+    while let Some(tok) = it.next() {
+        match tok.token_type {
+            TokenType::VariableReference(VariableKind::OpenParen) => paren_count += 1,
+            TokenType::OpenParen => paren_count += 1,
+            TokenType::CloseParen => {
+                if paren_count > 0 {
+                    paren_count -= 1
+                } else {
+                    return error_out(input, ParseErrorKind::UnternimatedVariable);
+                }
+            }
+            TokenType::VariableReference(VariableKind::OpenBrace) => brace_count += 1,
+            TokenType::OpenBrace => brace_count += 1,
+            TokenType::CloseBrace => {
+                if brace_count > 0 {
+                    brace_count -= 1;
+                } else {
+                    return error_out(input, ParseErrorKind::UnternimatedVariable);
+                }
+            }
+            TokenType::CommentStart if paren_count == 0 && brace_count == 0 => {
+                // We've hit the end, outside of a brace/paren
+                let (i, line) = input.take_split(tok.start);
+
+                return Ok((i, (line, LineEndReason::Comment)));
+            }
+            TokenType::NewLine if paren_count == 0 && brace_count == 0 => {
+                // We've hit the end, outside of a brace/paren
+                let (_, line) = input.take_split(tok.start);
+                let (i, _) = input.take_split(tok.end);
+
+                return Ok((i, (line, LineEndReason::LineBreak)));
+            }
+            _ => {
+                // No other token type matters
+            }
+        }
+
+        // keep end up to date
+        end = tok.end;
+    }
+
+    debug!("Ran out of tokens");
+
+    // no line end reason before EOF
+    let (i, line) = input.take_split(end);
+    return Ok((i, (line, LineEndReason::EOF)));
 }
 
 named!(
@@ -489,129 +526,184 @@ pub enum ParserCompliance {
 pub(crate) fn makefile_line(
     mut i: BlockSpan,
     whitespace_handling: ParserCompliance,
-    mut strip_initial_whitespace: bool,
+    strip_initial_whitespace: bool,
 ) -> IResult<BlockSpan, Arc<Block>, ParseErrorKind> {
-    /// Clean up the line end, depending on the parser compliance mode
-    /// XXX: I'm not entirely convinced that the handling of whitespace is right here
-    /// POSIX spec: http://pubs.opengroup.org/onlinepubs/9699919799/utilities/make.html
-    /// GNU behavior: lol thinking GNU has a spec?
-    #[inline(always)]
-    fn clean_line_end(
-        s: &mut BlockSpan,
-        backslash_count: usize,
-        whitespace_handling: ParserCompliance,
-    ) {
-        use nom::Slice;
-        // If there's only one backslash, then removing it might expose some
-        // whitespace we need to strip in POSIX mode
-        *s = if backslash_count == 1 {
-            match whitespace_handling {
-                ParserCompliance::POSIX => {
-                    // In POSIX mode, we just drop the last character
-                    // XXX: Validate that this is actually what a POSIX-compliant make does
-                    s.slice(..s.len() - 1)
-                }
-                ParserCompliance::GNU => {
-                    if s.len() < 2 {
-                        // Either the empty string or just "\\" should go to the empty string
-                        s.slice(0..0)
-                    } else {
-                        // In GNU mode we strip off all the whitespace and the backslash
-                        let mut last_non_whitespace = 0;
-                        for (i, c) in s.char_indices() {
-                            if c == ' ' || c == '\t' || c == '\\' {
-                                continue;
-                            }
-                            last_non_whitespace = i;
-                        }
+    use nom::{InputIter, Slice};
 
-                        s.slice(..last_non_whitespace + 1)
-                    }
-                }
-            }
-        } else {
-            // There is enough backslashes at the end to just strip off half of them and be done with it
-            s.slice(..(s.len() - backslash_count + (backslash_count / 2)))
-        }
-    }
-
-    let (new_i, mut first_line) = if strip_initial_whitespace {
+    // FIXME: we could probably get some perf by manually inlining makefile_grab line
+    let (i, line_grab) = if strip_initial_whitespace {
         preceded!(i, makefile_whitespace, makefile_grab_line)?
     } else {
         makefile_grab_line(i)?
     };
-    i = new_i;
-    let mut lines: Vec<ContentReference> = Vec::new();
-    let mut backslash_count = ends_with_backslash(first_line.0);
-    if backslash_count & 1 == 0 {
-        // There is an even number of backslashes, so don't escape them
-        lines.push(first_line.0.to_content_reference());
-        return Ok((i, Block::new(Default::default(), lines)));
-    }
-    // Otherwise, we need to clean up the line
-    clean_line_end(&mut first_line.0, backslash_count, whitespace_handling);
-    if first_line.0.len() > 0 {
-        // We found some real content, don't keep skipping whitespace
-        strip_initial_whitespace = false;
-        lines.push(first_line.0.to_content_reference());
-    }
-    let mut line_end_reason = first_line.1;
-    // Tracks whether or not we should add a space.
-    // We add a space after consuming the first line, and after every line of non-zero length
-    let mut should_add_space = true;
-    loop {
-        if line_end_reason != LineEndReason::Comment {
-            if should_add_space && !strip_initial_whitespace {
-                lines.push(ContentReference::space());
-            } else {
-                // Reset should_add_space to make sure we check it again
-                should_add_space = true;
-            }
-        } else {
-            lines.push(ContentReference::space());
-        }
+    let line = line_grab.0;
 
-        let (new_i, mut new_line) = match preceded!(i, makefile_whitespace, makefile_grab_line) {
-            Ok(x) => x,
-            Err(NErr::Incomplete(_)) => {
-                debug!("Incomplete parse while trying to grab a full line");
-                return Ok((i, Block::new(Default::default(), lines)));
-            }
-            Err(NErr::Error(_)) => {
-                debug!("Was not able to find more line while pulling makefile line");
-                return Ok((i, Block::new(Default::default(), lines)));
-            }
-            Err(NErr::Failure(e)) => {
-                // propegate failures
-                return Err(NErr::Failure(e));
-            }
-        };
-
-        i = new_i;
-        line_end_reason = new_line.1;
-        backslash_count = ends_with_backslash(new_line.0);
-        if backslash_count & 1 == 0 {
-            lines.push(new_line.0.to_content_reference());
-            break;
-        }
-        clean_line_end(&mut new_line.0, backslash_count, whitespace_handling);
-        if new_line.0.len() > 0 {
-            // We found content so we can stop skipping whitespace
-            strip_initial_whitespace = false;
-            lines.push(new_line.0.to_content_reference());
-        } else {
-            should_add_space = false;
-        }
+    #[derive(Copy, Clone, Debug)]
+    enum State {
+        Scanning { start: usize, end: usize },
+        Backslashes { slash_start: usize },
+        PostNewLine,
     }
 
-    Ok((i, Block::new(Default::default(), lines)))
+    info!("makefile_line will break up: {:?}", line.into_string());
+
+    let mut output_spans: Vec<ContentReference> = Vec::new();
+    let mut it = iterator_to_token_stream(line.iter_indices());
+    let mut state = State::Scanning { start: 0, end: 0 };
+
+    while let Some(tok) = it.next() {
+        match state {
+            State::Scanning { start, end } => {
+                match tok.token_type {
+                    TokenType::EscapedCharacter(Some('\n')) => {
+                        // Upon seeing a new line, push the line so far
+                        if start != end {
+                            debug!(
+                                "Dumping contents {:?}",
+                                line.slice(start..end).into_string()
+                            );
+                            output_spans.push(line.slice(start..end).to_content_reference());
+                            output_spans.push(ContentReference::space());
+                        }
+                        // And start scanning the next line
+                        state = State::PostNewLine;
+                    }
+                    TokenType::EscapedCharacter(Some('\\')) => {
+                        // Dump current line components and switch into escaped character parsing
+                        if start != tok.start {
+                            debug!("Switching to escaped character parsing");
+                            output_spans.push(line.slice(start..tok.start).to_content_reference());
+                        }
+
+                        state = State::Backslashes {
+                            slash_start: tok.start,
+                        };
+                    }
+                    TokenType::Whitespace => {
+                        // Don't do anything with whitespace tokens
+                    }
+                    _ => {
+                        // All other token types update the end
+                        state = State::Scanning {
+                            start,
+                            end: tok.end,
+                        }
+                    }
+                }
+            }
+            State::PostNewLine => {
+                // After newlines, we ignore all whitespace until after some Real Content
+                match tok.token_type {
+                    TokenType::Whitespace => {
+                        // Ignore these
+                    }
+                    TokenType::EscapedCharacter(Some('\\')) => {
+                        // Go right into slash parsing
+                        state = State::Backslashes {
+                            slash_start: tok.start,
+                        };
+                    }
+                    TokenType::EscapedCharacter(Some('\n')) => {
+                        // Insert a space to represent this collapsed line
+                        // XXX: Make sure this actually matches Make behavior
+                        output_spans.push(ContentReference::space());
+                    }
+                    _ => {
+                        // Any other token type we can just start handling normally
+                        state = State::Scanning {
+                            start: tok.start,
+                            end: tok.end,
+                        };
+                    }
+                }
+            }
+            State::Backslashes { slash_start } => {
+                match tok.token_type {
+                    // XXX: this doesn't properly handle windows line endings.
+                    // To do that, we should refactor EscapedCharacter to use a
+                    // meaningful enum
+                    TokenType::EscapedCharacter(Some('\n')) => {
+                        // This terminates the backslashes in the "insert every other character" mode
+                        let slash_block = line.slice(slash_start..tok.start);
+                        for escaped_token in iterator_to_token_stream(slash_block.iter_indices()) {
+                            assert!(match escaped_token.token_type {
+                                TokenType::EscapedCharacter(Some(_)) => true,
+                                _ => false,
+                            });
+
+                            output_spans.push(
+                                slash_block
+                                    .slice(escaped_token.start + 1..escaped_token.end)
+                                    .to_content_reference(),
+                            );
+                        }
+
+                        output_spans.push(ContentReference::space());
+
+                        state = State::Scanning {
+                            start: tok.end,
+                            end: tok.end,
+                        }
+                    }
+                    TokenType::EscapedCharacter(Some('\\')) => {
+                        // escaped backslashes are passed through unharmed
+                    }
+                    _ => {
+                        // Any other token results in a dump of all previous content directly.
+                        output_spans.push(line.slice(slash_start..tok.end).to_content_reference());
+                        state = State::Scanning {
+                            start: tok.end,
+                            end: tok.end,
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Pick up any leftover content
+    match state {
+        State::Scanning { start, end } => {
+            if start != end {
+                output_spans.push(line.slice(start..end).to_content_reference());
+            }
+        }
+        State::PostNewLine => {
+            // We just saw a new line, and never transitioned out of
+            // PostNewLine. That means this line must be blank
+        }
+        State::Backslashes { slash_start } => match line_grab.1 {
+            LineEndReason::LineBreak => {
+                // This terminates the backslashes in the "insert every other
+                // character" mode, since we're at the end of the line.
+                let slash_block = line.slice(slash_start..);
+                for escaped_token in iterator_to_token_stream(slash_block.iter_indices()) {
+                    assert!(match escaped_token.token_type {
+                        TokenType::EscapedCharacter(Some(_)) => true,
+                        _ => false,
+                    });
+
+                    output_spans.push(
+                        slash_block
+                            .slice(escaped_token.start + 1..escaped_token.end)
+                            .to_content_reference(),
+                    );
+                }
+            }
+            _ => {
+                // For everything else, we just dump all the content
+                // we know the size is nonzero here, since slash_start is before
+                // the backslash
+                output_spans.push(line.slice(slash_start..).to_content_reference());
+            }
+        },
+    }
+
+    Ok((i, Block::new(line.parent().raw_sensitivity(), output_spans)))
 }
 
 /// Create a new Nom `IResult` recoverable error with our custom error kind
-pub(crate) fn error_out<'a, T>(
-    i: BlockSpan<'a>,
-    err: ParseErrorKind,
-) -> IResult<BlockSpan<'a>, T, ParseErrorKind> {
+pub(crate) fn error_out<I, T>(i: I, err: ParseErrorKind) -> IResult<I, T, ParseErrorKind> {
     Err(NErr::Error(nom::Context::Code(
         i,
         nom::ErrorKind::Custom(err),

@@ -1,8 +1,8 @@
 //! Parser for recipe lines
 
-use super::{ends_with_backslash, lift_collapsed_span_error, makefile_grab_line};
+use super::{lift_collapsed_span_error, makefile_grab_line};
 use crate::ast::AstNode;
-use crate::evaluated::{BlockSpan, ContentReference};
+use crate::evaluated::{Block, BlockSpan, ContentReference};
 use crate::parsers::ast::parse_ast;
 use crate::ParseErrorKind;
 use nom::IResult;
@@ -13,56 +13,45 @@ pub(super) fn recipe_line<'a>(
     i: BlockSpan<'a>,
     command_char: char,
 ) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
-    macro_rules! grab_command_line(
-        ($i:expr ) => { grab_command_line!($i , ) };
-        ($i:expr, ) => {
-            preceded!(
-                $i,
-                fix_error!(ParseErrorKind, char!(command_char)),
-                makefile_grab_line
-        )};
-    );
+    use nom::{InputIter, Slice};
+    debug!("Get recipe from {:?}", i.into_string());
 
-    // Grab the first command line
-    let (mut i, (line, end_reason)) = add_return_error!(
+    let (i, (input_line, _)) = add_return_error!(
         i,
         ErrorKind::Custom(ParseErrorKind::RecipeExpected),
-        grab_command_line!()
+        preceded!(
+            fix_error!(ParseErrorKind, char!(command_char)),
+            makefile_grab_line
+        )
     )?;
 
-    let line_start = line;
+    let line_start = i;
 
-    // If the line has a comment, stop the line (and processing)
-    if end_reason == super::LineEndReason::Comment {
-        let (_, ast) = parse_ast(line)?;
-        return Ok((i, ast));
-    }
+    let mut fragments: Vec<ContentReference> = Vec::new();
 
-    let mut line = line.to_new_block();
-
-    while ends_with_backslash(line.span()) & 1 == 1 {
-        Arc::make_mut(&mut line).push(ContentReference::newline()); // Add back the \n we striped
-        let next_line_result = grab_command_line!(i);
-        match next_line_result {
-            Ok((new_i, (next_line, end_reason))) => {
-                Arc::make_mut(&mut line).push(next_line.to_content_reference());
-                i = new_i;
-
-                // If the line has a comment, stop the line (and processing)
-                if end_reason == super::LineEndReason::Comment {
-                    let (_, ast) = parse_ast(line.span())
-                        .map_err(|e| lift_collapsed_span_error(e, line_start))?;
-                    return Ok((i, ast));
-                }
-            }
-            Err(_) => {
-                // If we couldn't grab a line, this must not be a command line
-                break;
-            }
+    let mut it = input_line.iter_indices();
+    let mut push_start = 0;
+    let mut strip_next_if_cmd = false;
+    for (idx, ch) in it {
+        // XXX: This doesn't handle Windows newlines
+        if ch == '\n' {
+            fragments.push(input_line.slice(push_start..idx + 1).to_content_reference());
+            strip_next_if_cmd = true;
+            push_start = idx + 1;
+        }
+        if ch == '\t' && strip_next_if_cmd {
+            push_start = idx + 1;
+            strip_next_if_cmd = false;
         }
     }
 
-    let (_, ast) = parse_ast(line.span()).map_err(|e| lift_collapsed_span_error(e, line_start))?;
+    if push_start < input_line.len() {
+        fragments.push(input_line.slice(push_start..).to_content_reference());
+    }
+
+    let line = Block::new(i.parent().raw_sensitivity(), fragments);
+
+    let (_, ast) = parse_ast(line.span()).map_err(|e| lift_collapsed_span_error(e, i))?;
 
     Ok((i, ast))
 }
@@ -76,6 +65,7 @@ mod test {
     use crate::source_location::{LocatedString, Location};
     use crate::ParseErrorKind;
     use nom::{error_to_list, ErrorKind};
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn single_line() {
@@ -97,6 +87,8 @@ mod test {
 
     #[test]
     fn multi_line_cont() {
+        crate::test::setup();
+
         let test_span = create_span("\ta\\\n\tb");
         let test_span = test_span.span();
         let parse = assert_ok!(recipe_line(test_span, '\t'));
@@ -106,8 +98,7 @@ mod test {
             ast::collapsing_concat(
                 Location::test_location(1, 2),
                 vec![
-                    ast::constant(LocatedString::test_new(1, 2, "a\\")),
-                    ast::constant(LocatedString::new(Location::Synthetic.into(), "\n".into())),
+                    ast::constant(LocatedString::test_new(1, 2, "a\\\n")),
                     ast::constant(LocatedString::test_new(2, 2, "b"))
                 ]
             )

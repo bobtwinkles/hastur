@@ -66,6 +66,10 @@ pub enum TokenType {
     SingleQuote,
     /// A `,` character
     Comma,
+    /// A `#` character
+    CommentStart,
+    /// A sequence of whitespace characters
+    Whitespace,
 }
 
 /// Is the colon involved a double colon?
@@ -236,7 +240,6 @@ where
             };
             ($start:expr, $ty:expr) => {{
                 let ty = $ty;
-                debug!("Yielding token {:?}", ty);
                 NextOperation::Token(Token {
                     start: $start,
                     end: end_idx,
@@ -271,8 +274,14 @@ where
                 }
                 consume_next!();
             }
-            return NextOperation::GoAgain;
+            token!(TokenType::Whitespace)
         } else if chr.is_whitespace() {
+            if chr == '\r' {
+                if let Some((_next_idx, '\n')) = self.internal.peek() {
+                    // Next token is a line break, this is a windows-style newline.
+                    consume_next!();
+                }
+            }
             token!(TokenType::NewLine)
         } else if chr == '\\' {
             match consume_next!() {
@@ -384,28 +393,7 @@ where
         } else if chr == '=' {
             token!(TokenType::VariableAssign(VariableAssign::Recursive))
         } else if chr == '#' {
-            // Munch the comment
-            while let Some((_next_idx, chr2)) = self.internal.peek() {
-                let chr2 = *chr2;
-                if chr2.is_whitespace() && chr2 != ' ' && chr2 != '\t' {
-                    // We found a newline (whitespace that isn't space or tab)
-                    break;
-                }
-                if chr2 == '\\' {
-                    // Consum 2 characters -- the backslash and whatever comes after it
-                    if self.internal.peek().is_some() {
-                        // This actually muches the '\\' itself, the followup
-                        // consume_next! below will eat the next character
-                        consume_next!();
-                    } else {
-                        // there weren't 2 charactrs, bail
-                        return NextOperation::InputComplete;
-                    }
-                }
-                consume_next!();
-            }
-            // Comments mean that we should go back to the drawing board
-            return NextOperation::GoAgain;
+            token!(TokenType::CommentStart)
         } else if chr == '\'' {
             token!(TokenType::SingleQuote)
         } else if chr == '"' {
@@ -445,26 +433,7 @@ where
                 NextOperation::GoAgain => {
                     /* Nothing to do in this case, since we don't have a good thing to do */
                 }
-                NextOperation::Token(t) => {
-                    if t.token_type == TokenType::NewLine {
-                        // XXX: This is a massive hack to get things working
-                        // until I can hack lalrpop to handle shift-reduce
-                        // conflicts sanely. The problem right now is that we
-                        // can't push handling of multiple lines into
-                        // lalrpop-land since the obvious definition for
-                        // multiple lines:
-                        //  pub AllLines : Vec<(MakefileLine, Token)> = (MakefileLine EOL)+;
-                        // results in shift-reduce conflicts.
-                        // lalrpop needs to be extended to support flex's behavior,
-                        // which is to prefere shifting unless otherwise
-                        // specified, but that support doesn't exist yet.
-                        // Thus, this hack where we pretend that an EOL is
-                        // actually the end of the document
-                        return None;
-                    } else {
-                        return Some(t);
-                    }
-                }
+                NextOperation::Token(t) => return Some(t),
             }
         }
     }
@@ -484,7 +453,7 @@ mod test {
     use super::*;
     use proptest::prelude::*;
 
-    fn flatten_stream(original_string: &str, tokens: &[Token]) -> String {
+    fn flatten_stream(original_string: &str, tokens: &[Token]) -> Result<String, TestCaseError> {
         let mut buffer = String::with_capacity(tokens.len());
 
         let mut last_end = 0;
@@ -607,19 +576,31 @@ mod test {
                 TokenType::SingleQuote => buffer.push('\''),
                 TokenType::DoubleQuote => buffer.push('"'),
                 TokenType::Comma => buffer.push(','),
+                TokenType::CommentStart => buffer.push('#'),
+                TokenType::Whitespace => {
+                    let span = &original_string[token.start..token.end];
+                    for c in span.chars() {
+                        prop_assert!(
+                            c == ' ' || c == '\t',
+                            "A non-whitespace character {:?} was marked as whitespace",
+                            c
+                        );
+                    }
+                    buffer.push_str(span);
+                }
             }
 
             last_end = token.end;
         }
 
-        buffer
+        Ok(buffer)
     }
 
     proptest! {
         #[test]
-        fn round_trip_tokens(input in r"[[:alpha:]\-=\\+!%:$(){}¥ѨȺ🕴]+") {
+        fn round_trip_tokens(input in r"#[[:alpha:]\-=\\+!%:$(){}¥ѨȺ🕴]+") {
             let parsed: Vec<Token> = iterator_to_token_stream(input.char_indices()).collect();
-            let flat = flatten_stream(&input, &parsed);
+            let flat = flatten_stream(&input, &parsed)?;
 
             prop_assert_eq!(input, flat);
         }
@@ -653,12 +634,10 @@ mod test {
         let parsed: Vec<Token> = iterator_to_token_stream(input.char_indices()).collect();
 
         assert_eq!(
-            // XXX: This is due to the "newlines are EOF" hack outlined in the implementation of next
-            Vec::<Token>::new(),
-            // vec![
-            //     Token::new(0, TokenType::NewLine, 1),
-            //     Token::new(1, TokenType::NewLine, 2)
-            // ],
+            vec![
+                Token::new(0, TokenType::NewLine, 1),
+                Token::new(1, TokenType::NewLine, 2)
+            ],
             parsed
         );
     }

@@ -93,9 +93,76 @@ fn test_ends_with_backslash() {
     assert_eq!(ends_with_backslash(create_span("asdf\\\\").span()), 2);
 }
 
+mod grab_line {
+    use crate::parsers::makefile_grab_line;
+    use crate::parsers::test::*;
+    use crate::parsers::LineEndReason;
+
+    #[test]
+    fn simple_eof() {
+        crate::test::setup();
+
+        let test_span = create_span("just a line");
+        let test_span = test_span.span();
+
+        let parse = assert_ok!(makefile_grab_line(test_span));
+
+        let res = parse.1;
+        assert_eq!(res.0.into_string(), test_span.into_string());
+        assert_eq!(res.1, LineEndReason::EOF);
+        assert_complete!(parse.0);
+    }
+
+    #[test]
+    fn simple_eol() {
+        crate::test::setup();
+
+        let test_span = create_span("just a line\n");
+        let test_span = test_span.span();
+
+        let parse = assert_ok!(makefile_grab_line(test_span));
+
+        let res = parse.1;
+        assert_eq!(res.0.into_string(), "just a line");
+        assert_eq!(res.1, LineEndReason::LineBreak);
+        assert_complete!(parse.0);
+    }
+
+    #[test]
+    fn windows_eol() {
+        crate::test::setup();
+
+        let test_span = create_span("just a line\r\n");
+        let test_span = test_span.span();
+
+        let parse = assert_ok!(makefile_grab_line(test_span));
+
+        let res = parse.1;
+        assert_eq!(res.0.into_string(), "just a line");
+        assert_eq!(res.1, LineEndReason::LineBreak);
+        assert_complete!(parse.0);
+    }
+
+    #[test]
+    fn comment_in_braces() {
+        crate::test::setup();
+
+        let test_span = create_span("(#)");
+        let test_span = test_span.span();
+
+        let parse = assert_ok!(makefile_grab_line(test_span));
+
+        let res = parse.1;
+        assert_eq!(res.0.into_string(), "(#)");
+        assert_eq!(res.1, LineEndReason::EOF);
+        assert_complete!(parse.0);
+    }
+}
+
 mod makefile_line {
     use crate::parsers::makefile_line;
     use crate::parsers::test::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn simple() {
@@ -143,11 +210,14 @@ mod makefile_line {
 
     #[test]
     fn simple_collapse() {
+        crate::test::setup();
         let test_span = create_span("line 1\\\nline 2");
         let test_span = test_span.span();
         let parse = assert_ok!(makefile_line(test_span, ParserCompliance::POSIX, false));
 
         assert_complete!(parse.0);
+
+        debug!("{:?}", parse.1.span());
 
         assert_segments_eq!(
             parse.1.span(),
@@ -178,6 +248,8 @@ mod makefile_line {
 
     #[test]
     fn strip_initial_works() {
+        crate::test::setup();
+
         let test_span = create_span(" line 1\\\n\tline 2");
         let test_span = test_span.span();
         let parse = assert_ok!(makefile_line(test_span, ParserCompliance::GNU, true));
@@ -204,6 +276,7 @@ mod makefile_line {
             parse.1.span(),
             &[
                 ("line 1", Location::test_location(1, 1)),
+                (" ", Location::Synthetic),
                 (" ", Location::Synthetic),
                 ("line 2", Location::test_location(3, 1)),
             ]
