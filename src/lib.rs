@@ -327,6 +327,22 @@ impl Database {
         tr
     }
 
+    /// Override the value of a variable for a specific target
+    pub fn set_variable_for_target(
+        &self,
+        target: FileName,
+        name: VariableName,
+        value: VariableParameters,
+    ) -> Self {
+        let mut tr = self.clone();
+        let target = target.into();
+        tr.target_variables
+            .entry(target)
+            .or_default()
+            .insert(name, value);
+        tr
+    }
+
     /// Append to a variable at the specified location
     /// The provided parameters are all used to update the variable state,
     /// though if the variable was previously defined.
@@ -361,19 +377,38 @@ impl Database {
         tr
     }
 
-    /// Override the value of a variable for a specific target
-    pub fn set_variable_for_target(
+    /// Append to a target-specific variable at the specified location
+    /// The provided parameters are all used to update the variable state,
+    /// though if the variable was previously defined.
+    /// If `implicit_space` is true, we add a space between any old and new values.
+    #[inline]
+    pub fn append_to_variable_for_target(
         &self,
         target: FileName,
         name: VariableName,
-        value: VariableParameters,
+        location: Location,
+        content: VariableParameters,
+        implicit_space: bool,
     ) -> Self {
         let mut tr = self.clone();
-        let target = target.into();
-        tr.target_variables
-            .entry(target)
-            .or_default()
-            .insert(name, value);
+        let map = tr.target_variables.entry(target).or_default();
+        *map = map.update_with(name, content, |mut old, new| {
+            old.unexpanded_value = ast::collapsing_concat(
+                location,
+                if implicit_space {
+                    vec![
+                        old.unexpanded_value,
+                        ast::constant(LocatedString::new(Location::Synthetic.into(), " ".into())),
+                        new.unexpanded_value,
+                    ]
+                } else {
+                    vec![old.unexpanded_value, new.unexpanded_value]
+                },
+            );
+
+            old
+        });
+
         tr
     }
 

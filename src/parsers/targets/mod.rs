@@ -1,6 +1,7 @@
 //! Parser for target lines
 use super::variable::{self, VariableAction};
 use crate::ast::AstNode;
+use crate::eval::{Flavor, Origin, VariableParameters};
 use crate::evaluated::{Block, BlockSpan, ContentReference};
 use crate::parsers::ast::parse_ast;
 use crate::parsers::variable::parse_line as parse_variable_line;
@@ -81,7 +82,18 @@ impl crate::parsers::ParserState {
                         );
                     }
                 }
-                variable::Action::Append(node) => unimplemented!("Appending to target variables"),
+                variable::Action::Append(node) => {
+                    for target in targets.into_iter() {
+                        let node = node.clone();
+                        engine.database = engine.database.append_to_variable_for_target(
+                            target.0,
+                            variable_action.name,
+                            node.location(),
+                            VariableParameters::new(node, Flavor::Recursive, Origin::File),
+                            true,
+                        )
+                    }
+                }
             },
         }
         Ok(())
