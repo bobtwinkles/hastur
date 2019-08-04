@@ -28,6 +28,40 @@ macro_rules! variable_set_to (
     }}
 );
 
+
+macro_rules! target_variable_set_to (
+    ($names:expr, $engine:ident, $target:expr, $variable_name:expr, $value:expr) => {{
+        let names = &mut $names;
+        let target = $target;
+        let database = $engine.database.clone();
+        let engine = &mut $engine;
+        let variable_name = $variable_name;
+        let value = $value;
+
+        let target_name = names
+            .file_name(target)
+            .expect(&format!(
+                "Target named {:?} should have been interned",
+                target
+            ));
+
+        let variable_name = names
+            .variable_name(variable_name)
+            .expect(&format!(
+                "Variable named {:?} should have been interned",
+                variable_name
+            ));
+
+        assert_eq!(
+            database
+                .get_variable_for_target(target_name, variable_name)
+                .expect(&format!("Variable named {:?} should have a value", variable_name))
+                .expand(names, engine),
+            value
+        )
+    }}
+);
+
 #[test]
 fn simple_conditional() {
     let block = create_span(
@@ -208,4 +242,6 @@ a: CFLAGS := -g
     let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
     // empty last line
     let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+
+    target_variable_set_to!(names, engine, "a", "CFLAGS", "-g");
 }
