@@ -217,7 +217,7 @@ pub struct FileName(Sym);
 
 /// Database of rules and variables.
 /// This represents the full context required to evaluate something in Makefile syntax
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default)]
 #[must_use]
 pub struct Database {
     /// Global variables
@@ -394,6 +394,29 @@ impl Database {
     /// Get a rule for a specific target
     pub fn get_rule(&self, target: FileName) -> Option<&Rule> {
         self.rules.get(&target)
+    }
+}
+
+impl std::fmt::Debug for Database {
+    /// Global variables
+    // variables: types::Map<VariableName, VariableParameters>,
+    /// Target variables, mapped from target name to variable name to value
+    // target_variables: types::Map<FileName, types::Map<VariableName, VariableParameters>>,
+    /// All known rules
+    // rules: types::Map<FileName, Rule>,
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Database {{\n")?;
+
+        write!(f, "  variables:\n")?;
+        write!(f, "  {:?}\n", self.variables)?;
+
+        write!(f, "  target_variables:\n")?;
+        write!(f, "  {:?}\n", self.target_variables)?;
+
+        write!(f, "  rules:\n")?;
+        write!(f, "  {:?}\n", self.rules)?;
+
+        write!(f, "}}")
     }
 }
 
