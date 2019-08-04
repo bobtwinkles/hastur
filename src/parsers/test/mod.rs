@@ -252,7 +252,7 @@ mod makefile_line {
 
         let test_span = create_span(" line 1\\\n\tline 2");
         let test_span = test_span.span();
-        let parse = assert_ok!(makefile_line(test_span, ParserCompliance::GNU, true));
+        let parse = assert_ok!(makefile_line(test_span, ParserCompliance::POSIX, true));
 
         assert_complete!(parse.0);
         assert_segments_eq!(
@@ -269,7 +269,7 @@ mod makefile_line {
     fn strip_initial_works_multiple() {
         let test_span = create_span("line 1\\\n\t\\\nline 2");
         let test_span = test_span.span();
-        let parse = assert_ok!(makefile_line(test_span, ParserCompliance::GNU, true));
+        let parse = assert_ok!(makefile_line(test_span, ParserCompliance::POSIX, true));
 
         assert_complete!(parse.0);
         assert_segments_eq!(
@@ -303,7 +303,41 @@ mod makefile_line {
         assert_segments_eq!(parse.1.span(), &[("a", Location::test_location(2, 3))])
     }
 
-    // TODO: test some more sophisticated collapse logic. POSIX/GNU compliance?
+    #[test]
+    fn gnu_compliance() {
+        crate::test::setup();
+        let test_span = create_span("a \\\n b");
+        let test_span = test_span.span();
+        let parse = assert_ok!(makefile_line(test_span, ParserCompliance::GNU, true));
+
+        assert_complete!(parse.0);
+        assert_segments_eq!(
+            parse.1.span(),
+            &[
+                ("a", Location::test_location(1, 1)),
+                (" ", Location::Synthetic),
+                (" b", Location::test_location(2, 1))
+            ]
+        )
+    }
+
+    #[test]
+    fn posix_compliance() {
+        crate::test::setup();
+        let test_span = create_span("a \\\n b");
+        let test_span = test_span.span();
+        let parse = assert_ok!(makefile_line(test_span, ParserCompliance::POSIX, true));
+
+        assert_complete!(parse.0);
+        assert_segments_eq!(
+            parse.1.span(),
+            &[
+                ("a", Location::test_location(1, 1)),
+                (" ", Location::Synthetic),
+                ("b", Location::test_location(2, 2))
+            ]
+        )
+    }
 }
 
 mod makefile_whitespace {

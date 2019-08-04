@@ -595,9 +595,18 @@ pub(crate) fn makefile_line(
             State::PostNewLine => {
                 // After newlines, we ignore all whitespace until after some Real Content
                 match tok.token_type {
-                    TokenType::Whitespace => {
-                        // Ignore these
-                    }
+                    TokenType::Whitespace => match whitespace_handling {
+                        ParserCompliance::GNU => {
+                            // In GNU mode, we pick up the leading whitespace
+                            state = State::Scanning {
+                                start: tok.start,
+                                end: tok.end,
+                            };
+                        }
+                        ParserCompliance::POSIX => {
+                            // POSIX mode skips over leading whitespace
+                        }
+                    },
                     TokenType::EscapedCharacter(Some('\\')) => {
                         // Go right into slash parsing
                         state = State::Backslashes {
