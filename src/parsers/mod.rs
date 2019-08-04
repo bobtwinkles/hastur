@@ -310,7 +310,7 @@ pub enum LineEndReason {
 /// Get a line, stopping on a UNIX line break, Windows line break, or the beginning of a comment
 pub fn makefile_grab_line<T>(input: T) -> IResult<T, (T, LineEndReason), ParseErrorKind>
 where
-    T: Clone + Copy + nom::InputIter<Item = char> + nom::InputTake,
+    T: Clone + Copy + nom::InputIter<Item = char> + nom::InputTake + Into<String>,
 {
     let mut it = iterator_to_token_stream(input.iter_indices());
 
@@ -348,12 +348,16 @@ where
                 // We've hit the end, outside of a brace/paren
                 let (i, line) = input.take_split(tok.start);
 
+                debug!("Grabbed line {:?}", line.into());
+
                 return Ok((i, (line, LineEndReason::Comment)));
             }
             TokenType::NewLine if paren_count == 0 && brace_count == 0 => {
                 // We've hit the end, outside of a brace/paren
                 let (_, line) = input.take_split(tok.start);
                 let (i, _) = input.take_split(tok.end);
+
+                debug!("Grabbed line {:?}", line.into());
 
                 return Ok((i, (line, LineEndReason::LineBreak)));
             }
@@ -366,10 +370,9 @@ where
         end = tok.end;
     }
 
-    debug!("Ran out of tokens");
-
     // no line end reason before EOF
     let (i, line) = input.take_split(end);
+    debug!("Grabbed line {:?}", line.into());
     return Ok((i, (line, LineEndReason::EOF)));
 }
 
