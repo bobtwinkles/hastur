@@ -122,8 +122,6 @@ impl ParserState {
         names: &mut NameCache,
         engine: &mut Engine,
     ) -> IResult<BlockSpan<'a>, (), ParseErrorKind> {
-        use nom::InputIter;
-
         let line_start = i;
         /// A small macro that returns on Err(NErr::Failure) or Ok()
         /// but "backtracks" (ignores the result) on recoverable failures or
@@ -524,7 +522,7 @@ pub enum ParserCompliance {
 /// command character in either compliance mode.
 /// TODO: rip out strip_initial_whitespace, we can do that smarter just using makefile_whitespace
 pub(crate) fn makefile_line(
-    mut i: BlockSpan,
+    i: BlockSpan,
     whitespace_handling: ParserCompliance,
     strip_initial_whitespace: bool,
 ) -> IResult<BlockSpan, Arc<Block>, ParseErrorKind> {

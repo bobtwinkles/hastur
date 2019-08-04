@@ -6,7 +6,6 @@ use crate::evaluated::{Block, BlockSpan, ContentReference};
 use crate::parsers::ast::parse_ast;
 use crate::ParseErrorKind;
 use nom::IResult;
-use std::sync::Arc;
 
 /// Recognizes a recipe line
 pub(super) fn recipe_line<'a>(
@@ -29,7 +28,7 @@ pub(super) fn recipe_line<'a>(
 
     let mut fragments: Vec<ContentReference> = Vec::new();
 
-    let mut it = input_line.iter_indices();
+    let it = input_line.iter_indices();
     let mut push_start = 0;
     let mut strip_next_if_cmd = false;
     for (idx, ch) in it {
@@ -51,7 +50,7 @@ pub(super) fn recipe_line<'a>(
 
     let line = Block::new(i.parent().raw_sensitivity(), fragments);
 
-    let (_, ast) = parse_ast(line.span()).map_err(|e| lift_collapsed_span_error(e, i))?;
+    let (_, ast) = parse_ast(line.span()).map_err(|e| lift_collapsed_span_error(e, line_start))?;
 
     Ok((i, ast))
 }
