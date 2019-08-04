@@ -138,6 +138,12 @@ impl<'a> BlockSpan<'a> {
     }
 }
 
+impl<'a> Into<String> for BlockSpan<'a> {
+    fn into(self) -> String {
+        self.into_string()
+    }
+}
+
 /// Iterator over a span of a block
 #[derive(Clone, Debug)]
 pub struct Iter<'a> {
