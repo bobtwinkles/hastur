@@ -188,3 +188,24 @@ endif
     // assertions
     variable_set_to!(names, engine, "bar", "qux");
 }
+
+#[test]
+fn target_variable() {
+    crate::test::setup();
+
+    let block = create_span(
+    r#"
+a: CFLAGS := -g
+"#);
+
+    let mut engine: Engine = Default::default();
+    let mut parse_state = ParserState::new();
+    let mut names = Default::default();
+
+    // Empty first line
+    let (i, _) = assert_ok!(parse_state.parse_line(block.span(), &mut names, &mut engine));
+    // recipe line
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+    // empty last line
+    let (i, _) = assert_ok!(parse_state.parse_line(i, &mut names, &mut engine));
+}

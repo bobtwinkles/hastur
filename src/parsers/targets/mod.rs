@@ -1,5 +1,5 @@
 //! Parser for target lines
-use super::variable::VariableAction;
+use super::variable::{self, VariableAction};
 use crate::ast::AstNode;
 use crate::evaluated::{Block, BlockSpan, ContentReference};
 use crate::parsers::ast::parse_ast;
@@ -8,6 +8,7 @@ use crate::parsers::{
     fail_out, lift_collapsed_span_error, makefile_line, makefile_take_until_unquote,
     makefile_whitespace, ProtoRule,
 };
+use crate::FileName;
 use crate::{Engine, NameCache, ParseErrorKind};
 use nom::IResult;
 use std::sync::Arc;
@@ -30,8 +31,7 @@ pub(crate) enum Action {
 
     /// A target specific variable
     TargetVariable {
-        /// TODO: replace the string with a block
-        targets: Vec<Arc<Block>>,
+        targets: Vec<(FileName, Arc<Block>)>,
         variable_action: VariableAction,
     },
 }
@@ -39,7 +39,7 @@ pub(crate) enum Action {
 impl crate::parsers::ParserState {
     pub(crate) fn handle_target_action(
         &mut self,
-        _engine: &mut Engine,
+        engine: &mut Engine,
         action: Action,
     ) -> Result<(), ParseErrorKind> {
         match action {
@@ -68,7 +68,21 @@ impl crate::parsers::ParserState {
                     None => {}
                 }
             }
-            e => unimplemented!("Unimplemented action {:?}", e),
+            Action::TargetVariable {
+                targets,
+                variable_action,
+            } => match variable_action.action {
+                variable::Action::Define(parameters) => {
+                    for target in targets.into_iter() {
+                        engine.database = engine.database.set_variable_for_target(
+                            target.0,
+                            variable_action.name,
+                            parameters.clone(),
+                        );
+                    }
+                }
+                variable::Action::Append(node) => unimplemented!("Appending to target variables"),
+            },
         }
         Ok(())
     }
@@ -307,6 +321,13 @@ pub(crate) fn parse_line<'a>(
     // Try to match against a variable assignment operation
     match parse_variable_line(post_targets_slice, names, engine) {
         Ok((_, action)) => {
+            let targets = targets
+                .into_iter()
+                .map(|targ| {
+                    let fname = names.intern_file_name(targ.into_string());
+                    (fname, targ)
+                })
+                .collect();
             return Ok((
                 rest,
                 Action::TargetVariable {

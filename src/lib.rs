@@ -390,6 +390,10 @@ impl Database {
         target: FileName,
         name: VariableName,
     ) -> Option<Variable> {
+        // TODO: this should accept a compliance parameter which determines if
+        // we should search the dependencies of a target for variables. GNU Make
+        // will do so, but some Make implementations (like Android's Kati) will
+        // not.
         self.target_variables
             .get(&target)?
             .get(&name)
