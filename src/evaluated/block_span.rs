@@ -219,6 +219,7 @@ impl<'a> IndexIter<'a> {
         }
     }
 }
+
 impl<'a> std::iter::FusedIterator for IndexIter<'a> {}
 
 impl<'a> std::iter::Iterator for IndexIter<'a> {
