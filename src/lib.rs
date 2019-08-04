@@ -234,6 +234,11 @@ impl Database {
         self.rules.values()
     }
 
+    /// Get the rules for a given target
+    pub fn rule_for_target(&self, target: FileName) -> Option<&Rule> {
+        self.rules.get(&target)
+    }
+
     /// Add a rule into the database
     pub fn add_rule(&self, rule: Rule) -> Self {
         let mut tr = self.clone();

@@ -26,7 +26,11 @@ fn simple_prefix() {
     engine.read_makefile(&mut names, &mut bufreader, "prefix.mk").unwrap();
 
     info!("Database state {:?}", engine.database);
-    assert!(false);
 
     variable_set_to!(names, engine, "SHELL", "/bin/sh");
+    has_target_with_deps!(names, engine, ".DELETE_ON_ERROR", []);
+    has_target_with_deps!(names, engine, ".SUFFIXES", [".hpux_make_needs_suffix_list"]);
+    has_target_with_deps!(names, engine, ".SILENT", []);
+    has_target_with_deps!(names, engine, "cmake_force", []);
+    has_target_with_deps!(names, engine, ".PHONY", ["cmake_force"]);
 }
