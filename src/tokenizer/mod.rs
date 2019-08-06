@@ -186,39 +186,22 @@ pub enum Directive {
 }
 
 /// Internal iterator implementation
-struct TokenStream<IT> {
-    internal: IT,
+pub struct TokenStream<IT: Iterator> {
+    internal: Peekable<IT>,
 }
 
 const SPECIAL_CHARACTERS: &'static str = "\\$(){}:;%+?!=#\"',";
 
-/// Possible actions to take
-enum NextOperation {
-    /// All input has been consumd
-    InputComplete,
-    /// We matched something valid, but not interesting
-    GoAgain,
-    /// We found a real token,
-    Token(Token),
-}
-
-impl Into<NextOperation> for Option<Token> {
-    fn into(self) -> NextOperation {
-        match self {
-            None => NextOperation::InputComplete,
-            Some(t) => NextOperation::Token(t),
-        }
-    }
-}
-
-impl<IT> TokenStream<Peekable<IT>>
+impl<IT> Iterator for TokenStream<IT>
 where
     IT: Iterator<Item = (usize, char)>,
 {
-    fn guess_next(&mut self) -> NextOperation {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Token> {
         let (start_idx, chr) = match self.internal.next() {
             Some(v) => v,
-            None => return NextOperation::InputComplete,
+            None => return None,
         };
         let mut end_idx = start_idx + chr.len_utf8();
 
@@ -240,11 +223,11 @@ where
             };
             ($start:expr, $ty:expr) => {{
                 let ty = $ty;
-                NextOperation::Token(Token {
+                return Some(Token {
                     start: $start,
                     end: end_idx,
                     token_type: ty,
-                })
+                });
             }};
         };
 
@@ -418,31 +401,10 @@ where
     }
 }
 
-impl<IT> Iterator for TokenStream<Peekable<IT>>
-where
-    IT: Iterator<Item = (usize, char)>,
-{
-    type Item = Token;
-
-    fn next(&mut self) -> Option<Token> {
-        let mut consumed;
-        loop {
-            consumed = self.guess_next();
-            match consumed {
-                NextOperation::InputComplete => return None,
-                NextOperation::GoAgain => {
-                    /* Nothing to do in this case, since we don't have a good thing to do */
-                }
-                NextOperation::Token(t) => return Some(t),
-            }
-        }
-    }
-}
-
 /// Adapt an iterator over characters to an iterator over tokens
-pub fn iterator_to_token_stream(
-    it: impl Iterator<Item = (usize, char)>,
-) -> impl Iterator<Item = Token> {
+pub fn iterator_to_token_stream<IT: Iterator<Item = (usize, char)>>(
+    it: IT,
+) -> TokenStream<IT> {
     TokenStream {
         internal: it.peekable(),
     }
