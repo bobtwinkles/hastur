@@ -4,7 +4,23 @@ use super::*;
 use crate::parsers::test::create_span;
 use crate::source_location::{LocatedString, Location};
 
+macro_rules! test_setup {
+    ($block_contents:expr, $name:ident, ok) => {
+        crate::test::setup();
+
+        let block = crate::parsers::test::create_span($block_contents);
+        let $name = assert_ok!(crate::parsers::ast::parse_ast(block.span()));
+    };
+    ($block_contents:expr, $name:ident, err) => {
+        crate::test::setup();
+
+        let block = crate::parsers::test::create_span($block_contents);
+        let $name = assert_err!(crate::parsers::ast::parse_ast(block.span()));
+    };
+}
+
 mod arguments;
+mod if_fn;
 mod proptest;
 mod strip;
 mod word;
@@ -35,6 +51,26 @@ fn single_char_ref() {
 }
 
 #[test]
+fn single_char_ref_abutting() {
+    test_setup!("$ab", res, ok);
+
+    assert_complete!(res.0);
+    assert_eq!(
+        res.1,
+        ast::collapsing_concat(
+            Location::test_location(1, 1),
+            vec![
+                ast::variable_reference(
+                    Location::test_location(1, 1),
+                    ast::constant(LocatedString::test_new(1, 2, "a"))
+                ),
+                ast::constant(LocatedString::test_new(1, 3, "b"))
+            ]
+        )
+    )
+}
+
+#[test]
 fn dollar_at_end() {
     let block = create_span("$");
     let res = assert_ok!(parse_ast(block.span()));
@@ -45,9 +81,7 @@ fn dollar_at_end() {
 
 #[test]
 fn dollar_escape() {
-    let block = create_span("$$");
-    let res = assert_ok!(parse_ast(block.span()));
-
+    test_setup!("$$", res, ok);
     assert_complete!(res.0);
     assert_eq!(res.1, ast::constant(LocatedString::test_new(1, 2, "$")));
 }
@@ -69,9 +103,7 @@ fn long_var_name() {
 
 #[test]
 fn recursive_variable_expansion() {
-    let block = create_span("$($(foo))");
-    let res = assert_ok!(parse_ast(block.span()));
-
+    test_setup!("$($(foo))", res, ok);
     assert_complete!(res.0);
     assert_eq!(
         res.1,
@@ -90,4 +122,17 @@ fn unbalanced_reference() {
     let block = create_span("$(foo");
     let err = assert_err!(parse_ast(block.span()));
     assert_err_contains!(err, ParseErrorKind::UnternimatedVariable);
+}
+
+#[test]
+fn function_named_variable() {
+    test_setup!("$(words)", parse, ok);
+    assert_complete!(parse.0);
+    assert_eq!(
+        parse.1,
+        ast::variable_reference(
+            Location::test_location(1, 1),
+            ast::constant(LocatedString::test_new(1, 3, "words"))
+        )
+    )
 }

@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc fab451d53a6685e0f1c819329f7dabc54725893529e4d58d4521fdc892ae55ba # shrinks to (ast, flat) = (AstNode { source_location: Marker { inner: TestLocation { line: 1, character: 1 } }, children: Concat([]) }, "")
+cc aace4b5f907c86cbf5f9cc6de4dfac155f3ff161ec1bbab8c1908e546b493ada # shrinks to (ast, flat) = (AstNode { source_location: Marker { inner: TestLocation { line: 1, character: 1 } }, children: Eval(AstNode { source_location: Marker { inner: TestLocation { line: 1, character: 8 } }, children: Constant(Located { location: Marker { inner: TestLocation { line: 1, character: 8 } }, contents: "0" }) }) }, "$(eval 0)")
