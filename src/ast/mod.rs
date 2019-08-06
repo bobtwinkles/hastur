@@ -198,7 +198,7 @@ pub enum AstChildren {
     /// An empty node. Has no content at all.
     Empty,
     /// A constant string of text
-    /// TODO: This should be a interned reference
+    /// TODO: This should be replaced with PreEvaluated, and PreEvaluated renamed to Constant
     // #SPC-V-AST.constant
     Constant(LocatedString),
     /// Some content that has already been evaluated
@@ -212,6 +212,13 @@ pub enum AstChildren {
     /// Reference to an `eval` node
     // #SPC-V-AST.eval
     Eval(AstNode),
+
+    /// The `if` make function
+    If {
+        condition: AstNode,
+        true_case: AstNode,
+        false_case: AstNode,
+    },
 
     /// The `strip` make function
     // #SPC-V-AST.strip
@@ -316,6 +323,24 @@ pub fn words(source_location: Location, arg: AstNode) -> AstNode {
 pub fn word(source_location: Location, index: AstNode, words: AstNode) -> AstNode {
     AstNode {
         children: Box::new(AstChildren::Word { index, words }),
+        source_location: source_location.into(),
+    }
+}
+
+/// Create a new `if` node
+#[inline]
+pub fn if_fn(
+    source_location: Location,
+    condition: AstNode,
+    true_case: AstNode,
+    false_case: AstNode,
+) -> AstNode {
+    AstNode {
+        children: Box::new(AstChildren::If {
+            condition,
+            true_case,
+            false_case,
+        }),
         source_location: source_location.into(),
     }
 }

@@ -52,6 +52,16 @@ macro_rules! make_ast_visitor {
                 self.super_eval(content);
             }
 
+            /// Visit a `If` node
+            fn visit_if(
+                &mut self,
+                condition: &'node $($mutability)? AstNode,
+                true_case: &'node $($mutability)? AstNode,
+                false_case: &'node $($mutability)? AstNode
+            ) {
+                self.super_if(condition, true_case, false_case)
+            }
+
             /// Visit a `Strip` node
             fn visit_strip(&mut self, content: &'node $($mutability)? AstNode) {
                 self.super_strip(content);
@@ -97,6 +107,18 @@ macro_rules! make_ast_visitor {
                 self.visit_ast(content);
             }
 
+            /// Visit a `If` node
+            fn super_if(
+                &mut self,
+                condition: &'node $($mutability)? AstNode,
+                true_case: &'node $($mutability)? AstNode,
+                false_case: &'node $($mutability)? AstNode
+            ) {
+                self.visit_ast(condition);
+                self.visit_ast(true_case);
+                self.visit_ast(false_case);
+            }
+
             /// Recursion implementation for `Strip` nodes
             fn super_strip(&mut self, content: &'node $($mutability)? AstNode) {
                 self.visit_ast(content);
@@ -137,6 +159,9 @@ macro_rules! make_ast_visitor {
                     }
                     AstChildren::Eval(child) => {
                         self.visit_eval(child);
+                    }
+                    AstChildren::If { condition, true_case, false_case } => {
+                        self.visit_if(condition, true_case, false_case)
                     }
                     AstChildren::Strip(child) => {
                         self.visit_strip(child);
