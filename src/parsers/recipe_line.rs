@@ -129,6 +129,59 @@ mod test {
     }
 
     #[test]
+    fn collapse_parens_escapes() {
+        recipe_line_test!("\techo '(a \\\\\\\\\n\t b)", parse);
+        assert_complete!(parse.0);
+        assert_eq!(
+            parse.1,
+            ast::collapsing_concat(
+                Location::test_location(1, 2),
+                vec![
+                    ast::constant(LocatedString::test_new(1, 2, "echo '(a \\\\\\\\\n")),
+                    ast::constant(LocatedString::test_new(2, 2, " b)"))
+                ]
+            )
+        )
+    }
+
+    #[test]
+    fn collapse_parens_no_function() {
+        recipe_line_test!("\techo '(a \\\n\t b)", parse);
+        assert_complete!(parse.0);
+        assert_eq!(
+            parse.1,
+            ast::collapsing_concat(
+                Location::test_location(1, 2),
+                vec![
+                    ast::constant(LocatedString::test_new(1, 2, "echo '(a \\\n")),
+                    ast::constant(LocatedString::test_new(2, 2, " b)"))
+                ]
+            )
+        );
+    }
+
+    #[test]
+    fn collapse_in_function() {
+        recipe_line_test!("\techo '$(if t,a \\\n\t b)", parse);
+        assert_complete!(parse.0);
+        assert_eq!(
+            parse.1,
+            ast::collapsing_concat(
+                Location::test_location(1, 2),
+                vec![
+                    ast::constant(LocatedString::test_new(1, 2, "echo '")),
+                    ast::if_fn(
+                        Location::test_location(1, 10),
+                        ast::constant(LocatedString::test_new(1, 13, "t")),
+                        ast::constant(LocatedString::test_new(1, 15, "a")),
+                        ast::constant(LocatedString::test_new(2, 3, "b"))
+                    )
+                ]
+            )
+        );
+    }
+
+    #[test]
     fn does_not_match_no_prefix() {
         let test_span = create_span("this is not a recipe line");
         let test_span = test_span.span();
