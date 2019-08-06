@@ -66,31 +66,34 @@ mod test {
     use nom::{error_to_list, ErrorKind};
     use pretty_assertions::assert_eq;
 
+    macro_rules! recipe_line_test {
+        ($span_contents:expr, $out_name:ident) => {
+            crate::test::setup();
+
+            let test_span = create_span($span_contents);
+            let test_span = test_span.span();
+
+            let $out_name = assert_ok!(recipe_line(test_span, '\t'));
+        }
+    }
+
     #[test]
     fn single_line() {
-        let test_span = create_span("\ta\n");
-        let test_span = test_span.span();
-        let parse = assert_ok!(recipe_line(test_span, '\t'));
+        recipe_line_test!("\ta\n", parse);
         assert_complete!(parse.0);
         assert_eq!(parse.1, ast::constant(LocatedString::test_new(1, 2, "a")));
     }
 
     #[test]
     fn at_eof() {
-        let test_span = create_span("\ta");
-        let test_span = test_span.span();
-        let parse = assert_ok!(recipe_line(test_span, '\t'));
+        recipe_line_test!("\ta", parse);
         assert_complete!(parse.0);
         assert_eq!(parse.1, ast::constant(LocatedString::test_new(1, 2, "a")));
     }
 
     #[test]
     fn multi_line_cont() {
-        crate::test::setup();
-
-        let test_span = create_span("\ta\\\n\tb");
-        let test_span = test_span.span();
-        let parse = assert_ok!(recipe_line(test_span, '\t'));
+        recipe_line_test!("\ta\\\n\tb", parse);
         assert_complete!(parse.0);
         assert_eq!(
             parse.1,
@@ -106,27 +109,21 @@ mod test {
 
     #[test]
     fn multi_line_not_cont() {
-        let test_span = create_span("\ta\n\tb");
-        let test_span = test_span.span();
-        let parse = assert_ok!(recipe_line(test_span, '\t'));
+        recipe_line_test!("\ta\n\tb", parse);
         assert_segments_eq!(parse.0, [("\tb", Location::test_location(2, 1))]);
         assert_eq!(parse.1, ast::constant(LocatedString::test_new(1, 2, "a")));
     }
 
     #[test]
     fn multi_line_not_command() {
-        let test_span = create_span("\ta\n\n");
-        let test_span = test_span.span();
-        let parse = assert_ok!(recipe_line(test_span, '\t'));
+        recipe_line_test!("\ta\n\n", parse);
         assert_segments_eq!(parse.0, [("\n", Location::test_location(2, 1))]);
         assert_eq!(parse.1, ast::constant(LocatedString::test_new(1, 2, "a")));
     }
 
     #[test]
     fn multi_line_but_comment() {
-        let test_span = create_span("\ta # \n\n");
-        let test_span = test_span.span();
-        let parse = assert_ok!(recipe_line(test_span, '\t'));
+        recipe_line_test!("\ta # \n\n", parse);
         assert_segments_eq!(parse.0, [("# \n\n", Location::test_location(1, 4))]);
         assert_eq!(parse.1, ast::constant(LocatedString::test_new(1, 2, "a ")));
     }
