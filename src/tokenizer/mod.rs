@@ -110,7 +110,8 @@ pub enum VariableAssign {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(test, derive(Arbitrary))]
 pub enum VariableKind {
-    /// It's a $ followed by a single character
+    /// It's a $ followed by a single character.
+    /// NB. This also captures the character being referred to.
     SingleCharacter,
     /// It's a $ followed by an open parenthesis
     OpenParen,
@@ -185,7 +186,7 @@ pub enum Directive {
     Undefine,
 }
 
-/// Internal iterator implementation
+/// Token stream iterator.
 pub struct TokenStream<IT: Iterator> {
     internal: Peekable<IT>,
 }
