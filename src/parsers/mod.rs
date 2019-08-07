@@ -713,6 +713,7 @@ pub(crate) fn makefile_line(
 }
 
 /// Create a new Nom `IResult` recoverable error with our custom error kind
+#[inline]
 pub(crate) fn error_out<I, T>(i: I, err: ParseErrorKind) -> IResult<I, T, ParseErrorKind> {
     Err(NErr::Error(nom::Context::Code(
         i,
@@ -721,6 +722,7 @@ pub(crate) fn error_out<I, T>(i: I, err: ParseErrorKind) -> IResult<I, T, ParseE
 }
 
 /// Create a new Nom `IResult` unrecoverable error with our custom error kind
+#[inline]
 pub(crate) fn fail_out<'a, T>(
     i: BlockSpan<'a>,
     err: ParseErrorKind,
