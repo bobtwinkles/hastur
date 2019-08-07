@@ -2,13 +2,13 @@
 use crate::ast;
 use crate::ast::AstNode;
 use crate::evaluated::BlockSpan;
-use crate::parsers::{fail_out, makefile_whitespace};
+use crate::parsers::fail_out;
 use crate::source_location::Location;
 use crate::tokenizer::{
     iterator_to_token_stream, BuiltinFunction, TokenStream, TokenType, VariableKind,
 };
 use crate::ParseErrorKind;
-use nom::{Err, ErrorKind, IResult, InputIter, Slice};
+use nom::{IResult, InputIter, Slice};
 
 #[cfg(test)]
 mod test;
@@ -201,6 +201,7 @@ fn parse_var_ref<'a, IT: Iterator<Item = (usize, char)>>(
                 end,
                 close_token,
                 &mut master_concat_nodes,
+                false,
             )?;
 
             Ok((
@@ -292,6 +293,7 @@ fn potential_function<'a, IT: Iterator<Item = (usize, char)>>(
                 end,
                 close_token,
                 &mut master_concat_nodes,
+                false,
             )?;
 
             Ok((
@@ -308,6 +310,9 @@ fn potential_function<'a, IT: Iterator<Item = (usize, char)>>(
             // As far as I know it's impossible to assign to such variable names,
             // but that should be checked
             match func {
+                BuiltinFunction::Eval => {
+                    eval(i, tok_iterator, tok.end, dollar_location, close_token)
+                }
                 f => unimplemented!("Parsing for function {:?}", f),
             }
         }
@@ -359,7 +364,6 @@ fn non_function_internal<'a, IT: Iterator<Item = (usize, char)>>(
         "Handling non-function variable internal reference at {:?}",
         start_index
     );
-    let mut prev_end = start_index;
     let mut master_concat_nodes = Vec::new();
 
     let end = accumulate_reference_content(
@@ -368,6 +372,7 @@ fn non_function_internal<'a, IT: Iterator<Item = (usize, char)>>(
         start_index,
         close_token,
         &mut master_concat_nodes,
+        false,
     )?;
 
     Ok((
@@ -385,6 +390,7 @@ fn accumulate_reference_content<'a, IT: Iterator<Item = (usize, char)>>(
     mut start_index: usize,
     close_token: TokenType,
     master_concat_nodes: &mut Vec<AstNode>,
+    stop_on_comma: bool,
 ) -> Result<usize, nom::Err<BlockSpan<'a>, ParseErrorKind>> {
     debug!(
         "Accumulating reference content, starting at {:?}",
@@ -410,6 +416,17 @@ fn accumulate_reference_content<'a, IT: Iterator<Item = (usize, char)>>(
                 start_index = end;
                 prev_end = end;
             }
+            TokenType::Comma if stop_on_comma => {
+                // We've found a comma, and the caller requested we stop on such references
+                if start_index != i.len() {
+                    let tail = i.slice(start_index..tok.start);
+                    for segment in tail.segments() {
+                        master_concat_nodes.push(ast::constant(segment.into()));
+                    }
+                }
+
+                return Ok(tok.end);
+            }
             c if c == close_token => {
                 // We've found our close token. Dump everything up to this point and exit.
                 if start_index != i.len() {
@@ -430,7 +447,10 @@ fn accumulate_reference_content<'a, IT: Iterator<Item = (usize, char)>>(
 
                 if tok.start != prev_end {
                     // Something indicated we should skip characters, dump everything and continue.
-                    debug!("Something caused a token skip from {:?} to {:?} in accumulate", prev_end, tok.start);
+                    debug!(
+                        "Something caused a token skip from {:?} to {:?} in accumulate",
+                        prev_end, tok.start
+                    );
                     let prior = i.slice(start_index..prev_end);
                     for segment in prior.segments() {
                         master_concat_nodes.push(ast::constant(segment.into()));
@@ -448,146 +468,40 @@ fn accumulate_reference_content<'a, IT: Iterator<Item = (usize, char)>>(
     fail_out::<()>(i.slice(i.len()..), ParseErrorKind::UnternimatedVariable).map(|_| unreachable!())
 }
 
-fn advanced_var<'a>(
+fn eval<'a, IT: Iterator<Item = (usize, char)>>(
     i: BlockSpan<'a>,
+    tok_iterator: &mut TokenStream<IT>,
+    start_index: usize,
     dollar_location: Location,
-    start_char: char,
-    term_char: char,
-) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
-    use nom::{InputIter, InputTake, Slice};
-    let mut count = 1;
-    let mut it = i.iter_indices();
-    let mut split_idx = 0;
+    close_token: TokenType,
+) -> Result<(usize, AstNode), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
+    debug!("Parsing eval invocation at {:?}", start_index);
 
-    // Iterate to find the balanced character
-    while count > 0 {
-        let (idx, c) = match it.next() {
-            Some(v) => v,
-            None => {
-                return fail_out(i, ParseErrorKind::UnternimatedVariable);
-            }
-        };
-        split_idx = idx;
-        if c == start_char {
-            count += 1;
-        } else if c == term_char {
-            count -= 1;
-        };
-    }
-
-    let (i, name_node) = i.take_split(split_idx + 1);
-    let name_node = name_node.slice(..name_node.len() - 1);
-
-    match function_call(name_node, dollar_location.clone()) {
-        Ok(v) => Ok(v),
-        Err(Err::Failure(context)) => {
-            if context.clone().into_error_kind()
-                == nom::ErrorKind::Custom(ParseErrorKind::InternalFailure("not a function call"))
-            {
-                let parsed = parse_ast(name_node)?;
-
-                // quick sanity check as long as we're testing
-                #[cfg(test)]
-                assert_complete!(parsed.0);
-
-                Ok((i, ast::variable_reference(dollar_location, parsed.1)))
-            } else {
-                Err(Err::Failure(context))
-            }
-        }
-        v => v,
-    }
-}
-
-fn function_call<'a>(
-    i: BlockSpan<'a>,
-    dollar_location: Location,
-) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
-    debug!("Attempting to match function call {:?}", i.into_string());
-    fn no_such_function<'a>(i: BlockSpan<'a>) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
-        Err(Err::Failure(nom::Context::Code(
-            i,
-            ErrorKind::Custom(ParseErrorKind::InternalFailure("not a function call")),
-        )))
-    }
-
-    macro_rules! func_entry {
-        ($i: expr, $t:literal, $f:expr) => {
-            pe_complete!(
-                $i,
-                do_parse!(
-                    pe_fix!(tag!($t))
-                        >> many1!(makefile_whitespace)
-                        >> parsed: apply!($f, dollar_location.clone())
-                        >> (parsed)
-                )
-            )
-        };
-    }
-
-    alt!(
+    let mut master_concat_nodes = Vec::new();
+    let end = accumulate_reference_content(
         i,
-        func_entry!("eval", eval)
-            | func_entry!("strip", strip)
-            | func_entry!("words", words)
-            | func_entry!("word", word)
-            | pe_complete!(no_such_function)
-    )
-}
+        tok_iterator,
+        start_index,
+        close_token,
+        &mut master_concat_nodes,
+        false,
+    )?;
 
-fn function_argument<'a>(
-    i: BlockSpan<'a>,
-) -> IResult<BlockSpan<'a>, BlockSpan<'a>, ParseErrorKind> {
-    use nom::{InputIter, InputTake};
-
-    // Strip off any leading whitespace
-    let (i, _) = many0!(i, makefile_whitespace)?;
-
-    let mut it = i.iter_indices();
-    let mut paren_count = 0;
-    let mut curly_count = 0;
-    while let Some((j, c)) = it.next() {
-        match c {
-            '(' => paren_count += 1,
-            ')' => {
-                if paren_count > 0 {
-                    paren_count -= 1
-                } else {
-                    // Somehow we ended up with unbalanced parens, abort
-                    return fail_out(i, ParseErrorKind::UnternimatedVariable);
-                }
-            }
-            '{' => curly_count += 1,
-            '}' => {
-                if curly_count > 0 {
-                    curly_count -= 1;
-                } else {
-                    // Somehow we ended up with unbalanced braces, abort
-                    return fail_out(i, ParseErrorKind::UnternimatedVariable);
-                }
-            }
-            ',' => {
-                if curly_count == 0 && paren_count == 0 {
-                    // We're outside any variable references, split just before the comma
-                    return Ok(i.take_split(j));
-                }
-            }
-            _ => {}
-        }
+    if master_concat_nodes.len() > 0 {
+        let start_location = master_concat_nodes[0].location();
+        Ok((
+            end,
+            ast::eval(
+                dollar_location,
+                ast::collapsing_concat(start_location, master_concat_nodes),
+            ),
+        ))
+    } else {
+        Ok((end, ast::eval(dollar_location, ast::empty())))
     }
-
-    Ok(i.take_split(i.len()))
 }
 
-fn eval<'a>(
-    i: BlockSpan<'a>,
-    start_location: Location,
-) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
-    let (i, args) = parse_ast(i)?;
-
-    Ok((i, ast::eval(start_location, args)))
-}
-
+/*
 fn strip<'a>(
     i: BlockSpan<'a>,
     start_location: Location,
@@ -635,3 +549,4 @@ fn word<'a>(
 
     Ok((i, ast::word(start_location, index, list)))
 }
+*/

@@ -1,0 +1,2 @@
+foo := $(eval )
+bar := $(eval)
