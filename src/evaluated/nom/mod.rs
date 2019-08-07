@@ -53,6 +53,7 @@ impl<'a> AtEof for BlockSpan<'a> {
 
 impl<'a> Slice<Range<usize>> for BlockSpan<'a> {
     fn slice(&self, range: Range<usize>) -> Self {
+        assert!(range.start <= range.end, "range order: start {:?} > end {:?}", range.start, range.end);
         let mut tr = self.clone();
         tr.offset += range.start;
         tr.length = range.end - range.start;
