@@ -74,7 +74,7 @@ mod test {
             let test_span = test_span.span();
 
             let $out_name = assert_ok!(recipe_line(test_span, '\t'));
-        }
+        };
     }
 
     #[test]

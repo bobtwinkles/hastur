@@ -28,7 +28,6 @@ macro_rules! variable_set_to (
     }}
 );
 
-
 macro_rules! target_variable_set_to (
     ($names:expr, $engine:ident, $target:expr, $variable_name:expr, $value:expr) => {{
         let names = &mut $names;
@@ -228,9 +227,10 @@ fn target_variable() {
     crate::test::setup();
 
     let block = create_span(
-    r#"
+        r#"
 a: CFLAGS := -g
-"#);
+"#,
+    );
 
     let mut engine: Engine = Default::default();
     let mut parse_state = ParserState::new();
@@ -254,7 +254,8 @@ fn target_variable_append() {
         r#"
 a: CFLAGS := -g
 a: CFLAGS += -Wall
-"#);
+"#,
+    );
 
     let mut engine: Engine = Default::default();
     let mut parse_state = ParserState::new();

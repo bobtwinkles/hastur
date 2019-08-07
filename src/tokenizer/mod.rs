@@ -403,9 +403,7 @@ where
 }
 
 /// Adapt an iterator over characters to an iterator over tokens
-pub fn iterator_to_token_stream<IT: Iterator<Item = (usize, char)>>(
-    it: IT,
-) -> TokenStream<IT> {
+pub fn iterator_to_token_stream<IT: Iterator<Item = (usize, char)>>(it: IT) -> TokenStream<IT> {
     TokenStream {
         internal: it.peekable(),
     }
