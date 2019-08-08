@@ -322,6 +322,7 @@ fn potential_function<'a, IT: Iterator<Item = (usize, char)>>(
             match func {
                 BuiltinFunction::Eval => simple_func!(eval),
                 BuiltinFunction::Strip => simple_func!(strip),
+                BuiltinFunction::Words => simple_func!(words),
                 f => unimplemented!("Parsing for function {:?}", f),
             }
         }
@@ -511,6 +512,41 @@ fn eval<'a, IT: Iterator<Item = (usize, char)>>(
     }
 }
 
+/// Words is pretty much the same as eval.
+fn words<'a, IT: Iterator<Item = (usize, char)>>(
+    i: BlockSpan<'a>,
+    tok_iterator: &mut TokenStream<IT>,
+    start_index: usize,
+    dollar_location: Location,
+    close_token: TokenType,
+) -> Result<(usize, AstNode), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
+    debug!("Parsing words invocation at {:?}", start_index);
+
+    let mut master_concat_nodes = Vec::new();
+    let (end, _) = accumulate_reference_content(
+        i,
+        tok_iterator,
+        start_index,
+        close_token,
+        &mut master_concat_nodes,
+        false,
+    )?;
+
+    if master_concat_nodes.len() > 0 {
+        let start_location = master_concat_nodes[0].location();
+        Ok((
+            end,
+            ast::words(
+                dollar_location,
+                ast::collapsing_concat(start_location, master_concat_nodes),
+            ),
+        ))
+    } else {
+        Ok((end, ast::words(dollar_location, ast::empty())))
+    }
+}
+
+
 /// Parses a function argument. If `res.2` is true, there are more arguments available
 fn function_argument<'a, IT: Iterator<Item = (usize, char)>>(
     i: BlockSpan<'a>,
@@ -569,20 +605,6 @@ fn strip<'a, IT: Iterator<Item = (usize, char)>>(
 }
 
 /*
-fn words<'a>(
-    i: BlockSpan<'a>,
-    start_location: Location,
-) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
-    let (i, arg) = function_argument(i)?;
-    if i.len() != 0 {
-        return fail_out(i, ParseErrorKind::ExtraArguments("words"));
-    }
-
-    let (_, arg) = parse_ast(arg)?;
-
-    Ok((i, ast::words(start_location, arg)))
-}
-
 fn word<'a>(
     i: BlockSpan<'a>,
     start_location: Location,
