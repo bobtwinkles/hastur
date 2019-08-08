@@ -22,7 +22,6 @@ pub(crate) fn parse_ast<'a>(i: BlockSpan<'a>) -> IResult<BlockSpan<'a>, AstNode,
     let mut master_concat_nodes = Vec::new();
     let mut tokens = iterator_to_token_stream(i.iter_indices());
     let mut start_index = 0;
-    let mut prev_end = 0;
 
     // This loop is a simplified version of the one in
     // accumulate_reference_content. Any fixes applied here probably need to go
@@ -43,12 +42,12 @@ pub(crate) fn parse_ast<'a>(i: BlockSpan<'a>) -> IResult<BlockSpan<'a>, AstNode,
                 master_concat_nodes.push(content);
 
                 start_index = end;
-                prev_end = end;
             }
             _ => {
                 // For any other token, make sure that it is actually a direct
                 // continuation of the previous block. If it isn't, dump and continue
-                if tok.start != prev_end {
+                if let Some(skipped) = tok.skipped {
+                    let prev_end = tok.start - skipped.get();
                     // Something indicated we should skip characters, dump everything and continue.
                     debug!("Something caused a token skip from {:?} to {:?}. Pushing content between {:?} and {:?}", prev_end, tok.start, start_index, prev_end);
                     let prior = i.slice(start_index..prev_end);
@@ -58,7 +57,6 @@ pub(crate) fn parse_ast<'a>(i: BlockSpan<'a>) -> IResult<BlockSpan<'a>, AstNode,
 
                     start_index = tok.start;
                 }
-                prev_end = tok.end;
             }
         }
     }
@@ -396,8 +394,6 @@ fn accumulate_reference_content<'a, IT: Iterator<Item = (usize, char)>>(
         "Accumulating reference content, starting at {:?}",
         start_index
     );
-    let mut prev_end = start_index;
-
     // Just scan until we hit the close token
     while let Some(tok) = tok_iterator.next() {
         match tok.token_type {
@@ -414,7 +410,6 @@ fn accumulate_reference_content<'a, IT: Iterator<Item = (usize, char)>>(
                 master_concat_nodes.push(content);
 
                 start_index = end;
-                prev_end = end;
             }
             TokenType::Comma if stop_on_comma => {
                 // We've found a comma, and the caller requested we stop on such references
@@ -445,8 +440,9 @@ fn accumulate_reference_content<'a, IT: Iterator<Item = (usize, char)>>(
                     tok.start, tok.token_type, tok.end
                 );
 
-                if tok.start != prev_end {
+                if let Some(skipped) = tok.skipped {
                     // Something indicated we should skip characters, dump everything and continue.
+                    let prev_end = tok.start - skipped.get();
                     debug!(
                         "Something caused a token skip from {:?} to {:?} in accumulate",
                         prev_end, tok.start
@@ -458,8 +454,6 @@ fn accumulate_reference_content<'a, IT: Iterator<Item = (usize, char)>>(
 
                     start_index = tok.start;
                 }
-
-                prev_end = tok.end;
             }
         }
     }

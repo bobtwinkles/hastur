@@ -1,5 +1,6 @@
 //! Implements tokenization of the makefile
 use std::iter::{Iterator, Peekable};
+use std::num::NonZeroUsize;
 
 // mod tokenizer_grammar;
 mod text_matcher;
@@ -17,6 +18,8 @@ pub struct Token {
     pub token_type: TokenType,
     /// Final character
     pub end: usize,
+    /// Did this token implicitly skip/drop some characters and if so, how many?
+    pub skipped: Option<NonZeroUsize>,
 }
 
 impl Token {
@@ -25,6 +28,16 @@ impl Token {
             start,
             token_type,
             end,
+            skipped: None
+        }
+    }
+
+    fn skipped(start: usize, token_type: TokenType, end: usize, skip_count: NonZeroUsize) -> Token {
+        Token {
+            start,
+            token_type,
+            end,
+            skipped: Some(skip_count)
         }
     }
 }
@@ -220,14 +233,15 @@ where
 
         macro_rules! token {
             ($ty:expr) => {
-                token!(start_idx, $ty)
+                token!(start_idx, $ty, None)
             };
-            ($start:expr, $ty:expr) => {{
+            ($start:expr, $ty:expr, $skipped:expr) => {{
                 let ty = $ty;
                 return Some(Token {
                     start: $start,
                     end: end_idx,
                     token_type: ty,
+                    skipped: $skipped,
                 });
             }};
         };
@@ -282,7 +296,7 @@ where
                     '$' => {
                         // If it's another $ sign, this isn't a variable reference but an "escaped" $
                         consume_next!();
-                        token!(next_start, TokenType::Text)
+                        token!(next_start, TokenType::Text, NonZeroUsize::new(1))
                     }
                     '(' => {
                         consume_next!();
@@ -389,7 +403,7 @@ where
             let (updated_end, matched) = text_matcher::do_match(end_idx, chr, &mut self.internal);
             end_idx = updated_end;
             if matched.is_some() {
-                return token!(matched.unwrap());
+                token!(matched.unwrap());
             }
             while let Some((_next_idx, chr2)) = self.internal.peek() {
                 if chr2.is_whitespace() || SPECIAL_CHARACTERS.find(*chr2).is_some() {
@@ -397,15 +411,16 @@ where
                 }
                 consume_next!();
             }
-            return token!(TokenType::Text);
+            token!(TokenType::Text)
         }
     }
 }
 
 /// Adapt an iterator over characters to an iterator over tokens
 pub fn iterator_to_token_stream<IT: Iterator<Item = (usize, char)>>(it: IT) -> TokenStream<IT> {
+    let internal = it.peekable();
     TokenStream {
-        internal: it.peekable(),
+        internal,
     }
 }
 
