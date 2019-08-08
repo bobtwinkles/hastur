@@ -13,6 +13,12 @@ use nom::{IResult, InputIter, Slice};
 #[cfg(test)]
 mod test;
 
+/// Why did the reference content scan stop
+enum ScanStopReason {
+    Comma,
+    CloseToken,
+}
+
 /// Extract a semantic variable evaluation AST from the provided block span
 pub(crate) fn parse_ast<'a>(i: BlockSpan<'a>) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
     let start_location = match i.location() {
@@ -193,7 +199,7 @@ fn parse_var_ref<'a, IT: Iterator<Item = (usize, char)>>(
             let content_location = content.location();
             master_concat_nodes.push(content);
 
-            let end = accumulate_reference_content(
+            let (end, _) = accumulate_reference_content(
                 i,
                 tok_iterator,
                 end,
@@ -285,7 +291,7 @@ fn potential_function<'a, IT: Iterator<Item = (usize, char)>>(
             master_concat_nodes.push(content);
 
             // And any trailing content prior to token end
-            let end = accumulate_reference_content(
+            let (end, _) = accumulate_reference_content(
                 i,
                 tok_iterator,
                 end,
@@ -310,6 +316,9 @@ fn potential_function<'a, IT: Iterator<Item = (usize, char)>>(
             match func {
                 BuiltinFunction::Eval => {
                     eval(i, tok_iterator, tok.end, dollar_location, close_token)
+                }
+                BuiltinFunction::Strip => {
+                    strip(i, tok_iterator, tok.end, dollar_location, close_token)
                 }
                 f => unimplemented!("Parsing for function {:?}", f),
             }
@@ -364,7 +373,7 @@ fn non_function_internal<'a, IT: Iterator<Item = (usize, char)>>(
     );
     let mut master_concat_nodes = Vec::new();
 
-    let end = accumulate_reference_content(
+    let (end, _) = accumulate_reference_content(
         i,
         tok_iterator,
         start_index,
@@ -382,6 +391,9 @@ fn non_function_internal<'a, IT: Iterator<Item = (usize, char)>>(
     ))
 }
 
+/// Accumulate content up until either the close token or a comma (if
+/// stop_on_comma is set) into the provided vector of AST nodes. We return both
+/// an end index and an explanation of why we stopped, in case that's relevant.
 fn accumulate_reference_content<'a, IT: Iterator<Item = (usize, char)>>(
     i: BlockSpan<'a>,
     tok_iterator: &mut TokenStream<IT>,
@@ -389,7 +401,7 @@ fn accumulate_reference_content<'a, IT: Iterator<Item = (usize, char)>>(
     close_token: TokenType,
     master_concat_nodes: &mut Vec<AstNode>,
     stop_on_comma: bool,
-) -> Result<usize, nom::Err<BlockSpan<'a>, ParseErrorKind>> {
+) -> Result<(usize, ScanStopReason), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
     debug!(
         "Accumulating reference content, starting at {:?}",
         start_index
@@ -420,7 +432,7 @@ fn accumulate_reference_content<'a, IT: Iterator<Item = (usize, char)>>(
                     }
                 }
 
-                return Ok(tok.end);
+                return Ok((tok.end, ScanStopReason::Comma));
             }
             c if c == close_token => {
                 // We've found our close token. Dump everything up to this point and exit.
@@ -431,7 +443,7 @@ fn accumulate_reference_content<'a, IT: Iterator<Item = (usize, char)>>(
                     }
                 }
 
-                return Ok(tok.end);
+                return Ok((tok.end, ScanStopReason::CloseToken));
             }
             _ => {
                 // any other token accumulates
@@ -462,6 +474,8 @@ fn accumulate_reference_content<'a, IT: Iterator<Item = (usize, char)>>(
     fail_out::<()>(i.slice(i.len()..), ParseErrorKind::UnternimatedVariable).map(|_| unreachable!())
 }
 
+/// Parser for the eval function. This one is a bit special since it just eats
+/// everything indiscriminately: it doesn't take arguments
 fn eval<'a, IT: Iterator<Item = (usize, char)>>(
     i: BlockSpan<'a>,
     tok_iterator: &mut TokenStream<IT>,
@@ -472,7 +486,7 @@ fn eval<'a, IT: Iterator<Item = (usize, char)>>(
     debug!("Parsing eval invocation at {:?}", start_index);
 
     let mut master_concat_nodes = Vec::new();
-    let end = accumulate_reference_content(
+    let (end, _) = accumulate_reference_content(
         i,
         tok_iterator,
         start_index,
@@ -495,21 +509,64 @@ fn eval<'a, IT: Iterator<Item = (usize, char)>>(
     }
 }
 
-/*
-fn strip<'a>(
+/// Parses a function argument. If `res.2` is true, there are more arguments available
+fn function_argument<'a, IT: Iterator<Item = (usize, char)>>(
     i: BlockSpan<'a>,
-    start_location: Location,
-) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
-    let (i, arg) = function_argument(i)?;
-    if i.len() != 0 {
-        return fail_out(i, ParseErrorKind::ExtraArguments("strip"));
+    tok_iterator: &mut TokenStream<IT>,
+    start_index: usize,
+    close_token: TokenType,
+) -> Result<(usize, AstNode, bool), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
+    debug!("Parsing function argument at {:?}", start_index);
+
+    let mut master_concat_nodes = Vec::new();
+    let (end, end_reason) = accumulate_reference_content(
+        i,
+        tok_iterator,
+        start_index,
+        close_token,
+        &mut master_concat_nodes,
+        true,
+    )?;
+
+    let more_arguments = match end_reason {
+        ScanStopReason::Comma => true,
+        ScanStopReason::CloseToken => false,
+    };
+
+    if master_concat_nodes.len() > 0 {
+        let start_location = master_concat_nodes[0].location();
+        Ok((
+            end,
+            ast::collapsing_concat(start_location, master_concat_nodes),
+            more_arguments,
+        ))
+    } else {
+        Ok((
+            end,
+            ast::empty(),
+            more_arguments,
+        ))
     }
-
-    let (_, arg) = parse_ast(arg)?;
-
-    Ok((i, ast::strip(start_location, arg)))
 }
 
+fn strip<'a, IT: Iterator<Item = (usize, char)>>(
+    i: BlockSpan<'a>,
+    tok_iterator: &mut TokenStream<IT>,
+    start_index: usize,
+    dollar_location: Location,
+    close_token: TokenType,
+) -> Result<(usize, AstNode), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
+    debug!("Parsing strip invocation at {:?}", start_index);
+
+    let (end, arg, more_args) = function_argument(i, tok_iterator, start_index, close_token)?;
+    if more_args {
+        return fail_out::<()>(i.slice(start_index..), ParseErrorKind::ExtraArguments("strip")).map(|_| unreachable!())
+    }
+
+    Ok((end, ast::strip(dollar_location, arg)))
+}
+
+/*
 fn words<'a>(
     i: BlockSpan<'a>,
     start_location: Location,
