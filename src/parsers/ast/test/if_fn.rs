@@ -35,7 +35,7 @@ fn two_args() {
             Location::test_location(1, 1),
             ast::constant(LocatedString::test_new(1, 6, "t")),
             ast::constant(LocatedString::test_new(1, 8, "a")),
-            ast::constant(LocatedString::test_new(1, 10, "b")),
+            ast::empty(),
         )
     )
 }

@@ -314,14 +314,16 @@ fn potential_function<'a, IT: Iterator<Item = (usize, char)>>(
             // As far as I know it's impossible to assign to such variable names,
             // but that should be checked
             macro_rules! simple_func {
-                ($handler:ident) => (
+                ($handler:ident) => {
                     $handler(i, tok_iterator, tok.end, dollar_location, close_token)
-                )
+                };
             }
 
             match func {
                 BuiltinFunction::Eval => simple_func!(eval),
+                BuiltinFunction::If => simple_func!(if_fn),
                 BuiltinFunction::Strip => simple_func!(strip),
+                BuiltinFunction::Word => simple_func!(word),
                 BuiltinFunction::Words => simple_func!(words),
                 f => unimplemented!("Parsing for function {:?}", f),
             }
@@ -477,6 +479,16 @@ fn accumulate_reference_content<'a, IT: Iterator<Item = (usize, char)>>(
     fail_out::<()>(i.slice(i.len()..), ParseErrorKind::UnternimatedVariable).map(|_| unreachable!())
 }
 
+/// Create a node (with location) from a list of subnodes
+fn collapsing_concat(nodes: Vec<AstNode>) -> AstNode {
+    if nodes.len() > 0 {
+        let start_location = nodes[0].location();
+        ast::collapsing_concat(start_location, nodes)
+    } else {
+        ast::empty()
+    }
+}
+
 /// Parser for the eval function. This one is a bit special since it just eats
 /// everything indiscriminately: it doesn't take arguments
 fn eval<'a, IT: Iterator<Item = (usize, char)>>(
@@ -498,18 +510,10 @@ fn eval<'a, IT: Iterator<Item = (usize, char)>>(
         false,
     )?;
 
-    if master_concat_nodes.len() > 0 {
-        let start_location = master_concat_nodes[0].location();
-        Ok((
-            end,
-            ast::eval(
-                dollar_location,
-                ast::collapsing_concat(start_location, master_concat_nodes),
-            ),
-        ))
-    } else {
-        Ok((end, ast::eval(dollar_location, ast::empty())))
-    }
+    Ok((
+        end,
+        ast::eval(dollar_location, collapsing_concat(master_concat_nodes)),
+    ))
 }
 
 /// Words is pretty much the same as eval.
@@ -532,20 +536,11 @@ fn words<'a, IT: Iterator<Item = (usize, char)>>(
         false,
     )?;
 
-    if master_concat_nodes.len() > 0 {
-        let start_location = master_concat_nodes[0].location();
-        Ok((
-            end,
-            ast::words(
-                dollar_location,
-                ast::collapsing_concat(start_location, master_concat_nodes),
-            ),
-        ))
-    } else {
-        Ok((end, ast::words(dollar_location, ast::empty())))
-    }
+    Ok((
+        end,
+        ast::words(dollar_location, collapsing_concat(master_concat_nodes)),
+    ))
 }
-
 
 /// Parses a function argument. If `res.2` is true, there are more arguments available
 fn function_argument<'a, IT: Iterator<Item = (usize, char)>>(
@@ -571,20 +566,7 @@ fn function_argument<'a, IT: Iterator<Item = (usize, char)>>(
         ScanStopReason::CloseToken => false,
     };
 
-    if master_concat_nodes.len() > 0 {
-        let start_location = master_concat_nodes[0].location();
-        Ok((
-            end,
-            ast::collapsing_concat(start_location, master_concat_nodes),
-            more_arguments,
-        ))
-    } else {
-        Ok((
-            end,
-            ast::empty(),
-            more_arguments,
-        ))
-    }
+    Ok((end, collapsing_concat(master_concat_nodes), more_arguments))
 }
 
 fn strip<'a, IT: Iterator<Item = (usize, char)>>(
@@ -598,30 +580,85 @@ fn strip<'a, IT: Iterator<Item = (usize, char)>>(
 
     let (end, arg, more_args) = function_argument(i, tok_iterator, start_index, close_token)?;
     if more_args {
-        return fail_out::<()>(i.slice(start_index..), ParseErrorKind::ExtraArguments("strip")).map(|_| unreachable!())
+        return fail_out::<()>(
+            i.slice(start_index..),
+            ParseErrorKind::ExtraArguments("strip"),
+        )
+        .map(|_| unreachable!());
     }
 
     Ok((end, ast::strip(dollar_location, arg)))
 }
 
-/*
-fn word<'a>(
+fn word<'a, IT: Iterator<Item = (usize, char)>>(
     i: BlockSpan<'a>,
-    start_location: Location,
-) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
-    let (i, index) = function_argument(i)?;
-    let (i, _) = match char!(i, ',') {
-        Ok(v) => v,
-        Err(_) => return fail_out(i, ParseErrorKind::InsufficientArguments("word")),
-    };
-    let (_, index) = parse_ast(index)?;
+    tok_iterator: &mut TokenStream<IT>,
+    start_index: usize,
+    dollar_location: Location,
+    close_token: TokenType,
+) -> Result<(usize, AstNode), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
+    debug!("Parsing word invocation at {:?}", start_index);
 
-    let (i, list) = function_argument(i)?;
-    if i.len() != 0 {
-        return fail_out(i, ParseErrorKind::ExtraArguments("word"));
+    let (end, index, more_args) = function_argument(i, tok_iterator, start_index, close_token)?;
+    if !more_args {
+        return fail_out::<()>(
+            i.slice(start_index..),
+            ParseErrorKind::InsufficientArguments("word"),
+        )
+        .map(|_| unreachable!());
     }
-    let (_, list) = parse_ast(list)?;
 
-    Ok((i, ast::word(start_location, index, list)))
+    // Grab the rest of the content as the argument to the word
+    let (end, list) = {
+        let mut master_concat_nodes = Vec::new();
+
+        let (end, _) = accumulate_reference_content(
+            i,
+            tok_iterator,
+            end,
+            close_token,
+            &mut master_concat_nodes,
+            false,
+        )?;
+
+        (end, collapsing_concat(master_concat_nodes))
+    };
+
+    Ok((end, ast::word(dollar_location, index, list)))
 }
-*/
+
+fn if_fn<'a, IT: Iterator<Item = (usize, char)>>(
+    i: BlockSpan<'a>,
+    tok_iterator: &mut TokenStream<IT>,
+    start_index: usize,
+    dollar_location: Location,
+    close_token: TokenType,
+) -> Result<(usize, AstNode), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
+    debug!("Parsing if invocation at {:?}", start_index);
+
+    let (end, condition, more_args) = function_argument(i, tok_iterator, start_index, close_token)?;
+    if !more_args {
+        return fail_out::<()>(
+            i.slice(start_index..),
+            ParseErrorKind::InsufficientArguments("if"),
+        )
+        .map(|_| unreachable!());
+    }
+
+    let (end, tcase, more_args) = function_argument(i, tok_iterator, end, close_token)?;
+    if more_args {
+        let (end, fcase, more_args) = function_argument(i, tok_iterator, end, close_token)?;
+
+        if more_args {
+            fail_out::<()>(i.slice(start_index..), ParseErrorKind::ExtraArguments("if"))
+                .map(|_| unreachable!())
+        } else {
+            Ok((end, ast::if_fn(dollar_location, condition, tcase, fcase)))
+        }
+    } else {
+        Ok((
+            end,
+            ast::if_fn(dollar_location, condition, tcase, ast::empty()),
+        ))
+    }
+}

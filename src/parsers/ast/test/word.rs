@@ -27,7 +27,15 @@ fn too_few_args() {
 
 #[test]
 fn too_many_args() {
-    let block = create_span("$(word 1,foo,extra)");
-    let err = assert_err!(parse_ast(block.span()));
-    assert_err_contains!(err, ParseErrorKind::ExtraArguments("word"));
+    test_setup!("$(word 1,foo,bar)", parse, ok);
+
+    assert_complete!(parse.0);
+    assert_eq!(
+        parse.1,
+        ast::word(
+            Location::test_location(1, 1),
+            ast::constant(LocatedString::test_new(1, 8, "1")),
+            ast::constant(LocatedString::test_new(1, 10, "foo,bar"))
+        )
+    )
 }
