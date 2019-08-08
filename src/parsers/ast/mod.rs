@@ -313,13 +313,15 @@ fn potential_function<'a, IT: Iterator<Item = (usize, char)>>(
             // TODO: determine what Make does in the case of variable names like "if "
             // As far as I know it's impossible to assign to such variable names,
             // but that should be checked
+            macro_rules! simple_func {
+                ($handler:ident) => (
+                    $handler(i, tok_iterator, tok.end, dollar_location, close_token)
+                )
+            }
+
             match func {
-                BuiltinFunction::Eval => {
-                    eval(i, tok_iterator, tok.end, dollar_location, close_token)
-                }
-                BuiltinFunction::Strip => {
-                    strip(i, tok_iterator, tok.end, dollar_location, close_token)
-                }
+                BuiltinFunction::Eval => simple_func!(eval),
+                BuiltinFunction::Strip => simple_func!(strip),
                 f => unimplemented!("Parsing for function {:?}", f),
             }
         }
