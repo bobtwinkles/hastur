@@ -416,6 +416,22 @@ where
     }
 }
 
+impl<IT: Iterator<Item = (usize, char)>> TokenStream<IT> {
+    /// Peek at what the next character is.
+    pub fn peek_next_character(&mut self) -> Option<char> {
+        self.internal.peek().map(|x| x.1)
+    }
+
+    /// Consume the next character, external to the token stream. This is a
+    /// relatively dangerous thing to provide, not because anything internal
+    /// invariants get exposed but because it's usually not what you want. It's
+    /// here if you need it (in recipe scanning for example) but really, please
+    /// don't use this.
+    pub fn consume_next_character(&mut self) -> Option<(usize, char)> {
+        self.internal.next()
+    }
+}
+
 /// Adapt an iterator over characters to an iterator over tokens
 pub fn iterator_to_token_stream<IT: Iterator<Item = (usize, char)>>(it: IT) -> TokenStream<IT> {
     let internal = it.peekable();
