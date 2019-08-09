@@ -37,6 +37,11 @@ fn simple() {
     define_test!("a := b", Flavor::Simple, "a");
 }
 
+#[test]
+fn no_content() {
+    define_test!("a := ", Flavor::Simple, "a");
+}
+
 // #TST-P-Variable.simple_dcolon
 #[test]
 fn posix_simple() {

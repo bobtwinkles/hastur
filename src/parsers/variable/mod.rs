@@ -341,10 +341,10 @@ fn parse_variable_assignment<'a>(
     if assignment_type == AssignmentType::Simple {
         // Evaluate the value AST
         let contents = value_ast.eval(names, context);
-        let location = value_segment
-            .location()
-            .expect("value segment should have nonzero length");
-        value_ast = ast::preevaluated(location.into(), contents);
+        value_ast = match value_segment.location() {
+            Some(location) => ast::preevaluated(location.into(), contents),
+            None => ast::empty(),
+        };
     }
 
     // TODO: the origin reported here is not necessarily correct. We need to
