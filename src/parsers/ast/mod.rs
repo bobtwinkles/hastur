@@ -21,6 +21,7 @@ enum ScanStopReason {
 
 /// Extract a semantic variable evaluation AST from the provided block span
 pub(crate) fn parse_ast<'a>(i: BlockSpan<'a>) -> IResult<BlockSpan<'a>, AstNode, ParseErrorKind> {
+    debug!("Parsing ast from {:?}", i.into_string());
     let start_location = match i.location() {
         Some(v) => v,
         None => return Ok((i, ast::empty())),

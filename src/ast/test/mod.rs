@@ -13,6 +13,7 @@ macro_rules! ast_parse {
     ($block:expr) => {{
         let res = assert_ok!(parse_ast(($block).span()));
         assert_complete!(res.0);
+        debug!("Parsed AST {:?}", res.1);
         res.1
     }};
 }
