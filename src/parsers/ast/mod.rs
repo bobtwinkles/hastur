@@ -491,36 +491,6 @@ fn collapsing_concat(nodes: Vec<AstNode>) -> AstNode {
     }
 }
 
-/// Parser for the eval function.
-fn eval<'a, IT: Iterator<Item = (usize, char)>>(
-    i: BlockSpan<'a>,
-    tok_iterator: &mut TokenStream<IT>,
-    start_index: usize,
-    dollar_location: Location,
-    close_token: TokenType,
-) -> Result<(usize, AstNode), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
-    debug!("Parsing eval invocation at {:?}", start_index);
-
-    let (end, content) = final_argument(i, tok_iterator, start_index, close_token)?;
-
-    Ok((end, ast::eval(dollar_location, content)))
-}
-
-/// Parser for `words`
-fn words<'a, IT: Iterator<Item = (usize, char)>>(
-    i: BlockSpan<'a>,
-    tok_iterator: &mut TokenStream<IT>,
-    start_index: usize,
-    dollar_location: Location,
-    close_token: TokenType,
-) -> Result<(usize, AstNode), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
-    debug!("Parsing words invocation at {:?}", start_index);
-
-    let (end, content) = final_argument(i, tok_iterator, start_index, close_token)?;
-
-    Ok((end, ast::words(dollar_location, content)))
-}
-
 /// Parses a function argument. If `res.2` is true, there are more arguments available
 fn function_argument<'a, IT: Iterator<Item = (usize, char)>>(
     i: BlockSpan<'a>,
@@ -574,19 +544,27 @@ fn final_argument<'a, IT: Iterator<Item = (usize, char)>>(
     Ok((end, collapsing_concat(master_concat_nodes)))
 }
 
-fn strip<'a, IT: Iterator<Item = (usize, char)>>(
-    i: BlockSpan<'a>,
-    tok_iterator: &mut TokenStream<IT>,
-    start_index: usize,
-    dollar_location: Location,
-    close_token: TokenType,
-) -> Result<(usize, AstNode), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
-    debug!("Parsing strip invocation at {:?}", start_index);
+macro_rules! single_argument_function(
+    ($name:ident) => {
+        fn $name<'a, IT: Iterator<Item = (usize, char)>> (
+            i: BlockSpan<'a>,
+            tok_iterator: &mut TokenStream<IT>,
+            start_index: usize,
+            dollar_location: Location,
+            close_token: TokenType,
+        ) -> Result<(usize, AstNode), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
+            debug!("Parsing {} invocation at {:?}", stringify!($name), start_index);
 
-    let (end, arg) = final_argument(i, tok_iterator, start_index, close_token)?;
+            let (end, content) = final_argument(i, tok_iterator, start_index, close_token)?;
 
-    Ok((end, ast::strip(dollar_location, arg)))
-}
+            Ok((end, ast::$name(dollar_location, content)))
+        }
+    }
+);
+
+single_argument_function!(eval);
+single_argument_function!(words);
+single_argument_function!(strip);
 
 fn word<'a, IT: Iterator<Item = (usize, char)>>(
     i: BlockSpan<'a>,
