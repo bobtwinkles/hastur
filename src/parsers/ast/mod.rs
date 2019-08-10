@@ -14,6 +14,7 @@ use nom::{IResult, InputIter, Slice};
 mod test;
 
 /// Why did the reference content scan stop
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum ScanStopReason {
     Comma,
     CloseToken,
@@ -490,8 +491,7 @@ fn collapsing_concat(nodes: Vec<AstNode>) -> AstNode {
     }
 }
 
-/// Parser for the eval function. This one is a bit special since it just eats
-/// everything indiscriminately: it doesn't take arguments
+/// Parser for the eval function.
 fn eval<'a, IT: Iterator<Item = (usize, char)>>(
     i: BlockSpan<'a>,
     tok_iterator: &mut TokenStream<IT>,
@@ -501,23 +501,12 @@ fn eval<'a, IT: Iterator<Item = (usize, char)>>(
 ) -> Result<(usize, AstNode), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
     debug!("Parsing eval invocation at {:?}", start_index);
 
-    let mut master_concat_nodes = Vec::new();
-    let (end, _) = accumulate_reference_content(
-        i,
-        tok_iterator,
-        start_index,
-        close_token,
-        &mut master_concat_nodes,
-        false,
-    )?;
+    let (end, content) = final_argument(i, tok_iterator, start_index, close_token)?;
 
-    Ok((
-        end,
-        ast::eval(dollar_location, collapsing_concat(master_concat_nodes)),
-    ))
+    Ok((end, ast::eval(dollar_location, content)))
 }
 
-/// Words is pretty much the same as eval.
+/// Parser for `words`
 fn words<'a, IT: Iterator<Item = (usize, char)>>(
     i: BlockSpan<'a>,
     tok_iterator: &mut TokenStream<IT>,
@@ -527,20 +516,9 @@ fn words<'a, IT: Iterator<Item = (usize, char)>>(
 ) -> Result<(usize, AstNode), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
     debug!("Parsing words invocation at {:?}", start_index);
 
-    let mut master_concat_nodes = Vec::new();
-    let (end, _) = accumulate_reference_content(
-        i,
-        tok_iterator,
-        start_index,
-        close_token,
-        &mut master_concat_nodes,
-        false,
-    )?;
+    let (end, content) = final_argument(i, tok_iterator, start_index, close_token)?;
 
-    Ok((
-        end,
-        ast::words(dollar_location, collapsing_concat(master_concat_nodes)),
-    ))
+    Ok((end, ast::words(dollar_location, content)))
 }
 
 /// Parses a function argument. If `res.2` is true, there are more arguments available
@@ -570,6 +548,32 @@ fn function_argument<'a, IT: Iterator<Item = (usize, char)>>(
     Ok((end, collapsing_concat(master_concat_nodes), more_arguments))
 }
 
+/// Collect the last argument for a function. This ignores commas to match Make
+/// behavior, though arguably we should at least warn on extraneous commas for
+/// some functions.
+fn final_argument<'a, IT: Iterator<Item = (usize, char)>>(
+    i: BlockSpan<'a>,
+    tok_iterator: &mut TokenStream<IT>,
+    start_index: usize,
+    close_token: TokenType,
+) -> Result<(usize, AstNode), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
+    debug!("Parsing final function argument at {:?}", start_index);
+
+    let mut master_concat_nodes = Vec::new();
+    let (end, end_reason) = accumulate_reference_content(
+        i,
+        tok_iterator,
+        start_index,
+        close_token,
+        &mut master_concat_nodes,
+        false,
+    )?;
+
+    assert!(end_reason == ScanStopReason::CloseToken);
+
+    Ok((end, collapsing_concat(master_concat_nodes)))
+}
+
 fn strip<'a, IT: Iterator<Item = (usize, char)>>(
     i: BlockSpan<'a>,
     tok_iterator: &mut TokenStream<IT>,
@@ -579,14 +583,7 @@ fn strip<'a, IT: Iterator<Item = (usize, char)>>(
 ) -> Result<(usize, AstNode), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
     debug!("Parsing strip invocation at {:?}", start_index);
 
-    let (end, arg, more_args) = function_argument(i, tok_iterator, start_index, close_token)?;
-    if more_args {
-        return fail_out::<()>(
-            i.slice(start_index..),
-            ParseErrorKind::ExtraArguments("strip"),
-        )
-        .map(|_| unreachable!());
-    }
+    let (end, arg) = final_argument(i, tok_iterator, start_index, close_token)?;
 
     Ok((end, ast::strip(dollar_location, arg)))
 }
@@ -609,21 +606,7 @@ fn word<'a, IT: Iterator<Item = (usize, char)>>(
         .map(|_| unreachable!());
     }
 
-    // Grab the rest of the content as the argument to the word
-    let (end, list) = {
-        let mut master_concat_nodes = Vec::new();
-
-        let (end, _) = accumulate_reference_content(
-            i,
-            tok_iterator,
-            end,
-            close_token,
-            &mut master_concat_nodes,
-            false,
-        )?;
-
-        (end, collapsing_concat(master_concat_nodes))
-    };
+    let (end, list) = final_argument(i, tok_iterator, end, close_token)?;
 
     Ok((end, ast::word(dollar_location, index, list)))
 }
@@ -648,14 +631,9 @@ fn if_fn<'a, IT: Iterator<Item = (usize, char)>>(
 
     let (end, tcase, more_args) = function_argument(i, tok_iterator, end, close_token)?;
     if more_args {
-        let (end, fcase, more_args) = function_argument(i, tok_iterator, end, close_token)?;
+        let (end, fcase) = final_argument(i, tok_iterator, end, close_token)?;
 
-        if more_args {
-            fail_out::<()>(i.slice(start_index..), ParseErrorKind::ExtraArguments("if"))
-                .map(|_| unreachable!())
-        } else {
-            Ok((end, ast::if_fn(dollar_location, condition, tcase, fcase)))
-        }
+        Ok((end, ast::if_fn(dollar_location, condition, tcase, fcase)))
     } else {
         Ok((
             end,

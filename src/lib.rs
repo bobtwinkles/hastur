@@ -109,9 +109,6 @@ pub enum ParseErrorKind {
     /// indicates the function name
     InsufficientArguments(&'static str),
 
-    /// A function was invoked with too many arguments.
-    ExtraArguments(&'static str),
-
     /// Failed to include a file
     /// TODO: this should really be an std::io::Error instead of an ErrorKind,
     /// but writing the PartialEq/Clone implementations by hand for this enum

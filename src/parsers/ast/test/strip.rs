@@ -15,10 +15,3 @@ fn basic() {
         )
     )
 }
-
-#[test]
-fn too_many_args() {
-    let block = create_span("$(strip foo,extra)");
-    let err = assert_err!(parse_ast(block.span()));
-    assert_err_contains!(err, ParseErrorKind::ExtraArguments("strip"));
-}
