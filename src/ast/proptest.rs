@@ -103,6 +103,17 @@ pub fn arb_flat_ast(ast_breadth: u32) -> impl Strategy<Value = (AstNode, String)
             self.visit_function_post();
         }
 
+        fn visit_if(
+            &mut self,
+            condition: &'a mut AstNode,
+            true_case: &'a mut AstNode,
+            false_case: &'a mut AstNode,
+        ) {
+            self.visit_function_pre("if");
+            self.super_if(condition, true_case, false_case);
+            self.visit_function_post();
+        }
+
         fn visit_strip(&mut self, content: &'a mut AstNode) {
             self.visit_function_pre("strip");
             self.super_strip(content);
