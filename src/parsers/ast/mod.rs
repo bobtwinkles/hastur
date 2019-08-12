@@ -544,6 +544,11 @@ fn final_argument<'a, IT: Iterator<Item = (usize, char)>>(
     Ok((end, collapsing_concat(master_concat_nodes)))
 }
 
+/// Generates a parser for a make function that takes only a single argument.
+/// It turns out that most make functions are like this, so this saves a
+/// boatload of copy/pasted lines. the name passed in must match the name of the
+/// function in the `ast` module which generates an `AstNode` from a location
+/// and content reference.
 macro_rules! single_argument_function(
     ($name:ident) => {
         fn $name<'a, IT: Iterator<Item = (usize, char)>> (
