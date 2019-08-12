@@ -106,7 +106,7 @@ impl AstNode {
             }};
         };
 
-        let content = match self.children() {
+        let content: Vec<ContentReference> = match self.children() {
             AstChildren::Constant(owned) => vec![ContentReference::new_from_node(Arc::new(
                 EvaluatedNode::Constant(owned.clone()),
             ))],
