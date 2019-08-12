@@ -47,6 +47,11 @@ macro_rules! make_ast_visitor {
                 self.super_variable_reference(name);
             }
 
+            /// Visit a `Abspath` node
+            fn visit_abspath(&mut self, content: &'node $($mutability)? AstNode) {
+                self.super_abspath(content);
+            }
+
             /// Visit a `Eval` node
             fn visit_eval(&mut self, content: &'node $($mutability)? AstNode) {
                 self.super_eval(content);
@@ -100,6 +105,11 @@ macro_rules! make_ast_visitor {
             /// Recursion implementation for `VariableReference` nodes
             fn super_variable_reference(&mut self, name: &'node $($mutability)? AstNode) {
                 self.visit_ast(name);
+            }
+
+            /// Super a `Abspath` node
+            fn super_abspath(&mut self, content: &'node $($mutability)? AstNode) {
+                self.visit_ast(content);
             }
 
             /// Super a `Eval` node
@@ -156,6 +166,9 @@ macro_rules! make_ast_visitor {
                     }
                     AstChildren::VariableReference(node) => {
                         self.visit_variable_reference(node);
+                    }
+                    AstChildren::Abspath(child) => {
+                        self.visit_abspath(child);
                     }
                     AstChildren::Eval(child) => {
                         self.visit_eval(child);

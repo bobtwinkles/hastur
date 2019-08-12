@@ -19,6 +19,8 @@ pub enum EvaluatedNode {
     SubstitutionReference(Box<SubstitutionReference>),
     /// A reference to content produced by an eval function call
     Evaluated(Box<Evaluated>),
+    /// A reference to content produced by a `abspath` function call
+    Abspath(Box<Abspath>),
 }
 
 lazy_static::lazy_static!(
@@ -57,6 +59,7 @@ impl EvaluatedNode {
             EvaluatedNode::VariableReference(v) => v.value.len(),
             EvaluatedNode::SubstitutionReference(v) => v.value.len(),
             EvaluatedNode::Evaluated(v) => v.value.len(),
+            EvaluatedNode::Abspath(v) => v.output.len(),
         }
     }
 
@@ -72,6 +75,7 @@ impl EvaluatedNode {
                 Chars(CharsInternal::BlockSpan(val.value.span().chars()))
             }
             EvaluatedNode::Evaluated(v) => Chars(CharsInternal::BlockSpan(v.value.span().chars())),
+            EvaluatedNode::Abspath(v) => Chars(CharsInternal::BlockSpan(v.output.span().chars())),
         }
     }
 
@@ -87,6 +91,7 @@ impl EvaluatedNode {
                 SegmentsInternal::BlockSpan(v.value.span().segments())
             }
             EvaluatedNode::Evaluated(v) => SegmentsInternal::BlockSpan(v.value.span().segments()),
+            EvaluatedNode::Abspath(v) => SegmentsInternal::BlockSpan(v.output.span().segments()),
         })
     }
 }
@@ -234,5 +239,30 @@ impl Evaluated {
     /// Get the value produced
     pub fn value(&self) -> &Block {
         &self.value
+    }
+}
+
+/// Content that came out of an eval block
+#[derive(Clone, Debug, PartialEq)]
+pub struct Abspath {
+    input: Arc<Block>,
+    output: Arc<Block>,
+}
+
+impl Abspath {
+    /// Create a new Evaluated node
+    /// TODO: should this take a Database as context?
+    pub fn new(input: Arc<Block>, output: Arc<Block>) -> Box<Self> {
+        Box::new(Self { input, output })
+    }
+
+    /// Get the value consumed
+    pub fn input(&self) -> &Block {
+        &self.input
+    }
+
+    /// Get the value produced
+    pub fn output(&self) -> &Block {
+        &self.output
     }
 }

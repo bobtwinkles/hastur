@@ -322,6 +322,7 @@ fn potential_function<'a, IT: Iterator<Item = (usize, char)>>(
             }
 
             match func {
+                BuiltinFunction::Abspath => simple_func!(abspath),
                 BuiltinFunction::Eval => simple_func!(eval),
                 BuiltinFunction::If => simple_func!(if_fn),
                 BuiltinFunction::Strip => simple_func!(strip),
@@ -567,6 +568,7 @@ macro_rules! single_argument_function(
     }
 );
 
+single_argument_function!(abspath);
 single_argument_function!(eval);
 single_argument_function!(words);
 single_argument_function!(strip);

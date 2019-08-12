@@ -97,6 +97,12 @@ pub fn arb_flat_ast(ast_breadth: u32) -> impl Strategy<Value = (AstNode, String)
             self.push_string(")");
         }
 
+        fn visit_abspath(&mut self, content: &'a mut AstNode) {
+            self.visit_function_pre("abspath");
+            self.super_abspath(content);
+            self.visit_function_post();
+        }
+
         fn visit_eval(&mut self, content: &'a mut AstNode) {
             self.visit_function_pre("eval");
             self.super_eval(content);

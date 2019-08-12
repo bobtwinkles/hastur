@@ -1,9 +1,9 @@
 //! implementation of all the text-munging functions ()
 
-use crate::evaluated::{Block, BlockSpan};
+use crate::evaluated::{Block, BlockSpan, ContentReference};
 use crate::parsers::{makefile_take_until_unquote, makefile_token};
 use crate::types::Set;
-use crate::VariableName;
+use crate::{Engine, VariableName};
 use std::sync::Arc;
 
 /// Parses a variable value, and returns the root of the combined tree node
@@ -114,4 +114,43 @@ fn do_replacement<'a>(
     Arc::make_mut(&mut output).simplify();
 
     output
+}
+
+pub(super) fn abspath(input: BlockSpan, engine: &Engine) -> Arc<Block> {
+    let prefix = {
+        use crate::evaluated::nodes::EvaluatedNode;
+        use crate::source_location::LocatedString;
+
+        let mut p = engine.working_directory.to_string_lossy().into_owned();
+        p.push(std::path::MAIN_SEPARATOR);
+
+        Arc::new(EvaluatedNode::Constant(LocatedString::synthetic_new(p)))
+    };
+
+    let mut output_content = Vec::new();
+    let mut push_space = false;
+
+    for item in super::utils::by_make_token(input) {
+        debug!("abspathing {:?}", item.into_string());
+        if push_space {
+            output_content.push(ContentReference::space());
+        }
+
+        if item.len() == 0 {
+            // TODO: this should report a file location or something like that
+            warn!(
+                "Skipping zero-length content from {:?}",
+                input.into_string()
+            );
+            push_space = false;
+            continue;
+        }
+
+        output_content.push(ContentReference::new_from_node(prefix.clone()));
+        output_content.push(item.to_content_reference());
+
+        push_space = true;
+    }
+
+    Block::new(input.parent().raw_sensitivity().clone(), output_content)
 }

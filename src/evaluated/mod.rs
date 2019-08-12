@@ -167,8 +167,11 @@ pub fn constant(contents: crate::source_location::LocatedString) -> ContentRefer
 }
 
 /// Create a content reference to a concatenation
-pub fn concat(contents: Arc<Block>) -> ContentReference {
-    ContentReference::new_from_node(Arc::new(EvaluatedNode::Concat(contents)))
+pub fn concat(sensitivity: Set<VariableName>, contents: Vec<ContentReference>) -> ContentReference {
+    ContentReference::new_from_node(Arc::new(EvaluatedNode::Concat(Block::new(
+        sensitivity,
+        contents,
+    ))))
 }
 
 /// Create a content reference to a variable reference
@@ -188,4 +191,11 @@ pub fn substitution_reference(
     ContentReference::new_from_node(Arc::new(EvaluatedNode::SubstitutionReference(
         nodes::SubstitutionReference::new(name, key, replacement, value),
     )))
+}
+
+/// Create a content reference to a `abspath` function.
+pub fn abspath(input: Arc<Block>, output: Arc<Block>) -> ContentReference {
+    ContentReference::new_from_node(Arc::new(EvaluatedNode::Abspath(nodes::Abspath::new(
+        input, output,
+    ))))
 }

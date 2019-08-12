@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 pub mod visit;
 
+mod utils;
 mod text_functions;
 
 #[cfg(test)]
@@ -163,6 +164,17 @@ impl AstNode {
                     }
                 }
             }
+            AstChildren::Abspath(content) => {
+                let input_block: Arc<Block> = eval_subexpr!(content);
+                let output_block = text_functions::abspath(input_block.span(), context);
+                vec![
+                    ContentReference::new_from_node(Arc::new(
+                        EvaluatedNode::Abspath(enodes::Abspath::new(
+                            input_block, output_block
+                        ))
+                    ))
+                ]
+            }
             AstChildren::Eval(content) => {
                 let content = eval_subexpr!(content);
                 let contentref = ContentReference::new_from_node(Arc::new(
@@ -209,6 +221,10 @@ pub enum AstChildren {
     /// Reference to a variable
     // #SPC-V-AST.variable_reference
     VariableReference(AstNode),
+
+    /// Reference to an `abspath` node
+    Abspath(AstNode),
+
     /// Reference to an `eval` node
     // #SPC-V-AST.eval
     Eval(AstNode),
@@ -287,6 +303,15 @@ pub fn collapsing_concat(source_location: Location, mut v: Vec<AstNode>) -> AstN
 pub fn variable_reference(source_location: Location, name: AstNode) -> AstNode {
     AstNode {
         children: Box::new(AstChildren::VariableReference(name)),
+        source_location: source_location.into(),
+    }
+}
+
+/// An abspath node
+#[inline]
+pub fn abspath(source_location: Location, args: AstNode) -> AstNode {
+    AstNode {
+        children: Box::new(AstChildren::Abspath(args)),
         source_location: source_location.into(),
     }
 }

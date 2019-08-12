@@ -19,6 +19,7 @@ macro_rules! ast_parse {
 }
 
 mod var_ref;
+mod abspath;
 
 /// Simplistic wrapper that creates a block from a single content reference,
 /// with empty sensitivity
