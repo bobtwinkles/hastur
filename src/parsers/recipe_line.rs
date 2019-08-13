@@ -121,7 +121,7 @@ pub(super) fn recipe_line<'a>(
             }
             TokenType::VariableReference(VariableKind::OpenBrace) => {
                 inside_variable_reference = match inside_variable_reference {
-                    VarState::Outside => VarState::InsideParen(1),
+                    VarState::Outside => VarState::InsideBrace(1),
                     VarState::InsideBrace(x) => VarState::InsideBrace(x + 1),
                     VarState::InsideParen(x) => VarState::InsideParen(x),
                 };
