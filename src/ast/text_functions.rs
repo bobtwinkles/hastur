@@ -4,6 +4,7 @@ use crate::evaluated::{Block, BlockSpan, ContentReference};
 use crate::parsers::{makefile_take_until_unquote, makefile_token};
 use crate::types::Set;
 use crate::{Engine, VariableName};
+use nom::{InputIter, Slice};
 use std::sync::Arc;
 
 /// Parses a variable value, and returns the root of the combined tree node
@@ -153,4 +154,32 @@ pub(super) fn abspath(input: BlockSpan, engine: &Engine) -> Arc<Block> {
     }
 
     Block::new(input.parent().raw_sensitivity().clone(), output_content)
+}
+
+pub(super) fn strip(input: BlockSpan) -> Arc<Block> {
+    let mut start = 0;
+    let mut last_non_whitespace = 0;
+
+    let mut it = input.iter_indices();
+
+    while let Some((idx, chr)) = it.next() {
+        if !chr.is_whitespace() {
+            last_non_whitespace = idx + chr.len_utf8();
+            break;
+        }
+        start = idx;
+    }
+
+    for (idx, chr) in it {
+        if !chr.is_whitespace() {
+            last_non_whitespace = idx + chr.len_utf8();
+        }
+    }
+
+    Block::new(
+        input.parent().raw_sensitivity().clone(),
+        vec![input
+            .slice(start..last_non_whitespace)
+            .to_content_reference()],
+    )
 }

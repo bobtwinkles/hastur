@@ -199,3 +199,9 @@ pub fn abspath(input: Arc<Block>, output: Arc<Block>) -> ContentReference {
         input, output,
     ))))
 }
+
+pub fn strip(input: Arc<Block>, output: Arc<Block>) -> ContentReference {
+    ContentReference::new_from_node(Arc::new(EvaluatedNode::Strip(nodes::Strip::new(
+        input, output,
+    ))))
+}

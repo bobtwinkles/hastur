@@ -3,7 +3,7 @@
 //! [`Evaluated`](../evaluated/enum.Evaluated.html).
 
 use crate::evaluated::nodes as enodes;
-use crate::evaluated::{Block, ContentReference, EvaluatedNode};
+use crate::evaluated::{self, Block, ContentReference, EvaluatedNode};
 use crate::source_location::{LocatedString, Location, Marker};
 use crate::types::Set;
 use crate::{Engine, NameCache, VariableName};
@@ -191,6 +191,11 @@ impl AstNode {
 
                 // The eval already consumed the content, don't try to keep parsing it
                 vec![]
+            }
+            AstChildren::Strip(content) => {
+                let input_block: Arc<Block> = eval_subexpr!(content);
+                let output_block = text_functions::strip(input_block.span());
+                vec![evaluated::strip(input_block, output_block)]
             }
             AstChildren::Empty => {
                 // Empty children generate no content
