@@ -11,8 +11,8 @@ use std::sync::Arc;
 
 pub mod visit;
 
-mod utils;
 mod text_functions;
+mod utils;
 
 #[cfg(test)]
 pub mod proptest;
@@ -168,11 +168,7 @@ impl AstNode {
                 let input_block: Arc<Block> = eval_subexpr!(content);
                 let output_block = text_functions::abspath(input_block.span(), context);
                 vec![
-                    ContentReference::new_from_node(Arc::new(
-                        EvaluatedNode::Abspath(enodes::Abspath::new(
-                            input_block, output_block
-                        ))
-                    ))
+                    evaluated::abspath(input_block, output_block)
                 ]
             }
             AstChildren::Eval(content) => {

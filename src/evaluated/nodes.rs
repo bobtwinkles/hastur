@@ -247,7 +247,7 @@ impl Evaluated {
     }
 }
 
-/// Content that came out of an eval block
+/// Content that came out of an abspath block
 #[derive(Clone, Debug, PartialEq)]
 pub struct Abspath {
     input: Arc<Block>,
