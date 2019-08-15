@@ -237,12 +237,15 @@ where
             };
             ($start:expr, $ty:expr, $skipped:expr) => {{
                 let ty = $ty;
-                return Some(Token {
+                let tok = Token {
                     start: $start,
                     end: end_idx,
                     token_type: ty,
                     skipped: $skipped,
-                });
+                };
+                info!("Yielding token {:?}", tok);
+
+                return Some(tok);
             }};
         };
 

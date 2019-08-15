@@ -6,14 +6,14 @@ use std::sync::Arc;
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct BlockSpan<'a> {
     /// The parent bock
-    pub(super) parent: &'a Block,
+    pub(crate) parent: &'a Block,
     /// The slice of the parent's content we care about,
-    pub(super) contents: &'a [ContentReference],
+    pub(crate) contents: &'a [ContentReference],
     /// The offset into the first element, in bytes.
     /// NOTE: this is *in addition to* the offset in the reference itself
-    pub(super) offset: usize,
+    pub(crate) offset: usize,
     /// The total length of all string contents
-    pub(super) length: usize,
+    pub(crate) length: usize,
 }
 
 impl<'a> BlockSpan<'a> {
