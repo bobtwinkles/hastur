@@ -86,7 +86,7 @@ pub enum ParseErrorKind {
     MissingSeparator,
 
     /// We expected a recipe line but didn't find one
-    RecipeExpected,
+    RecipeExpected(Option<Location>),
 
     /// We expected a conditional but found something else
     ConditionalExpected,
@@ -645,9 +645,9 @@ impl Engine {
         while i.len() > 0 {
             let (new_i, _) = match parser_state.parse_line(i, names, self) {
                 Ok(v) => v,
-                Err(NErr::Failure(_)) => unimplemented!("Unrecoverable line parsing failure"),
-                Err(NErr::Incomplete(_)) => unimplemented!("incomplete line"),
-                Err(NErr::Error(_)) => unimplemented!("Recoverable line parsing failure"),
+                Err(NErr::Failure(e)) => unimplemented!("Unrecoverable line parsing failure {:?}", e),
+                Err(NErr::Incomplete(e)) => unimplemented!("incomplete line {:?}", e),
+                Err(NErr::Error(e)) => unimplemented!("Recoverable line parsing failure {:?}", e),
             };
 
             i = new_i;

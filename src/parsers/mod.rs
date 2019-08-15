@@ -240,7 +240,7 @@ impl ParserState {
 
         if line.span().chars().next() == Some(engine.command_char) {
             // A tab (command character) at this point is definitely an error.
-            return fail_out(line_start, ParseErrorKind::RecipeExpected);
+            return fail_out(line_start, ParseErrorKind::RecipeExpected(line.span().location()));
         }
 
         run_line_parser!(

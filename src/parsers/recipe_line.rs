@@ -20,7 +20,7 @@ pub(super) fn recipe_line<'a>(
 
     let (i, (input_line, _)) = add_return_error!(
         i,
-        ErrorKind::Custom(ParseErrorKind::RecipeExpected),
+        ErrorKind::Custom(ParseErrorKind::RecipeExpected(i.location())),
         preceded!(
             fix_error!(ParseErrorKind, char!(command_char)),
             makefile_grab_line
