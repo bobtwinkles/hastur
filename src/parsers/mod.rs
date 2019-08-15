@@ -162,6 +162,7 @@ impl ParserState {
         });
 
         if self.currently_processing_rule() {
+            debug!("currently processing rule");
             // We only check for command lines when we can reasonably expect
             // that we're currently processing a recipe
             run_parser!(recipe_line(i, engine.command_char), |line| {
@@ -348,7 +349,7 @@ where
                 // We've hit the end, outside of a brace/paren
                 let (i, line) = input.take_split(tok.start);
 
-                debug!("Grabbed line {:?}", line.into());
+                debug!("Grabbed line (comment) {:?}", line.into());
 
                 return Ok((i, (line, LineEndReason::Comment)));
             }
@@ -357,7 +358,7 @@ where
                 let (_, line) = input.take_split(tok.start);
                 let (i, _) = input.take_split(tok.end);
 
-                debug!("Grabbed line {:?}", line.into());
+                debug!("Grabbed line (line) {:?}", line.into());
 
                 return Ok((i, (line, LineEndReason::LineBreak)));
             }
@@ -372,7 +373,7 @@ where
 
     // no line end reason before EOF
     let (i, line) = input.take_split(end);
-    debug!("Grabbed line {:?}", line.into());
+    debug!("Grabbed line (eof) {:?}", line.into());
     return Ok((i, (line, LineEndReason::EOF)));
 }
 
@@ -674,16 +675,19 @@ pub(crate) fn makefile_line(
     // Pick up any leftover content
     match state {
         State::Scanning { start, end } => {
+            debug!("Dumping out scan state {:?}", line.slice(start..end).into_string());
             if start != end {
                 output_spans.push(line.slice(start..end).to_content_reference());
             }
         }
         State::PostNewLine => {
+            debug!("Post newline, no scanout");
             // We just saw a new line, and never transitioned out of
             // PostNewLine. That means this line must be blank
         }
         State::Backslashes { slash_start } => match line_grab.1 {
             LineEndReason::LineBreak => {
+                debug!("Ended with backslashes (linebreak)");
                 // This terminates the backslashes in the "insert every other
                 // character" mode, since we're at the end of the line.
                 let slash_block = line.slice(slash_start..);
@@ -701,6 +705,7 @@ pub(crate) fn makefile_line(
                 }
             }
             _ => {
+                debug!("Ended with backslashes (no lb)");
                 // For everything else, we just dump all the content
                 // we know the size is nonzero here, since slash_start is before
                 // the backslash
