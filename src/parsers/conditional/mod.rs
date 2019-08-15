@@ -70,6 +70,39 @@ impl crate::parsers::ParserState {
 
                 Ok(())
             }
+            Conditional::IfDef(vname) | Conditional::IfNDef(vname) => {
+                let vname = vname.eval(names, engine);
+
+                let vname = vname.into_string();
+                let vname = vname.trim();
+
+                let conditional_mode = {
+                    match names.variable_name(vname) {
+                        Some(vname) => {
+                            if engine.database.get_variable(vname).is_some() {
+                                super::ConditionalInterpretation::Executing
+                            } else {
+                                super::ConditionalInterpretation::NotExecuting
+                            }
+                        }
+                        None => super::ConditionalInterpretation::NotExecuting,
+                    }
+                };
+
+                let conditional_mode = if conditional_is_inverted {
+                    conditional_mode.invert()
+                } else {
+                    conditional_mode
+                };
+
+                self.conditionals.push(super::ConditionalState {
+                    interpretation: conditional_mode,
+                    seen_else: false,
+                });
+                self.update_ignoring();
+
+                Ok(())
+            }
             Conditional::Else(followup) => match followup {
                 None => {
                     if self.conditionals.len() == 0 {
@@ -97,7 +130,6 @@ impl crate::parsers::ParserState {
 
                 Ok(())
             }
-            conditional => unimplemented!("Handling conditional {:?}", conditional),
         }
     }
 }
