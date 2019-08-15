@@ -129,7 +129,16 @@ impl<'a> BlockSpan<'a> {
         to_push.length = remaining_length;
         nodes.push(to_push);
 
-        Block::new(self.parent.sensitivity().map(|x| *x).collect(), nodes)
+        let tr = Block::new(self.parent.sensitivity().map(|x| *x).collect(), nodes);
+
+        debug!(
+            "Pushing content from {:?} to {:?}, {:?}",
+            self.offset,
+            self.offset + self.length,
+            tr.into_string()
+        );
+
+        tr
     }
 
     /// Create a new owned block from this slice, and package it up into a nice `ContentReference`
@@ -163,9 +172,20 @@ impl<'a> Iter<'a> {
     fn new(parent: &BlockSpan<'a>) -> Self {
         let mut cons_iter = parent.contents.iter();
         let char_iter: Box<BlockSpanCharIteratorInternal<'a>> = match cons_iter.next() {
-            Some(x) => Box::new(BlockSpanCharIteratorInternal::SkippedContentReference(
-                x.chars().skip(parent.offset),
-            )),
+            Some(x) => {
+                let mut chrs = x.chars();
+                let mut offset = parent.offset;
+                while offset > 0 {
+                    let c = match chrs.next() {
+                        Some(c) => c,
+                        None => {
+                            panic!("The parent blockspan was in an invalid state (revalidate_offsets should have been called prior to creating an iterator)");
+                        }
+                    };
+                    offset -= c.len_utf8();
+                }
+                Box::new(BlockSpanCharIteratorInternal::ContentReference(chrs))
+            }
             None => Box::new(BlockSpanCharIteratorInternal::NullIter("".chars())),
         };
         Self {
