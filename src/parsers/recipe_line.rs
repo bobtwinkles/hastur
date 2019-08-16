@@ -356,7 +356,12 @@ mod test {
         let errors = error_to_list(&context);
         assert!(test::error_list_contains(
             &errors,
-            ErrorKind::Custom(ParseErrorKind::RecipeExpected)
+            ErrorKind::Custom(ParseErrorKind::RecipeExpected(Some(
+                Location::TestLocation {
+                    line: 1,
+                    character: 1
+                }
+            )))
         ));
     }
 }
