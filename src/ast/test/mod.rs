@@ -18,9 +18,22 @@ macro_rules! ast_parse {
     }};
 }
 
+macro_rules! ast_test_setup {
+    ($engine:ident, $names:ident, $ast:ident, $block:expr) => {
+        crate::test::setup();
+
+        let block = single_block($block);
+        let $ast = ast_parse!(block);
+
+        let mut $engine = Engine::default();
+        let mut $names = Default::default();
+    }
+}
+
 mod abspath;
 mod strip;
 mod var_ref;
+mod firstword;
 
 /// Simplistic wrapper that creates a block from a single content reference,
 /// with empty sensitivity

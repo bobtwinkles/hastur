@@ -57,6 +57,11 @@ macro_rules! make_ast_visitor {
                 self.super_eval(content);
             }
 
+            /// Visit a `FirstWord` node
+            fn visit_firstword(&mut self, content: &'node $($mutability)? AstNode) {
+                self.super_firstword(content);
+            }
+
             /// Visit a `If` node
             fn visit_if(
                 &mut self,
@@ -117,6 +122,11 @@ macro_rules! make_ast_visitor {
                 self.visit_ast(content);
             }
 
+            /// Super a `FirstWord` node
+            fn super_firstword(&mut self, content: &'node $($mutability)? AstNode) {
+                self.visit_ast(content);
+            }
+
             /// Visit a `If` node
             fn super_if(
                 &mut self,
@@ -172,6 +182,9 @@ macro_rules! make_ast_visitor {
                     }
                     AstChildren::Eval(child) => {
                         self.visit_eval(child);
+                    }
+                    AstChildren::FirstWord(child) => {
+                        self.visit_firstword(child);
                     }
                     AstChildren::If { condition, true_case, false_case } => {
                         self.visit_if(condition, true_case, false_case)

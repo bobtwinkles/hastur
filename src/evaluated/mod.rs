@@ -200,6 +200,13 @@ pub fn abspath(input: Arc<Block>, output: Arc<Block>) -> ContentReference {
     ))))
 }
 
+/// Create a content reference to the `firstword` function
+pub fn firstword(input: Arc<Block>, output: Arc<Block>) -> ContentReference {
+    ContentReference::new_from_node(Arc::new(EvaluatedNode::FirstWord(nodes::FirstWord::new(
+        input, output,
+    ))))
+}
+
 pub fn strip(input: Arc<Block>, output: Arc<Block>) -> ContentReference {
     ContentReference::new_from_node(Arc::new(EvaluatedNode::Strip(nodes::Strip::new(
         input, output,

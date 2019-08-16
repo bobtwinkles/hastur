@@ -188,6 +188,13 @@ impl AstNode {
                 // The eval already consumed the content, don't try to keep parsing it
                 vec![]
             }
+            AstChildren::FirstWord(content) => {
+                let input_block: Arc<Block> = eval_subexpr!(content);
+                let output_block = text_functions::firstword(input_block.span());
+                vec![
+                    evaluated::firstword(input_block, output_block)
+                ]
+            }
             AstChildren::Strip(content) => {
                 let input_block: Arc<Block> = eval_subexpr!(content);
                 let output_block = text_functions::strip(input_block.span());
@@ -230,10 +237,16 @@ pub enum AstChildren {
     // #SPC-V-AST.eval
     Eval(AstNode),
 
+    /// Reference to a `firstword` node
+    FirstWord(AstNode),
+
     /// The `if` make function
     If {
+        /// The condition to be evaluated
         condition: AstNode,
+        /// What to produce if the condition is true
         true_case: AstNode,
+        /// What to produce if the condition is false
         false_case: AstNode,
     },
 
@@ -325,6 +338,16 @@ pub fn eval(source_location: Location, args: AstNode) -> AstNode {
         source_location: source_location.into(),
     }
 }
+
+/// An firstword node
+#[inline]
+pub fn firstword(source_location: Location, args: AstNode) -> AstNode {
+    AstNode {
+        children: Box::new(AstChildren::FirstWord(args)),
+        source_location: source_location.into(),
+    }
+}
+
 
 /// Create a new `strip` node
 #[inline]

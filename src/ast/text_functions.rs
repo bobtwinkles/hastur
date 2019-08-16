@@ -183,3 +183,14 @@ pub(super) fn strip(input: BlockSpan) -> Arc<Block> {
             .to_content_reference()],
     )
 }
+
+
+pub(super) fn firstword(input: BlockSpan) -> Arc<Block> {
+    let mut output_content = Vec::new();
+
+    if let Some(block) = super::utils::by_make_token(input).next() {
+        output_content.push(block.to_content_reference());
+    }
+
+    Block::new(input.parent().raw_sensitivity().clone(), output_content)
+}

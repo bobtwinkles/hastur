@@ -324,6 +324,7 @@ fn potential_function<'a, IT: Iterator<Item = (usize, char)>>(
             match func {
                 BuiltinFunction::Abspath => simple_func!(abspath),
                 BuiltinFunction::Eval => simple_func!(eval),
+                BuiltinFunction::FirstWord => simple_func!(firstword),
                 BuiltinFunction::If => simple_func!(if_fn),
                 BuiltinFunction::Strip => simple_func!(strip),
                 BuiltinFunction::Word => simple_func!(word),
@@ -570,8 +571,9 @@ macro_rules! single_argument_function(
 
 single_argument_function!(abspath);
 single_argument_function!(eval);
-single_argument_function!(words);
+single_argument_function!(firstword);
 single_argument_function!(strip);
+single_argument_function!(words);
 
 fn word<'a, IT: Iterator<Item = (usize, char)>>(
     i: BlockSpan<'a>,

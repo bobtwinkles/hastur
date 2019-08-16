@@ -21,6 +21,8 @@ pub enum EvaluatedNode {
     Evaluated(Box<Evaluated>),
     /// A reference to content produced by a `abspath` function call
     Abspath(Box<Abspath>),
+    /// A reference to content produced by a `firstword` function call
+    FirstWord(Box<FirstWord>),
     /// A reference to content produced by a `strip` function call
     Strip(Box<Strip>),
 }
@@ -62,6 +64,7 @@ impl EvaluatedNode {
             EvaluatedNode::SubstitutionReference(v) => v.value.len(),
             EvaluatedNode::Evaluated(v) => v.value.len(),
             EvaluatedNode::Abspath(v) => v.output.len(),
+            EvaluatedNode::FirstWord(v) => v.output.len(),
             EvaluatedNode::Strip(v) => v.output.len(),
         }
     }
@@ -79,6 +82,7 @@ impl EvaluatedNode {
             }
             EvaluatedNode::Evaluated(v) => Chars(CharsInternal::BlockSpan(v.value.span().chars())),
             EvaluatedNode::Abspath(v) => Chars(CharsInternal::BlockSpan(v.output.span().chars())),
+            EvaluatedNode::FirstWord(v) => Chars(CharsInternal::BlockSpan(v.output.span().chars())),
             EvaluatedNode::Strip(v) => Chars(CharsInternal::BlockSpan(v.output.span().chars())),
         }
     }
@@ -96,6 +100,7 @@ impl EvaluatedNode {
             }
             EvaluatedNode::Evaluated(v) => SegmentsInternal::BlockSpan(v.value.span().segments()),
             EvaluatedNode::Abspath(v) => SegmentsInternal::BlockSpan(v.output.span().segments()),
+            EvaluatedNode::FirstWord(v) => SegmentsInternal::BlockSpan(v.output.span().segments()),
             EvaluatedNode::Strip(v) => SegmentsInternal::BlockSpan(v.output.span().segments()),
         })
     }
@@ -255,6 +260,31 @@ pub struct Abspath {
 }
 
 impl Abspath {
+    /// Create a new Evaluated node
+    /// TODO: should this take a Database as context?
+    pub fn new(input: Arc<Block>, output: Arc<Block>) -> Box<Self> {
+        Box::new(Self { input, output })
+    }
+
+    /// Get the value consumed
+    pub fn input(&self) -> &Block {
+        &self.input
+    }
+
+    /// Get the value produced
+    pub fn output(&self) -> &Block {
+        &self.output
+    }
+}
+
+/// Content that came out of an firstword block
+#[derive(Clone, Debug, PartialEq)]
+pub struct FirstWord {
+    input: Arc<Block>,
+    output: Arc<Block>,
+}
+
+impl FirstWord {
     /// Create a new Evaluated node
     /// TODO: should this take a Database as context?
     pub fn new(input: Arc<Block>, output: Arc<Block>) -> Box<Self> {

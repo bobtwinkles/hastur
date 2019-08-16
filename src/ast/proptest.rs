@@ -109,6 +109,12 @@ pub fn arb_flat_ast(ast_breadth: u32) -> impl Strategy<Value = (AstNode, String)
             self.visit_function_post();
         }
 
+        fn visit_firstword(&mut self, content: &'a mut AstNode) {
+            self.visit_function_pre("firstword");
+            self.super_firstword(content);
+            self.visit_function_post();
+        }
+
         fn visit_if(
             &mut self,
             condition: &'a mut AstNode,
