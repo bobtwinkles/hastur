@@ -167,9 +167,7 @@ impl AstNode {
             AstChildren::Abspath(content) => {
                 let input_block: Arc<Block> = eval_subexpr!(content);
                 let output_block = text_functions::abspath(input_block.span(), context);
-                vec![
-                    evaluated::abspath(input_block, output_block)
-                ]
+                vec![evaluated::abspath(input_block, output_block)]
             }
             AstChildren::Eval(content) => {
                 let content = eval_subexpr!(content);
@@ -191,9 +189,7 @@ impl AstNode {
             AstChildren::FirstWord(content) => {
                 let input_block: Arc<Block> = eval_subexpr!(content);
                 let output_block = text_functions::firstword(input_block.span());
-                vec![
-                    evaluated::firstword(input_block, output_block)
-                ]
+                vec![evaluated::firstword(input_block, output_block)]
             }
             AstChildren::FindString{ needle, haystack} => {
                 let needle_block: Arc<Block> = eval_subexpr!(needle);

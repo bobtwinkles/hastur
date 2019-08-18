@@ -184,7 +184,6 @@ pub(super) fn strip(input: BlockSpan) -> Arc<Block> {
     )
 }
 
-
 pub(super) fn firstword(input: BlockSpan) -> Arc<Block> {
     let mut output_content = Vec::new();
 
