@@ -218,6 +218,9 @@ evaluated_function!(
     /// The result of evaluating a `firstword` function
     firstword, FirstWord, input);
 evaluated_function!(
+    /// The result of evaluating a `findstring` function,
+    findstring, FindString, needle, haystack);
+evaluated_function!(
     /// The result of evaluating an `if` function, which specified all three arguments
     if_three_args, If, condition, true_case, false_case);
 evaluated_function!(

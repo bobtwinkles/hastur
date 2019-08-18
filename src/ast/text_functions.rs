@@ -194,3 +194,19 @@ pub(super) fn firstword(input: BlockSpan) -> Arc<Block> {
 
     Block::new(input.parent().raw_sensitivity().clone(), output_content)
 }
+
+pub(super) fn findstring(needle: BlockSpan, haystack: BlockSpan) -> Arc<Block> {
+    use nom::FindSubstring;
+
+    let sensitivity = needle.parent().raw_sensitivity().clone();
+    let sensitivity = sensitivity.union(haystack.parent().raw_sensitivity().clone());
+
+    let mut output_content = Vec::new();
+    let needle = needle.into_string();
+
+    if let Some(i) = haystack.find_substring(&needle) {
+        output_content.push(haystack.slice(i..(i + needle.len())).to_content_reference());
+    }
+
+    Block::new(sensitivity, output_content)
+}

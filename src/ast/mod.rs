@@ -195,6 +195,12 @@ impl AstNode {
                     evaluated::firstword(input_block, output_block)
                 ]
             }
+            AstChildren::FindString{ needle, haystack} => {
+                let needle_block: Arc<Block> = eval_subexpr!(needle);
+                let haystack_block: Arc<Block> = eval_subexpr!(haystack);
+                let output_block = text_functions::findstring(needle_block.span(), haystack_block.span());
+                vec![evaluated::findstring(needle_block, haystack_block, output_block)]
+            }
             AstChildren::Strip(content) => {
                 let input_block: Arc<Block> = eval_subexpr!(content);
                 let output_block = text_functions::strip(input_block.span());
@@ -239,6 +245,14 @@ pub enum AstChildren {
 
     /// Reference to a `firstword` node
     FirstWord(AstNode),
+
+    ///  Reference to a `findstring` node
+    FindString {
+        /// The thing to search for
+        needle: AstNode,
+        /// Where to try and find it
+        haystack: AstNode,
+    },
 
     /// The `if` make function
     If {
@@ -348,6 +362,14 @@ pub fn firstword(source_location: Location, args: AstNode) -> AstNode {
     }
 }
 
+/// A `findstring` node
+#[inline]
+pub fn findstring(source_location: Location, needle: AstNode, haystack: AstNode) -> AstNode {
+    AstNode {
+        children: Box::new(AstChildren::FindString { needle, haystack }),
+        source_location: source_location.into(),
+    }
+}
 
 /// Create a new `strip` node
 #[inline]

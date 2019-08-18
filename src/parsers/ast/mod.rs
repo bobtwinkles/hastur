@@ -325,6 +325,7 @@ fn potential_function<'a, IT: Iterator<Item = (usize, char)>>(
 
                 BuiltinFunction::Abspath => simple_func!(abspath),
                 BuiltinFunction::Eval => simple_func!(eval),
+                BuiltinFunction::FindString => simple_func!(findstring),
                 BuiltinFunction::FirstWord => simple_func!(firstword),
                 BuiltinFunction::If => simple_func!(if_fn),
                 BuiltinFunction::Strip => simple_func!(strip),
@@ -587,6 +588,7 @@ macro_rules! gen_function_parser(
 
 gen_function_parser!(abspath);
 gen_function_parser!(eval);
+gen_function_parser!(findstring, needle);
 gen_function_parser!(firstword);
 gen_function_parser!(strip);
 gen_function_parser!(word, index);

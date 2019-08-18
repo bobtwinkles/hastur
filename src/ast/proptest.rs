@@ -115,6 +115,12 @@ pub fn arb_flat_ast(ast_breadth: u32) -> impl Strategy<Value = (AstNode, String)
             self.visit_function_post();
         }
 
+        fn visit_findstring(&mut self, needle: &'a mut AstNode, haystack: &'a mut AstNode) {
+            self.visit_function_pre("findstring");
+            self.super_findstring(needle, haystack);
+            self.visit_function_post();
+        }
+
         fn visit_if(
             &mut self,
             condition: &'a mut AstNode,

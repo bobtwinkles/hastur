@@ -34,6 +34,7 @@ mod abspath;
 mod strip;
 mod var_ref;
 mod firstword;
+mod findstring;
 
 /// Simplistic wrapper that creates a block from a single content reference,
 /// with empty sensitivity

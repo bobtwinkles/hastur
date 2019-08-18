@@ -62,6 +62,15 @@ macro_rules! make_ast_visitor {
                 self.super_firstword(content);
             }
 
+            /// Visit a `FindString` node
+            fn visit_findstring(
+                &mut self,
+                needle: &'node $($mutability)? AstNode,
+                haystack: &'node $($mutability)? AstNode
+            ) {
+                self.super_findstring(needle, haystack);
+            }
+
             /// Visit a `If` node
             fn visit_if(
                 &mut self,
@@ -127,6 +136,15 @@ macro_rules! make_ast_visitor {
                 self.visit_ast(content);
             }
 
+            /// Super a `FindString` node
+            fn super_findstring(
+                &mut self,
+                needle: &'node $($mutability)? AstNode,
+                haystack: &'node $($mutability)? AstNode
+            ) {
+                self.visit_findstring(needle, haystack);
+            }
+
             /// Visit a `If` node
             fn super_if(
                 &mut self,
@@ -185,6 +203,9 @@ macro_rules! make_ast_visitor {
                     }
                     AstChildren::FirstWord(child) => {
                         self.visit_firstword(child);
+                    }
+                    AstChildren::FindString { needle, haystack } => {
+                        self.visit_findstring(needle, haystack);
                     }
                     AstChildren::If { condition, true_case, false_case } => {
                         self.visit_if(condition, true_case, false_case)
