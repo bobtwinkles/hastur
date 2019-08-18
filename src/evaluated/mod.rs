@@ -196,7 +196,8 @@ pub fn substitution_reference(
 }
 
 macro_rules! evaluated_function {
-    ($fname:ident, $func:ident, $( $i:ident ),+) => {
+    ($(#[$attr:meta])* $fname:ident, $func:ident, $( $i:ident ),+) => {
+        $(#[$attr])*
         pub fn $fname($($i: Arc<Block>),+ , output: Arc<Block>) -> ContentReference {
             let mut args = ArrayVec::new();
             $(
@@ -210,8 +211,18 @@ macro_rules! evaluated_function {
     }
 }
 
-evaluated_function!(abspath, Abspath, input);
-evaluated_function!(firstword, FirstWord, input);
-evaluated_function!(if_three_args, If, condition, true_case, false_case);
-evaluated_function!(if_two_args, If, condition, true_case);
-evaluated_function!(strip, Strip, input);
+evaluated_function!(
+    /// The result of evaluating an `abspath` function
+    abspath, Abspath, input);
+evaluated_function!(
+    /// The result of evaluating a `firstword` function
+    firstword, FirstWord, input);
+evaluated_function!(
+    /// The result of evaluating an `if` function, which specified all three arguments
+    if_three_args, If, condition, true_case, false_case);
+evaluated_function!(
+    /// The result of evaluating an `if` function which specified only the condition and true cases.
+    if_two_args, If, condition, true_case);
+evaluated_function!(
+    /// The result of evaluating a `strip` function
+    strip, Strip, input);
