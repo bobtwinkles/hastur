@@ -546,13 +546,14 @@ fn final_argument<'a, IT: Iterator<Item = (usize, char)>>(
     Ok((end, collapsing_concat(master_concat_nodes)))
 }
 
-/// Generates a parser for a make function that takes only a single argument.
+/// Generates a parser for a make function that takes some specific number of arguments.
 /// It turns out that most make functions are like this, so this saves a
 /// boatload of copy/pasted lines. the name passed in must match the name of the
 /// function in the `ast` module which generates an `AstNode` from a location
 /// and content reference.
-macro_rules! single_argument_function(
-    ($name:ident) => {
+macro_rules! gen_function_parser(
+    ($name:ident) => { gen_function_parser!($name, ); };
+    ($name:ident, $($i:ident),*) => {
         fn $name<'a, IT: Iterator<Item = (usize, char)>> (
             i: BlockSpan<'a>,
             tok_iterator: &mut TokenStream<IT>,
@@ -562,41 +563,32 @@ macro_rules! single_argument_function(
         ) -> Result<(usize, AstNode), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
             debug!("Parsing {} invocation at {:?}", stringify!($name), start_index);
 
-            let (end, content) = final_argument(i, tok_iterator, start_index, close_token)?;
+            let end = start_index;
 
-            Ok((end, ast::$name(dollar_location, content)))
+            $(
+                let (end, $i, more_args) = function_argument(i, tok_iterator, end, close_token)?;
+                if !more_args {
+                    return fail_out::<()>(
+                        i.slice(end..),
+                        ParseErrorKind::InsufficientArguments(stringify!($name)),
+                    )
+                    .map (|_| unreachable!());
+                }
+            ),*
+
+            let (end, last_arg) = final_argument(i, tok_iterator, end, close_token)?;
+
+            Ok((end, ast::$name(dollar_location $(,$i)*, last_arg)))
         }
     }
 );
 
-single_argument_function!(abspath);
-single_argument_function!(eval);
-single_argument_function!(firstword);
-single_argument_function!(strip);
-single_argument_function!(words);
-
-fn word<'a, IT: Iterator<Item = (usize, char)>>(
-    i: BlockSpan<'a>,
-    tok_iterator: &mut TokenStream<IT>,
-    start_index: usize,
-    dollar_location: Location,
-    close_token: TokenType,
-) -> Result<(usize, AstNode), nom::Err<BlockSpan<'a>, ParseErrorKind>> {
-    debug!("Parsing word invocation at {:?}", start_index);
-
-    let (end, index, more_args) = function_argument(i, tok_iterator, start_index, close_token)?;
-    if !more_args {
-        return fail_out::<()>(
-            i.slice(start_index..),
-            ParseErrorKind::InsufficientArguments("word"),
-        )
-        .map(|_| unreachable!());
-    }
-
-    let (end, list) = final_argument(i, tok_iterator, end, close_token)?;
-
-    Ok((end, ast::word(dollar_location, index, list)))
-}
+gen_function_parser!(abspath);
+gen_function_parser!(eval);
+gen_function_parser!(firstword);
+gen_function_parser!(strip);
+gen_function_parser!(word, index);
+gen_function_parser!(words);
 
 fn if_fn<'a, IT: Iterator<Item = (usize, char)>>(
     i: BlockSpan<'a>,
