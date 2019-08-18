@@ -322,6 +322,7 @@ fn potential_function<'a, IT: Iterator<Item = (usize, char)>>(
             }
 
             match func {
+
                 BuiltinFunction::Abspath => simple_func!(abspath),
                 BuiltinFunction::Eval => simple_func!(eval),
                 BuiltinFunction::FirstWord => simple_func!(firstword),
@@ -329,6 +330,7 @@ fn potential_function<'a, IT: Iterator<Item = (usize, char)>>(
                 BuiltinFunction::Strip => simple_func!(strip),
                 BuiltinFunction::Word => simple_func!(word),
                 BuiltinFunction::Words => simple_func!(words),
+
                 f => unimplemented!("Parsing for function {:?}", f),
             }
         }
@@ -590,6 +592,10 @@ gen_function_parser!(strip);
 gen_function_parser!(word, index);
 gen_function_parser!(words);
 
+/// One of the few functions that can't be handled by our function parser
+/// generator as it takes a variable number of arguments. It's probably possible
+/// to extend the parser generator to support this kind of generality but it's
+/// also probably not worth it.
 fn if_fn<'a, IT: Iterator<Item = (usize, char)>>(
     i: BlockSpan<'a>,
     tok_iterator: &mut TokenStream<IT>,
