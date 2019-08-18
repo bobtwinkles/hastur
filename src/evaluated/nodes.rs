@@ -3,6 +3,8 @@
 use super::block_span::Iter;
 use super::Block;
 use crate::source_location::{LocatedString, Location};
+use crate::tokenizer::BuiltinFunction;
+use arrayvec::ArrayVec;
 use std::sync::Arc;
 
 /// Represents a node in the expansion history of some text.
@@ -19,12 +21,8 @@ pub enum EvaluatedNode {
     SubstitutionReference(Box<SubstitutionReference>),
     /// A reference to content produced by an eval function call
     Evaluated(Box<Evaluated>),
-    /// A reference to content produced by a `abspath` function call
-    Abspath(Box<Abspath>),
-    /// A reference to content produced by a `firstword` function call
-    FirstWord(Box<FirstWord>),
-    /// A reference to content produced by a `strip` function call
-    Strip(Box<Strip>),
+    /// A reference to content produced by a function call
+    FunctionEvaluation(Box<FunctionEvaluation>),
 }
 
 lazy_static::lazy_static!(
@@ -63,9 +61,7 @@ impl EvaluatedNode {
             EvaluatedNode::VariableReference(v) => v.value.len(),
             EvaluatedNode::SubstitutionReference(v) => v.value.len(),
             EvaluatedNode::Evaluated(v) => v.value.len(),
-            EvaluatedNode::Abspath(v) => v.output.len(),
-            EvaluatedNode::FirstWord(v) => v.output.len(),
-            EvaluatedNode::Strip(v) => v.output.len(),
+            EvaluatedNode::FunctionEvaluation(v) => v.output.len(),
         }
     }
 
@@ -81,9 +77,9 @@ impl EvaluatedNode {
                 Chars(CharsInternal::BlockSpan(val.value.span().chars()))
             }
             EvaluatedNode::Evaluated(v) => Chars(CharsInternal::BlockSpan(v.value.span().chars())),
-            EvaluatedNode::Abspath(v) => Chars(CharsInternal::BlockSpan(v.output.span().chars())),
-            EvaluatedNode::FirstWord(v) => Chars(CharsInternal::BlockSpan(v.output.span().chars())),
-            EvaluatedNode::Strip(v) => Chars(CharsInternal::BlockSpan(v.output.span().chars())),
+            EvaluatedNode::FunctionEvaluation(v) => {
+                Chars(CharsInternal::BlockSpan(v.output.span().chars()))
+            }
         }
     }
 
@@ -99,9 +95,9 @@ impl EvaluatedNode {
                 SegmentsInternal::BlockSpan(v.value.span().segments())
             }
             EvaluatedNode::Evaluated(v) => SegmentsInternal::BlockSpan(v.value.span().segments()),
-            EvaluatedNode::Abspath(v) => SegmentsInternal::BlockSpan(v.output.span().segments()),
-            EvaluatedNode::FirstWord(v) => SegmentsInternal::BlockSpan(v.output.span().segments()),
-            EvaluatedNode::Strip(v) => SegmentsInternal::BlockSpan(v.output.span().segments()),
+            EvaluatedNode::FunctionEvaluation(v) => {
+                SegmentsInternal::BlockSpan(v.output.span().segments())
+            }
         })
     }
 }
@@ -252,77 +248,36 @@ impl Evaluated {
     }
 }
 
-/// Content that came out of an abspath block
+/// Represents the arguments and produced output from a function
 #[derive(Clone, Debug, PartialEq)]
-pub struct Abspath {
-    input: Arc<Block>,
+pub struct FunctionEvaluation {
+    function: BuiltinFunction,
+    arguments: ArrayVec<[Arc<Block>; 3]>,
     output: Arc<Block>,
 }
 
-impl Abspath {
-    /// Create a new Evaluated node
-    /// TODO: should this take a Database as context?
-    pub fn new(input: Arc<Block>, output: Arc<Block>) -> Box<Self> {
-        Box::new(Self { input, output })
+impl FunctionEvaluation {
+    pub fn new(
+        function: BuiltinFunction,
+        arguments: ArrayVec<[Arc<Block>; 3]>,
+        output: Arc<Block>,
+    ) -> Self {
+        Self {
+            function,
+            arguments,
+            output,
+        }
     }
 
-    /// Get the value consumed
-    pub fn input(&self) -> &Block {
-        &self.input
-    }
-
-    /// Get the value produced
     pub fn output(&self) -> &Block {
         &self.output
     }
-}
 
-/// Content that came out of an firstword block
-#[derive(Clone, Debug, PartialEq)]
-pub struct FirstWord {
-    input: Arc<Block>,
-    output: Arc<Block>,
-}
-
-impl FirstWord {
-    /// Create a new Evaluated node
-    /// TODO: should this take a Database as context?
-    pub fn new(input: Arc<Block>, output: Arc<Block>) -> Box<Self> {
-        Box::new(Self { input, output })
-    }
-
-    /// Get the value consumed
-    pub fn input(&self) -> &Block {
-        &self.input
-    }
-
-    /// Get the value produced
-    pub fn output(&self) -> &Block {
-        &self.output
-    }
-}
-
-/// Content that came out of an strip block
-#[derive(Clone, Debug, PartialEq)]
-pub struct Strip {
-    input: Arc<Block>,
-    output: Arc<Block>,
-}
-
-impl Strip {
-    /// Create a new Evaluated node
-    /// TODO: should this take a Database as context?
-    pub fn new(input: Arc<Block>, output: Arc<Block>) -> Box<Self> {
-        Box::new(Self { input, output })
-    }
-
-    /// Get the value consumed
-    pub fn input(&self) -> &Block {
-        &self.input
-    }
-
-    /// Get the value produced
-    pub fn output(&self) -> &Block {
-        &self.output
+    pub fn argument(&self, idx: usize) -> Option<&Block> {
+        if idx < self.arguments.len() {
+            Some(&self.arguments[idx])
+        } else {
+            None
+        }
     }
 }

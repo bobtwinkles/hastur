@@ -1,6 +1,8 @@
 //! The result of evaluating an AST
+use crate::tokenizer::BuiltinFunction;
 use crate::types::Set;
 use crate::VariableName;
+use arrayvec::ArrayVec;
 use std::sync::Arc;
 
 #[cfg(test)]
@@ -193,22 +195,23 @@ pub fn substitution_reference(
     )))
 }
 
-/// Create a content reference to a `abspath` function.
-pub fn abspath(input: Arc<Block>, output: Arc<Block>) -> ContentReference {
-    ContentReference::new_from_node(Arc::new(EvaluatedNode::Abspath(nodes::Abspath::new(
-        input, output,
-    ))))
+macro_rules! evaluated_function {
+    ($fname:ident, $func:ident, $( $i:ident ),+) => {
+        pub fn $fname($($i: Arc<Block>),+ , output: Arc<Block>) -> ContentReference {
+            let mut args = ArrayVec::new();
+            $(
+                args.push($i);
+            );+
+                ContentReference::new_from_node(Arc::new(EvaluatedNode::FunctionEvaluation(Box::new(
+                    nodes::FunctionEvaluation::new(
+                        BuiltinFunction::$func, args, output
+                    )))))
+        }
+    }
 }
 
-/// Create a content reference to the `firstword` function
-pub fn firstword(input: Arc<Block>, output: Arc<Block>) -> ContentReference {
-    ContentReference::new_from_node(Arc::new(EvaluatedNode::FirstWord(nodes::FirstWord::new(
-        input, output,
-    ))))
-}
-
-pub fn strip(input: Arc<Block>, output: Arc<Block>) -> ContentReference {
-    ContentReference::new_from_node(Arc::new(EvaluatedNode::Strip(nodes::Strip::new(
-        input, output,
-    ))))
-}
+evaluated_function!(abspath, Abspath, input);
+evaluated_function!(firstword, FirstWord, input);
+evaluated_function!(if_three_args, If, condition, true_case, false_case);
+evaluated_function!(if_two_args, If, condition, true_case);
+evaluated_function!(strip, Strip, input);
