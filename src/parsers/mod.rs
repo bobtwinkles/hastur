@@ -220,6 +220,7 @@ impl ParserState {
         if self.ignoring {
             // The parse state indicates that we should just ignore this line
             // We've already collapsed continuations, so just return immediately
+            debug!("Parser is ignoring");
             return Ok((i, ()));
         }
 
@@ -241,7 +242,10 @@ impl ParserState {
 
         if line.span().chars().next() == Some(engine.command_char) {
             // A tab (command character) at this point is definitely an error.
-            return fail_out(line_start, ParseErrorKind::RecipeExpected(line.span().location()));
+            return fail_out(
+                line_start,
+                ParseErrorKind::RecipeExpected(line.span().location()),
+            );
         }
 
         run_line_parser!(
@@ -675,7 +679,10 @@ pub(crate) fn makefile_line(
     // Pick up any leftover content
     match state {
         State::Scanning { start, end } => {
-            debug!("Dumping out scan state {:?}", line.slice(start..end).into_string());
+            debug!(
+                "Dumping out scan state {:?}",
+                line.slice(start..end).into_string()
+            );
             if start != end {
                 output_spans.push(line.slice(start..end).to_content_reference());
             }
