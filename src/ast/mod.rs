@@ -250,6 +250,13 @@ pub enum AstChildren {
         haystack: AstNode,
     },
 
+    /// Pattern substitution node
+    PatternSubstitution {
+        pattern: AstNode,
+        replacement: AstNode,
+        text: AstNode
+    },
+
     /// The `if` make function
     If {
         /// The condition to be evaluated
@@ -366,6 +373,16 @@ pub fn findstring(source_location: Location, needle: AstNode, haystack: AstNode)
         source_location: source_location.into(),
     }
 }
+
+/// A `patsubst` node
+#[inline]
+pub fn patsubst(source_location: Location, pattern: AstNode, replacement: AstNode, text: AstNode) -> AstNode {
+    AstNode {
+        children: Box::new(AstChildren::PatternSubstitution { pattern, replacement, text }),
+        source_location: source_location.into(),
+    }
+}
+
 
 /// Create a new `strip` node
 #[inline]

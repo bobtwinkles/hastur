@@ -71,6 +71,16 @@ macro_rules! make_ast_visitor {
                 self.super_findstring(needle, haystack);
             }
 
+            /// Visit a `Patsubst` node
+            fn visit_patsubst(
+                &mut self,
+                pattern: &'node $($mutability)? AstNode,
+                replacement: &'node $($mutability)? AstNode,
+                text: &'node $($mutability)? AstNode
+            ) {
+                self.super_patsubst(pattern, replacement, text);
+            }
+
             /// Visit a `If` node
             fn visit_if(
                 &mut self,
@@ -145,6 +155,18 @@ macro_rules! make_ast_visitor {
                 self.visit_findstring(needle, haystack);
             }
 
+            /// Super a `patsubst` node
+            fn super_patsubst(
+                &mut self,
+                pattern: &'node $($mutability)? AstNode,
+                replacement: &'node $($mutability)? AstNode,
+                text: &'node $($mutability)? AstNode
+            ) {
+                self.visit_ast(pattern);
+                self.visit_ast(replacement);
+                self.visit_ast(text);
+            }
+
             /// Visit a `If` node
             fn super_if(
                 &mut self,
@@ -206,6 +228,9 @@ macro_rules! make_ast_visitor {
                     }
                     AstChildren::FindString { needle, haystack } => {
                         self.visit_findstring(needle, haystack);
+                    }
+                    AstChildren::PatternSubstitution { pattern, replacement, text } => {
+                        self.visit_patsubst(pattern, replacement, text);
                     }
                     AstChildren::If { condition, true_case, false_case } => {
                         self.visit_if(condition, true_case, false_case)

@@ -328,6 +328,7 @@ fn potential_function<'a, IT: Iterator<Item = (usize, char)>>(
                 BuiltinFunction::FindString => simple_func!(findstring),
                 BuiltinFunction::FirstWord => simple_func!(firstword),
                 BuiltinFunction::If => simple_func!(if_fn),
+                BuiltinFunction::PatSubst => simple_func!(patsubst),
                 BuiltinFunction::Strip => simple_func!(strip),
                 BuiltinFunction::Word => simple_func!(word),
                 BuiltinFunction::Words => simple_func!(words),
@@ -577,7 +578,7 @@ macro_rules! gen_function_parser(
                     )
                     .map (|_| unreachable!());
                 }
-            ),*
+            );*
 
             let (end, last_arg) = final_argument(i, tok_iterator, end, close_token)?;
 
@@ -590,6 +591,7 @@ gen_function_parser!(abspath);
 gen_function_parser!(eval);
 gen_function_parser!(findstring, needle);
 gen_function_parser!(firstword);
+gen_function_parser!(patsubst, pattern, replacement);
 gen_function_parser!(strip);
 gen_function_parser!(word, index);
 gen_function_parser!(words);
