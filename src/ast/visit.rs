@@ -152,7 +152,8 @@ macro_rules! make_ast_visitor {
                 needle: &'node $($mutability)? AstNode,
                 haystack: &'node $($mutability)? AstNode
             ) {
-                self.visit_findstring(needle, haystack);
+                self.visit_ast(needle);
+                self.visit_ast(haystack);
             }
 
             /// Super a `patsubst` node
