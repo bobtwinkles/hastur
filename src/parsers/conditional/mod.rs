@@ -127,6 +127,7 @@ impl crate::parsers::ParserState {
                     return Err(ParseErrorKind::UnattachedEndIf);
                 }
                 self.conditionals.pop();
+                self.update_ignoring();
 
                 Ok(())
             }
