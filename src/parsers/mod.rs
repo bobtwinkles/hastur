@@ -220,14 +220,14 @@ impl ParserState {
         if self.ignoring {
             // The parse state indicates that we should just ignore this line
             // We've already collapsed continuations, so just return immediately
-            debug!("Parser is ignoring");
+            debug!("Parser ignored line {:?}", line.into_string());
             return Ok((i, ()));
         }
 
         run_line_parser!(
             variable::parse_line(line.span(), names, engine),
             |variable_action| {
-                debug!("Matched variable action {:?}", variable_action);
+                debug!("Matched variable action");
                 // Successful variable assignments close the current rule
                 self.close_rule(names, engine);
 
@@ -264,6 +264,7 @@ impl ParserState {
     /// whether or not we are in a define
     fn update_ignoring(&mut self) {
         // If any conditional is suppressing interpretation, we must be ignoring
+        debug!("Updating ignoring state");
         for conditional in &self.conditionals {
             if conditional.interpretation == ConditionalInterpretation::NotExecuting {
                 self.ignoring = true;
@@ -295,7 +296,7 @@ impl ParserState {
 
     /// Close out the currently open rule, if there is one
     fn close_rule(&mut self, names: &mut NameCache, engine: &mut Engine) {
-        debug!("Closing rule {:?}", self.current_rule);
+        debug!("Closing rule");
         let current_rule = std::mem::replace(&mut self.current_rule, None);
         match current_rule {
             Some(rule) => engine.from_protorule(names, rule),
