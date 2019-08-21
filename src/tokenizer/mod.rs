@@ -287,7 +287,16 @@ where
         } else if chr == '\\' {
             match consume_next!() {
                 None => token!(TokenType::EscapedCharacter(None)),
-                Some(chr2) => token!(TokenType::EscapedCharacter(Some(chr2))),
+                Some(chr2) => {
+                    if chr2 == '\r' {
+                        if let Some((_next_idx, '\n')) = self.internal.peek() {
+                            // This is a single escaped newline from a makefile from Windows mode
+                            consume_next!();
+                            token!(TokenType::EscapedCharacter(Some('\n')))
+                        }
+                    }
+                    token!(TokenType::EscapedCharacter(Some(chr2)))
+                },
             }
         } else if chr == '$' {
             if let Some((next_start, next)) = self.internal.peek() {
