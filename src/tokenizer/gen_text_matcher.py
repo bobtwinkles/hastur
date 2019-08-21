@@ -55,6 +55,7 @@ functions = {
     "origin": "Origin",
     "patsubst": "PatSubst",
     "realpath": "Realpath",
+    "shell": "Shell",
     "sort": "Sort",
     "strip": "Strip",
     "subst": "Subst",
