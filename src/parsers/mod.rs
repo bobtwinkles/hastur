@@ -129,18 +129,21 @@ impl ParserState {
         macro_rules! run_parser(
             ($parsed:expr, $cleanup:expr) => {
                 match $parsed {
-                    Ok((i, o)) => match $cleanup(o) {
-                        Ok(()) => return Ok((i, ())),
-                        Err(e) => return fail_out(line_start, e)
+                    Ok((i, o)) => {
+                        info!("Parser {:?} succeeded", stringify!($parsed));
+                        match $cleanup(o) {
+                            Ok(()) => return Ok((i, ())),
+                            Err(e) => return fail_out(line_start, e)
+                        }
                     },
                     Err(NErr::Incomplete(_)) => {
-                        debug!(
+                        info!(
                             "Parser {:?} was incomplete, backtracking",
                             stringify!($parsed)
                         )
                     }
                     Err(NErr::Error(e)) => {
-                        debug!(
+                        info!(
                             "Parser {:?} emitted a recoverable error {:?}, backtracking",
                             stringify!($parsed),
                             e.into_error_kind()
@@ -186,18 +189,21 @@ impl ParserState {
         macro_rules! run_line_parser(
             ($parsed:expr, $cleanup:expr) => {
                 match $parsed {
-                    Ok((_, o)) => match $cleanup(o) {
-                        Ok(()) => return Ok((i, ())),
-                        Err(e) => return fail_out(line_start, e)
+                    Ok((_, o)) => {
+                        info!("Parser {:?} succeeded", stringify!($parsed));
+                        match $cleanup(o) {
+                            Ok(()) => return Ok((i, ())),
+                            Err(e) => return fail_out(line_start, e)
+                        }
                     },
                     Err(NErr::Incomplete(_)) => {
-                        debug!(
+                        info!(
                             "Parser {:?} was incomplete, backtracking",
                             stringify!($parsed)
                         )
                     }
                     Err(NErr::Error(e)) => {
-                        debug!(
+                        info!(
                             "Parser {:?} emitted a recoverable error {:?}, backtracking",
                             stringify!($parsed),
                             e.into_error_kind()
