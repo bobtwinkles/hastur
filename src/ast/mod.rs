@@ -396,7 +396,7 @@ node_constructor!(findstring, FindString, needle, haystack);
 node_constructor!(firstword, FirstWord, (arg));
 node_constructor!(if_fn, If, condition, true_case, false_case);
 node_constructor!(patsubst, PatternSubstitution, pattern, replacement, text);
-node_constructor!(strip, Strip, (value));
 node_constructor!(shell, Shell, (value));
+node_constructor!(strip, Strip, (value));
 node_constructor!(word, Word, index, words);
 node_constructor!(words, Words, (value));

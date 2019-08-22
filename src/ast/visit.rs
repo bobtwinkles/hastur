@@ -91,14 +91,14 @@ macro_rules! make_ast_visitor {
                 self.super_if(condition, true_case, false_case)
             }
 
-            /// Visit a `Strip` node
-            fn visit_strip(&mut self, content: &'node $($mutability)? AstNode) {
-                self.super_strip(content);
-            }
-
             /// Visit a `Shell` node
             fn visit_shell(&mut self, content: &'node $($mutability)? AstNode) {
                 self.super_shell(content);
+            }
+
+            /// Visit a `Strip` node
+            fn visit_strip(&mut self, content: &'node $($mutability)? AstNode) {
+                self.super_strip(content);
             }
 
             /// Visit a `Word` node
@@ -185,13 +185,13 @@ macro_rules! make_ast_visitor {
                 self.visit_ast(false_case);
             }
 
-            /// Recursion implementation for `Strip` nodes
-            fn super_strip(&mut self, content: &'node $($mutability)? AstNode) {
+            /// Recursion implementation for `Shell` nodes
+            fn super_shell(&mut self, content: &'node $($mutability)? AstNode) {
                 self.visit_ast(content);
             }
 
-            /// Recursion implementation for `Shell` nodes
-            fn super_shell(&mut self, content: &'node $($mutability)? AstNode) {
+            /// Recursion implementation for `Strip` nodes
+            fn super_strip(&mut self, content: &'node $($mutability)? AstNode) {
                 self.visit_ast(content);
             }
 
@@ -246,10 +246,10 @@ macro_rules! make_ast_visitor {
                     AstChildren::If { condition, true_case, false_case } => {
                         self.visit_if(condition, true_case, false_case)
                     }
-                    AstChildren::Strip(child) => {
+                    AstChildren::Shell(child) => {
                         self.visit_strip(child);
                     }
-                    AstChildren::Shell(child) => {
+                    AstChildren::Strip(child) => {
                         self.visit_strip(child);
                     }
                     AstChildren::Word { index, words } => {

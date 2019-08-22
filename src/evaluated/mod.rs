@@ -218,9 +218,9 @@ macro_rules! evaluated_function {
 }
 
 evaluated_function!(abspath, Abspath, input);
-evaluated_function!(firstword, FirstWord, input);
 evaluated_function!(findstring, FindString, needle, haystack);
+evaluated_function!(firstword, FirstWord, input);
 evaluated_function!(if_three_args, If, condition, true_case, false_case);
 evaluated_function!(if_two_args, If, condition, true_case);
-evaluated_function!(strip, Strip, input);
 evaluated_function!(shell, Shell, input);
+evaluated_function!(strip, Strip, input);
