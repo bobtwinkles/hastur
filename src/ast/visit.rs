@@ -96,6 +96,11 @@ macro_rules! make_ast_visitor {
                 self.super_strip(content);
             }
 
+            /// Visit a `Shell` node
+            fn visit_shell(&mut self, content: &'node $($mutability)? AstNode) {
+                self.super_shell(content);
+            }
+
             /// Visit a `Word` node
             fn visit_word(&mut self, index: &'node $($mutability)? AstNode, words: &'node $($mutability)? AstNode) {
                 self.super_word(index, words);
@@ -185,6 +190,11 @@ macro_rules! make_ast_visitor {
                 self.visit_ast(content);
             }
 
+            /// Recursion implementation for `Shell` nodes
+            fn super_shell(&mut self, content: &'node $($mutability)? AstNode) {
+                self.visit_ast(content);
+            }
+
             /// Recursion implementation for `Word` nodes
             fn super_word(&mut self, index: &'node $($mutability)? AstNode, words: &'node $($mutability)? AstNode) {
                 self.visit_ast(index);
@@ -237,6 +247,9 @@ macro_rules! make_ast_visitor {
                         self.visit_if(condition, true_case, false_case)
                     }
                     AstChildren::Strip(child) => {
+                        self.visit_strip(child);
+                    }
+                    AstChildren::Shell(child) => {
                         self.visit_strip(child);
                     }
                     AstChildren::Word { index, words } => {

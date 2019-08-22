@@ -138,6 +138,12 @@ pub fn arb_flat_ast(ast_breadth: u32) -> impl Strategy<Value = (AstNode, String)
             self.visit_function_post();
         }
 
+        fn visit_shell(&mut self, content: &'a mut AstNode) {
+            self.visit_function_pre("shell");
+            self.super_shell(content);
+            self.visit_function_post();
+        }
+
         fn visit_word(&mut self, index: &'a mut AstNode, words: &'a mut AstNode) {
             self.visit_function_pre("word");
             // XXX: we should technically be not doing this, but it's cowboy time

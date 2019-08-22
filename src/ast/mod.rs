@@ -12,6 +12,7 @@ use std::sync::Arc;
 pub mod visit;
 
 mod text_functions;
+mod shell;
 mod utils;
 
 #[cfg(test)]
@@ -207,6 +208,11 @@ impl AstNode {
                 let output_block = text_functions::strip(input_block.span());
                 vec![evaluated::strip(input_block, output_block)]
             }
+            AstChildren::Shell(content) => {
+                let input_block: Arc<Block> = eval_subexpr!(content);
+                let output_block = shell::shell(input_block.span());
+                vec![evaluated::shell(input_block, output_block)]
+            }
             AstChildren::Empty => {
                 // Empty children generate no content
                 Vec::new()
@@ -275,6 +281,10 @@ pub enum AstChildren {
     /// The `strip` make function
     // #SPC-V-AST.strip
     Strip(AstNode),
+
+    /// The `strip` make function
+    Shell(AstNode),
+
     /// The `word` make function
     // #SPC-V-AST.word
     Word {
@@ -387,5 +397,6 @@ node_constructor!(firstword, FirstWord, (arg));
 node_constructor!(if_fn, If, condition, true_case, false_case);
 node_constructor!(patsubst, PatternSubstitution, pattern, replacement, text);
 node_constructor!(strip, Strip, (value));
+node_constructor!(shell, Shell, (value));
 node_constructor!(word, Word, index, words);
 node_constructor!(words, Words, (value));

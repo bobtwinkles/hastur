@@ -208,7 +208,7 @@ macro_rules! evaluated_function {
                         BuiltinFunction::$func, args, output
                     )))))
         }
-    }
+    };
 }
 
 evaluated_function!(
@@ -229,3 +229,6 @@ evaluated_function!(
 evaluated_function!(
     /// The result of evaluating a `strip` function
     strip, Strip, input);
+evaluated_function!(
+    /// The result of evaluating a `shell` function
+    shell, Shell, input);
