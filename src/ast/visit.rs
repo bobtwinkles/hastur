@@ -195,6 +195,11 @@ macro_rules! make_ast_visitor {
                 self.visit_ast(content);
             }
 
+            /// Recursion implementation for `Wildcard` nodes
+            fn super_wildcard(&mut self, content: &'node $($mutability)? AstNode) {
+                self.visit_ast(content);
+            }
+
             /// Recursion implementation for `Word` nodes
             fn super_word(&mut self, index: &'node $($mutability)? AstNode, words: &'node $($mutability)? AstNode) {
                 self.visit_ast(index);
@@ -251,6 +256,9 @@ macro_rules! make_ast_visitor {
                     }
                     AstChildren::Strip(child) => {
                         self.visit_strip(child);
+                    }
+                    AstChildren::Wildcard(child) => {
+                        self.visit_wildcard(child);
                     }
                     AstChildren::Word { index, words } => {
                         self.visit_word(index, words);

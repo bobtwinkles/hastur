@@ -224,3 +224,4 @@ evaluated_function!(if_three_args, If, condition, true_case, false_case);
 evaluated_function!(if_two_args, If, condition, true_case);
 evaluated_function!(shell, Shell, input);
 evaluated_function!(strip, Strip, input);
+evaluated_function!(wildcard, Wildcard, input);

@@ -8,3 +8,9 @@ use std::sync::Arc;
 pub(super) fn shell(input: BlockSpan) -> Arc<Block> {
     Block::new(Default::default(), vec![])
 }
+
+/// Collect the list of files from the filesystem
+pub(super) fn wildcard(input: BlockSpan) -> Arc<Block> {
+    Block::new(Default::default(), vec![])
+}
+

@@ -213,6 +213,11 @@ impl AstNode {
                 let output_block = shell::shell(input_block.span());
                 vec![evaluated::shell(input_block, output_block)]
             }
+            AstChildren::Wildcard(content) => {
+                let input_block: Arc<Block> = eval_subexpr!(content);
+                let output_block = shell::wildcard(input_block.span());
+                vec![evaluated::wildcard(input_block, output_block)]
+            }
             AstChildren::Empty => {
                 // Empty children generate no content
                 Vec::new()
@@ -284,6 +289,9 @@ pub enum AstChildren {
 
     /// The `strip` make function
     Shell(AstNode),
+
+    /// The `wildcard` make function
+    Wildcard(AstNode),
 
     /// The `word` make function
     // #SPC-V-AST.word
@@ -398,5 +406,6 @@ node_constructor!(if_fn, If, condition, true_case, false_case);
 node_constructor!(patsubst, PatternSubstitution, pattern, replacement, text);
 node_constructor!(shell, Shell, (value));
 node_constructor!(strip, Strip, (value));
+node_constructor!(wildcard, Wildcard, (value));
 node_constructor!(word, Word, index, words);
 node_constructor!(words, Words, (value));

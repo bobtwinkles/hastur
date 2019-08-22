@@ -331,6 +331,7 @@ fn potential_function<'a, IT: Iterator<Item = (usize, char)>>(
                 BuiltinFunction::PatSubst => simple_func!(patsubst),
                 BuiltinFunction::Shell => simple_func!(shell),
                 BuiltinFunction::Strip => simple_func!(strip),
+                BuiltinFunction::Wildcard => simple_func!(wildcard),
                 BuiltinFunction::Word => simple_func!(word),
                 BuiltinFunction::Words => simple_func!(words),
 
@@ -595,6 +596,7 @@ gen_function_parser!(firstword);
 gen_function_parser!(patsubst, pattern, replacement);
 gen_function_parser!(shell);
 gen_function_parser!(strip);
+gen_function_parser!(wildcard);
 gen_function_parser!(word, index);
 gen_function_parser!(words);
 
