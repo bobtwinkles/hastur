@@ -338,93 +338,49 @@ pub fn variable_reference(source_location: Location, name: AstNode) -> AstNode {
     }
 }
 
-/// An abspath node
-#[inline]
-pub fn abspath(source_location: Location, args: AstNode) -> AstNode {
-    AstNode {
-        children: Box::new(AstChildren::Abspath(args)),
-        source_location: source_location.into(),
-    }
+/// Generate a node constructor for something that only takes one (unnamed) argument (first form)
+/// Generate a node constructor for something that takes arbitrary arguments (second form)
+macro_rules! node_constructor {
+    ($(#[$attr:meta])* $name:ident, $child_name:ident, ($arg:ident)) =>
+        {node_constructor!($(#[$attr:meta])* $name, stringify!($name), $child_name, ($arg));};
+
+    ($(#[$attr:meta])* $name:ident, $name_str:expr, $child_name:ident, ($arg:ident)) =>
+    {
+        #[doc = "Constructor for `"]
+        #[doc = $name_str]
+        #[doc = "` nodes."]
+        $(#[$attr])* #[inline]
+        pub fn $name(source_location: Location, $arg: AstNode) -> AstNode {
+            AstNode {
+                children: Box::new(AstChildren::$child_name($arg)),
+                source_location: source_location.into(),
+            }
+        }
+    };
+
+    ($(#[$attr:meta])* $name:ident, $child_name:ident, $($arg:ident),+) =>
+        {node_constructor!($(#[$attr:meta])* $name, stringify!($name), $child_name, $($arg),+);};
+
+    ($(#[$attr:meta])* $name:ident, $name_str:expr, $child_name:ident, $($arg:ident),+) => {
+        #[doc = "Constructor for `"]
+        #[doc = $name_str]
+        #[doc = "` nodes."]
+        $(#[$attr])* #[inline]
+        pub fn $name(source_location: Location, $($arg: AstNode),*) -> AstNode {
+            AstNode {
+                children: Box::new(AstChildren::$child_name{$($arg),*}),
+                source_location: source_location.into(),
+            }
+        }
+    };
 }
 
-/// An eval node
-#[inline]
-pub fn eval(source_location: Location, args: AstNode) -> AstNode {
-    AstNode {
-        children: Box::new(AstChildren::Eval(args)),
-        source_location: source_location.into(),
-    }
-}
-
-/// An firstword node
-#[inline]
-pub fn firstword(source_location: Location, args: AstNode) -> AstNode {
-    AstNode {
-        children: Box::new(AstChildren::FirstWord(args)),
-        source_location: source_location.into(),
-    }
-}
-
-/// A `findstring` node
-#[inline]
-pub fn findstring(source_location: Location, needle: AstNode, haystack: AstNode) -> AstNode {
-    AstNode {
-        children: Box::new(AstChildren::FindString { needle, haystack }),
-        source_location: source_location.into(),
-    }
-}
-
-/// A `patsubst` node
-#[inline]
-pub fn patsubst(source_location: Location, pattern: AstNode, replacement: AstNode, text: AstNode) -> AstNode {
-    AstNode {
-        children: Box::new(AstChildren::PatternSubstitution { pattern, replacement, text }),
-        source_location: source_location.into(),
-    }
-}
-
-
-/// Create a new `strip` node
-#[inline]
-pub fn strip(source_location: Location, value: AstNode) -> AstNode {
-    AstNode {
-        children: Box::new(AstChildren::Strip(value)),
-        source_location: source_location.into(),
-    }
-}
-
-/// Create a new `words` node
-#[inline]
-pub fn words(source_location: Location, arg: AstNode) -> AstNode {
-    AstNode {
-        children: Box::new(AstChildren::Words(arg)),
-        source_location: source_location.into(),
-    }
-}
-
-/// Create a new `word` node
-#[inline]
-pub fn word(source_location: Location, index: AstNode, words: AstNode) -> AstNode {
-    AstNode {
-        children: Box::new(AstChildren::Word { index, words }),
-        source_location: source_location.into(),
-    }
-}
-
-/// Create a new `if` node
-#[inline]
-pub fn if_fn(
-    source_location: Location,
-    condition: AstNode,
-    true_case: AstNode,
-    false_case: AstNode,
-) -> AstNode {
-    AstNode {
-        children: Box::new(AstChildren::If {
-            condition,
-            true_case,
-            false_case,
-        }),
-        source_location: source_location.into(),
-    }
-}
+node_constructor!(abspath, Abspath, (arg));
+node_constructor!(eval, Eval, (arg));
+node_constructor!(findstring, FindString, needle, haystack);
+node_constructor!(firstword, FirstWord, (arg));
+node_constructor!(if_fn, If, condition, true_case, false_case);
+node_constructor!(patsubst, PatternSubstitution, pattern, replacement, text);
+node_constructor!(strip, Strip, (value));
+node_constructor!(word, Word, index, words);
+node_constructor!(words, Words, (value));
