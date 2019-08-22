@@ -111,6 +111,11 @@ macro_rules! make_ast_visitor {
                 self.super_words(words);
             }
 
+            /// Visit a `Wildcard` node
+            fn visit_wildcard(&mut self, content: &'node $($mutability)? AstNode) {
+                self.super_wildcard(content);
+            }
+
             /// Recursion implementation for `Empty` nodes
             fn super_empty(&mut self) {}
 
