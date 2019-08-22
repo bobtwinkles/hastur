@@ -301,7 +301,7 @@ impl ParserState {
     }
 
     /// Close out the currently open rule, if there is one
-    fn close_rule(&mut self, names: &mut NameCache, engine: &mut Engine) {
+    pub(super) fn close_rule(&mut self, names: &mut NameCache, engine: &mut Engine) {
         debug!("Closing rule");
         let current_rule = std::mem::replace(&mut self.current_rule, None);
         match current_rule {

@@ -653,6 +653,8 @@ impl Engine {
             i = new_i;
         }
 
+        parser_state.close_rule(names, self);
+
         Ok(())
     }
 }
