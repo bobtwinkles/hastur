@@ -191,11 +191,16 @@ impl AstNode {
                 let output_block = text_functions::firstword(input_block.span());
                 vec![evaluated::firstword(input_block, output_block)]
             }
-            AstChildren::FindString{ needle, haystack} => {
+            AstChildren::FindString { needle, haystack } => {
                 let needle_block: Arc<Block> = eval_subexpr!(needle);
                 let haystack_block: Arc<Block> = eval_subexpr!(haystack);
-                let output_block = text_functions::findstring(needle_block.span(), haystack_block.span());
-                vec![evaluated::findstring(needle_block, haystack_block, output_block)]
+                let output_block =
+                    text_functions::findstring(needle_block.span(), haystack_block.span());
+                vec![evaluated::findstring(
+                    needle_block,
+                    haystack_block,
+                    output_block,
+                )]
             }
             AstChildren::Strip(content) => {
                 let input_block: Arc<Block> = eval_subexpr!(content);
@@ -254,7 +259,7 @@ pub enum AstChildren {
     PatternSubstitution {
         pattern: AstNode,
         replacement: AstNode,
-        text: AstNode
+        text: AstNode,
     },
 
     /// The `if` make function
