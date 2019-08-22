@@ -197,6 +197,12 @@ pub fn substitution_reference(
 
 macro_rules! evaluated_function {
     ($(#[$attr:meta])* $fname:ident, $func:ident, $( $i:ident ),+) => {
+        evaluated_function!($(#[$attr])* $fname, stringify!($fname), $func, $($i),*);
+    };
+    ($(#[$attr:meta])* $fname:ident, $fname_str:expr, $func:ident, $( $i:ident ),+) => {
+        #[doc = "The result of evaluating the `"]
+        #[doc = $fname_str]
+        #[doc = "` function"]
         $(#[$attr])*
         pub fn $fname($($i: Arc<Block>),+ , output: Arc<Block>) -> ContentReference {
             let mut args = ArrayVec::new();
@@ -211,24 +217,10 @@ macro_rules! evaluated_function {
     };
 }
 
-evaluated_function!(
-    /// The result of evaluating an `abspath` function
-    abspath, Abspath, input);
-evaluated_function!(
-    /// The result of evaluating a `firstword` function
-    firstword, FirstWord, input);
-evaluated_function!(
-    /// The result of evaluating a `findstring` function,
-    findstring, FindString, needle, haystack);
-evaluated_function!(
-    /// The result of evaluating an `if` function, which specified all three arguments
-    if_three_args, If, condition, true_case, false_case);
-evaluated_function!(
-    /// The result of evaluating an `if` function which specified only the condition and true cases.
-    if_two_args, If, condition, true_case);
-evaluated_function!(
-    /// The result of evaluating a `strip` function
-    strip, Strip, input);
-evaluated_function!(
-    /// The result of evaluating a `shell` function
-    shell, Shell, input);
+evaluated_function!(abspath, Abspath, input);
+evaluated_function!(firstword, FirstWord, input);
+evaluated_function!(findstring, FindString, needle, haystack);
+evaluated_function!(if_three_args, If, condition, true_case, false_case);
+evaluated_function!(if_two_args, If, condition, true_case);
+evaluated_function!(strip, Strip, input);
+evaluated_function!(shell, Shell, input);
